@@ -1,8 +1,10 @@
 import express from "express";
-import { getCourses } from "../controllers/courseController";
+import { getProgress, markTopicCompleted, submitQuizResult } from "../controllers/progressController";
 
 const router = express.Router();
 
-router.get("/", getCourses);
+router.get("/", getProgress);
+router.post("/topic", markTopicCompleted);
+router.post("/quiz", submitQuizResult);
 
 export default router;

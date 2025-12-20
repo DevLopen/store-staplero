@@ -1,17 +1,17 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export interface IUser extends Document {
-    name: string;
-    email: string;
-    password: string;
-    isAdmin: boolean;
+export interface ICourse extends Document {
+    title: string;
+    description: string;
+    chapters: any[]; // Możesz użyć dokładnych typów z courseData.ts
+    finalQuiz?: any;
 }
 
-const UserSchema: Schema = new Schema({
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    isAdmin: { type: Boolean, default: false }
+const CourseSchema: Schema = new Schema({
+    title: { type: String, required: true },
+    description: { type: String },
+    chapters: { type: Array, default: [] },
+    finalQuiz: { type: Object, default: null }
 });
 
-export default mongoose.model<IUser>("User", UserSchema);
+export default mongoose.model<ICourse>("Course", CourseSchema);
