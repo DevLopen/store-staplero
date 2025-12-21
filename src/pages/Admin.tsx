@@ -46,7 +46,7 @@ const Admin = () => {
   const { toast } = useToast();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [courses, setCourses] = useState<Course[]>([mockCourse]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<Course>(mockCourse);
 
   // Locations state
@@ -60,7 +60,7 @@ const Admin = () => {
   const [dateForm, setDateForm] = useState({ date: "", time: "08:00 - 16:00", availableSpots: "10" });
 
   // Orders state
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
 
@@ -93,21 +93,23 @@ const Admin = () => {
   const [selectedQuizChapterId, setSelectedQuizChapterId] = useState<string>("");
 
   useEffect(() => {
-    const loggedIn = localStorage.getItem("isLoggedIn") === "true";
-    const admin = localStorage.getItem("isAdmin") === "true";
-
-    if (!loggedIn) {
+    const token = localStorage.getItem("token");
+    if (!token) {
       navigate("/login");
       return;
     }
 
-    if (!admin) {
-      navigate("/dashboard");
-      return;
-    }
-
-    setIsLoggedIn(loggedIn);
-    setIsAdmin(admin);
+    fetch("http://localhost:5000/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.user || !data.user.isAdmin) navigate("/dashboard");
+          else {
+            setIsAdmin(true);
+            setIsLoggedIn(true);
+          }
+        });
   }, [navigate]);
 
   const handleLogout = () => {
@@ -115,6 +117,34 @@ const Admin = () => {
     localStorage.removeItem("isAdmin");
     navigate("/");
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    fetch("http://localhost:5000/api/courses", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+        .then(res => res.json())
+        .then(data => setCourses(data?.courses || []))
+        .catch(err => console.error(err));
+  }, [navigate]);
+
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    fetch("http://localhost:5000/api/orders", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+        .then(res => res.json())
+        .then(data => setOrders(data.orders || []))
+        .catch(err => console.error(err));
+  }, []);
 
   // Course handlers
   const openCourseDialog = (course?: Course) => {
@@ -128,33 +158,39 @@ const Admin = () => {
     setIsCourseDialogOpen(true);
   };
 
-  const saveCourse = () => {
+  const saveCourse = async () => {
     if (!courseForm.title.trim()) {
       toast({ title: "Fehler", description: "Bitte geben Sie einen Titel ein.", variant: "destructive" });
       return;
     }
 
-    if (editingCourse) {
-      setCourses(prev => prev.map(c =>
-          c.id === editingCourse.id
-              ? { ...c, title: courseForm.title, description: courseForm.description }
-              : c
-      ));
-      if (selectedCourse.id === editingCourse.id) {
-        setSelectedCourse(prev => ({ ...prev, title: courseForm.title, description: courseForm.description }));
-      }
-      toast({ title: "Erfolg", description: "Kurs wurde aktualisiert." });
+    const token = localStorage.getItem("token");
+    const method = editingCourse ? "PUT" : "POST";
+    const url = editingCourse
+        ? `http://localhost:5000/api/courses/${editingCourse.id}`
+        : "http://localhost:5000/api/courses";
+
+    const res = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(courseForm),
+    });
+
+    if (res.ok) {
+      const updatedCourse = await res.json();
+      setCourses(prev => editingCourse
+          ? prev.map(c => c.id === updatedCourse.id ? updatedCourse : c)
+          : [...prev, updatedCourse]);
+      setSelectedCourse(updatedCourse);
+      toast({ title: "Erfolg", description: editingCourse ? "Kurs aktualisiert." : "Neuer Kurs erstellt." });
     } else {
-      const newCourse: Course = {
-        id: `course${Date.now()}`,
-        title: courseForm.title,
-        description: courseForm.description,
-        chapters: []
-      };
-      setCourses(prev => [...prev, newCourse]);
-      setSelectedCourse(newCourse);
-      toast({ title: "Erfolg", description: "Neuer Kurs wurde erstellt." });
+      const error = await res.json();
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
     }
+
     setIsCourseDialogOpen(false);
   };
 
@@ -182,38 +218,63 @@ const Admin = () => {
     setIsChapterDialogOpen(true);
   };
 
-  const saveChapter = () => {
-    if (!chapterForm.title.trim()) {
-      toast({ title: "Fehler", description: "Bitte geben Sie einen Titel ein.", variant: "destructive" });
-      return;
-    }
+  const saveChapter = async () => {
+    if (!chapterForm.title.trim()) return;
 
-    if (editingChapter) {
-      setSelectedCourse(prev => ({
-        ...prev,
-        chapters: prev.chapters.map(ch =>
-            ch.id === editingChapter.id
-                ? { ...ch, title: chapterForm.title, description: chapterForm.description }
-                : ch
-        )
-      }));
-      toast({ title: "Erfolg", description: "Kapitel wurde aktualisiert." });
-    } else {
-      const newChapter: Chapter = {
-        id: `ch${Date.now()}`,
+    try {
+      const token = localStorage.getItem("token");
+
+      const payload = {
         title: chapterForm.title,
         description: chapterForm.description,
-        order: selectedCourse.chapters.length + 1,
-        topics: []
       };
-      setSelectedCourse(prev => ({
-        ...prev,
-        chapters: [...prev.chapters, newChapter]
-      }));
-      toast({ title: "Erfolg", description: "Neues Kapitel wurde hinzugefügt." });
+
+      const url = editingChapter
+          ? `http://localhost:5000/api/courses/${selectedCourse._id}/chapters/${editingChapter._id}`
+          : `http://localhost:5000/api/courses/${selectedCourse._id}/chapters`;
+
+      const method = editingChapter ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message);
+      }
+
+      const updatedCourse = await res.json();
+
+      setSelectedCourse(updatedCourse);
+      setCourses(prev =>
+          prev.map(c => c._id === updatedCourse._id ? updatedCourse : c)
+      );
+
+      toast({
+        title: "Erfolg",
+        description: editingChapter
+            ? "Kapitel wurde aktualisiert."
+            : "Neues Kapitel wurde hinzugefügt.",
+      });
+
+      setIsChapterDialogOpen(false);
+      setEditingChapter(null);
+
+    } catch (err: any) {
+      toast({
+        title: "Fehler",
+        description: err.message || "Serverfehler",
+        variant: "destructive",
+      });
     }
-    setIsChapterDialogOpen(false);
   };
+
 
   const deleteChapter = (chapterId: string) => {
     setSelectedCourse(prev => ({
@@ -243,58 +304,78 @@ const Admin = () => {
     setIsTopicDialogOpen(true);
   };
 
-  const saveTopic = () => {
+  const saveTopic = async () => {
     if (!topicForm.title.trim()) {
-      toast({ title: "Fehler", description: "Bitte geben Sie einen Titel ein.", variant: "destructive" });
+      toast({
+        title: "Fehler",
+        description: "Bitte geben Sie einen Titel ein.",
+        variant: "destructive",
+      });
       return;
     }
 
-    if (editingTopic) {
-      setSelectedCourse(prev => ({
-        ...prev,
-        chapters: prev.chapters.map(ch => ({
-          ...ch,
-          topics: ch.topics.map(t =>
-              t.id === editingTopic.id
-                  ? {
-                    ...t,
-                    title: topicForm.title,
-                    content: topicForm.content,
-                    duration: topicForm.duration,
-                    videoUrl: topicForm.videoUrl || undefined,
-                    minDurationSeconds: topicForm.minDurationSeconds ? parseInt(topicForm.minDurationSeconds) : undefined,
-                    requireMinDuration: topicForm.requireMinDuration
-                  }
-                  : t
-          )
-        }))
-      }));
-      toast({ title: "Erfolg", description: "Thema wurde aktualisiert." });
-    } else {
-      const chapter = selectedCourse.chapters.find(ch => ch.id === selectedChapterId);
-      const newTopic: Topic = {
-        id: `t${Date.now()}`,
-        chapterId: selectedChapterId,
+    try {
+      const token = localStorage.getItem("token");
+
+      const payload = {
         title: topicForm.title,
         content: topicForm.content,
-        order: chapter ? chapter.topics.length + 1 : 1,
         duration: topicForm.duration,
-        videoUrl: topicForm.videoUrl || undefined,
-        minDurationSeconds: topicForm.minDurationSeconds ? parseInt(topicForm.minDurationSeconds) : undefined,
-        requireMinDuration: topicForm.requireMinDuration
+        videoUrl: topicForm.videoUrl || null,
+        minDurationSeconds: topicForm.minDurationSeconds
+            ? parseInt(topicForm.minDurationSeconds)
+            : null,
+        requireMinDuration: topicForm.requireMinDuration,
       };
-      setSelectedCourse(prev => ({
-        ...prev,
-        chapters: prev.chapters.map(ch =>
-            ch.id === selectedChapterId
-                ? { ...ch, topics: [...ch.topics, newTopic] }
-                : ch
-        )
-      }));
-      toast({ title: "Erfolg", description: "Neues Thema wurde hinzugefügt." });
+
+      const url = editingTopic
+          ? `http://localhost:5000/api/courses/${selectedCourse._id}/chapters/${selectedChapterId}/topics/${editingTopic._id}`
+          : `http://localhost:5000/api/courses/${selectedCourse._id}/chapters/${selectedChapterId}/topics`;
+
+      const method = editingTopic ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message);
+      }
+
+      const updatedCourse = await res.json();
+
+      // 🔥 BACKEND JEST JEDYNYM ŹRÓDŁEM PRAWDY
+      setSelectedCourse(updatedCourse);
+      setCourses(prev =>
+          prev.map(c => c._id === updatedCourse._id ? updatedCourse : c)
+      );
+
+      toast({
+        title: "Erfolg",
+        description: editingTopic
+            ? "Thema wurde aktualisiert."
+            : "Neues Thema wurde hinzugefügt.",
+      });
+
+      setIsTopicDialogOpen(false);
+      setEditingTopic(null);
+
+    } catch (err: any) {
+      toast({
+        title: "Fehler",
+        description: err.message || "Serverfehler",
+        variant: "destructive",
+      });
     }
-    setIsTopicDialogOpen(false);
   };
+
+
 
   // Topic sorting
   const moveTopicUp = (chapterId: string, topicId: string) => {
@@ -592,40 +673,64 @@ const Admin = () => {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {courses.map((course) => (
-                      <Card key={course.id} className={`cursor-pointer transition-all ${selectedCourse.id === course.id ? 'ring-2 ring-primary' : ''}`}>
-                        <CardHeader className="pb-3">
-                          <div className="flex items-start justify-between">
-                            <div onClick={() => setSelectedCourse(course)} className="flex-1 cursor-pointer">
-                              <CardTitle className="text-lg">{course.title}</CardTitle>
-                              <CardDescription className="mt-1">{course.description}</CardDescription>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => openCourseDialog(course)}>
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => deleteCourse(course.id)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span>{course.chapters.length} Kapitel</span>
-                            <span>{course.chapters.reduce((acc, ch) => acc + ch.topics.length, 0)} Themen</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                  ))}
-                </div>
+                {courses.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                        <p className="text-muted-foreground">Keine Kurse vorhanden.</p>
+                        <Button className="mt-4" onClick={() => openCourseDialog()}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Erstellen
+                        </Button>
+                      </CardContent>
+                    </Card>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {courses.map((course) => (
+                          <Card
+                              key={course.id}
+                              className={`cursor-pointer transition-all ${selectedCourse.id === course.id ? 'ring-2 ring-primary' : ''}`}
+                          >
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between">
+                                <div
+                                    onClick={() => setSelectedCourse(course)}
+                                    className="flex-1 cursor-pointer"
+                                >
+                                  <CardTitle className="text-lg">{course.title}</CardTitle>
+                                  <CardDescription className="mt-1">{course.description}</CardDescription>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => openCourseDialog(course)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() => deleteCourse(course.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span>{course.chapters.length} Kapitel</span>
+                                <span>{course.chapters.reduce((acc, ch) => acc + ch.topics.length, 0)} Themen</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+                      ))}
+                    </div>
+                )}
               </TabsContent>
+
 
               {/* Course Content Tab */}
               <TabsContent value="content" className="space-y-6">
@@ -1508,21 +1613,6 @@ const Admin = () => {
                     <Label htmlFor="require-duration">Weiter blockieren bis Zeit abgelaufen</Label>
                   </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="topic-video" className="flex items-center gap-2">
-                  <Video className="w-4 h-4" />
-                  Video URL (optional)
-                </Label>
-                <Input
-                    id="topic-video"
-                    value={topicForm.videoUrl}
-                    onChange={(e) => setTopicForm(prev => ({ ...prev, videoUrl: e.target.value }))}
-                    placeholder="z.B. https://www.youtube.com/embed/xxxxx oder https://vimeo.com/xxxxx"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Unterstützt YouTube, Vimeo und direkte Video-URLs. Für YouTube verwenden Sie das Embed-Format.
-                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="topic-content">Inhalt (Markdown)</Label>

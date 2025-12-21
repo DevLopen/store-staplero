@@ -4,9 +4,9 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 
 import authRoutes from "./routes/auth";
-import courseRoutes from "./routes/courseRoutes";
 import orderRoutes from "./routes/orderRoutes";
 import progressRoutes from "./routes/progressRoutes";
+import courseRoutes from "./routes/courseRoutes";
 
 dotenv.config();
 
@@ -19,6 +19,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/progress", progressRoutes);
+
+app.use("/api/courses", courseRoutes);
 
 // Connect MongoDB
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/stapler-dashboard";

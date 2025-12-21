@@ -86,7 +86,9 @@ const Dashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setUserCourses(data || []); // jeśli brak kursów, pusty array
+      console.log("Fetched courses:", data);
+      // jeśli backend zwraca { courses: [...] }
+      setUserCourses(Array.isArray(data) ? data : data.courses || []);
     } catch (err) {
       toast({ title: "Fehler", description: "Kurse konnten nicht geladen werden." });
       setUserCourses([]);
@@ -151,56 +153,68 @@ const Dashboard = () => {
 
               {/* Kurse */}
               <TabsContent value="courses" className="space-y-6">
-                {userCourses.length === 0 ? (
+                {(!Array.isArray(userCourses) || userCourses.length === 0) ? (
                     <div className="text-center py-12 text-muted-foreground">
                       Keine Kurse vorhanden.
                     </div>
                 ) : (
-                    userCourses.map(course => (
-                        <Card key={course.id} className="mb-6">
-                          <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                              <BookOpen className="w-5 h-5 text-primary" /> {course.title}
-                            </CardTitle>
-                            <CardDescription>{course.description}</CardDescription>
-                          </CardHeader>
-                          <CardContent>
-                            {course.chapters.map(chapter => {
-                              const chapterProgress = getCourseProgress(progress); // można zmienić per chapter
-                              const isComplete = isChapterComplete(chapter.id, progress);
-                              const quizPassed = isQuizPassed(chapter.id, quizResults);
-                              const showQuizButton = needsQuiz(chapter.id, progress, quizResults);
-                              const firstAccessibleTopic = getFirstAccessibleTopic(chapter.id, progress, quizResults);
-                              const isLocked = !isChapterAccessible(chapter.id, progress, quizResults);
+                    userCourses.map(course => {
+                      const chapters = Array.isArray(course.chapters) ? course.chapters : [];
 
-                              return (
-                                  <div
-                                      key={chapter.id}
-                                      className={`p-4 rounded-lg border ${isLocked ? 'opacity-60 bg-muted/30' : 'bg-card'}`}
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <h3 className="font-semibold text-foreground">{chapter.title}</h3>
-                                        <p className="text-sm text-muted-foreground">{chapter.description}</p>
-                                      </div>
-                                      <div>
-                                        {isLocked ? (
-                                            <Lock />
-                                        ) : showQuizButton ? (
-                                            <Link to={`/quiz/${chapter.id}`}><Button>Test starten</Button></Link>
-                                        ) : (
-                                            <Link to={`/course/${chapter.id}/${firstAccessibleTopic}`}><Button>Starten</Button></Link>
-                                        )}
+                      return (
+                          <Card key={course._id} className="mb-6">
+                            <CardHeader>
+                              <CardTitle className="flex items-center gap-2">
+                                <BookOpen className="w-5 h-5 text-primary" /> {course.title}
+                              </CardTitle>
+                              <CardDescription>{course.description}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              {chapters.length > 0 ? chapters.map(chapter => {
+                                const chapterTopics = Array.isArray(chapter.topics) ? chapter.topics : [];
+                                if (chapterTopics.length === 0) return (
+                                    <div key={chapter.id} className="text-sm text-muted-foreground">Keine Themen vorhanden.</div>
+                                );
+
+                                const firstTopicId = getFirstAccessibleTopic(chapter.id, progress, quizResults, course) || chapterTopics[0].id;
+                                const isLocked = !isChapterAccessible(chapter.id, progress, quizResults, course);
+                                const showQuizButton = needsQuiz(chapter.id, progress, quizResults, course);
+
+                                return (
+                                    <div
+                                        key={chapter.id}
+                                        className={`p-4 rounded-lg border ${isLocked ? 'opacity-60 bg-muted/30' : 'bg-card'}`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div>
+                                          <h3 className="font-semibold text-foreground">{chapter.title}</h3>
+                                          <p className="text-sm text-muted-foreground">{chapter.description}</p>
+                                        </div>
+                                        <div>
+                                          {isLocked ? (
+                                              <Lock />
+                                          ) : showQuizButton ? (
+                                              <Link to={`/quiz/${chapter.id}`}><Button>Test starten</Button></Link>
+                                          ) : (
+                                              <Link to={`/course/${course._id}/${chapter.id}/${firstTopicId}`} state={{ userCourses }}>
+                                                <Button>Starten</Button>
+                                              </Link>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                              );
-                            })}
-                          </CardContent>
-                        </Card>
-                    ))
+                                );
+                              }) : (
+                                  <div className="text-sm text-muted-foreground">Keine Kapitel vorhanden.</div>
+                              )}
+                            </CardContent>
+                          </Card>
+                      );
+                    })
                 )}
               </TabsContent>
+
+
 
               {/* Profil */}
               <TabsContent value="profile" className="space-y-6">
