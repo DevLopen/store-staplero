@@ -48,7 +48,7 @@ const Admin = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<Course>(mockCourse);
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   // Locations state
   const [locations, setLocations] = useState<Location[]>(mockLocations);
@@ -105,17 +105,43 @@ const Admin = () => {
     })
         .then(res => res.json())
         .then(data => {
-          if (!data.user || !data.user.isAdmin) navigate("/dashboard");
-          else {
+          if (!data.user || !data.user.isAdmin) {
+            navigate("/dashboard");
+          } else {
             setIsAdmin(true);
             setIsLoggedIn(true);
           }
+        })
+        .catch(err => {
+          console.error(err);
+          navigate("/login");
         });
   }, [navigate]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !isAdmin) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    fetch("http://localhost:5000/api/courses/admin", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+        .then(res => res.json())
+        .then(data => {
+          const fetchedCourses = data?.courses || [];
+          setCourses(fetchedCourses);
+          if (fetchedCourses.length > 0 && !selectedCourse) {
+            setSelectedCourse(fetchedCourses[0]);
+          }
+        })
+        .catch(err => console.error(err));
+  }, [isLoggedIn, isAdmin]);
 
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("isAdmin");
+    localStorage.removeItem("token");
     navigate("/");
   };
 
@@ -168,8 +194,8 @@ const Admin = () => {
     const token = localStorage.getItem("token");
     const method = editingCourse ? "PUT" : "POST";
     const url = editingCourse
-        ? `http://localhost:5000/api/courses/${editingCourse.id}`
-        : "http://localhost:5000/api/courses";
+        ? `http://localhost:5000/api/courses/admin/${editingCourse._id}` // ✅ _id
+        : "http://localhost:5000/api/courses/admin";
 
     const res = await fetch(url, {
       method,
@@ -183,7 +209,7 @@ const Admin = () => {
     if (res.ok) {
       const updatedCourse = await res.json();
       setCourses(prev => editingCourse
-          ? prev.map(c => c.id === updatedCourse.id ? updatedCourse : c)
+          ? prev.map(c => c._id === updatedCourse._id ? updatedCourse : c) // ✅ _id
           : [...prev, updatedCourse]);
       setSelectedCourse(updatedCourse);
       toast({ title: "Erfolg", description: editingCourse ? "Kurs aktualisiert." : "Neuer Kurs erstellt." });
@@ -195,19 +221,35 @@ const Admin = () => {
     setIsCourseDialogOpen(false);
   };
 
-  const deleteCourse = (courseId: string) => {
-    if (courses.length <= 1) {
-      toast({ title: "Fehler", description: "Sie müssen mindestens einen Kurs behalten.", variant: "destructive" });
-      return;
+  const deleteCourse = async (courseId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`http://localhost:5000/api/courses/admin/${courseId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        toast({ title: "Fehler", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      setCourses(prev => prev.filter(c => c._id !== courseId)); // ✅ _id
+
+      // ✅ Jeśli usunięty kurs był wybrany, wybierz inny
+      if (selectedCourse?._id === courseId) {
+        const remainingCourses = courses.filter(c => c._id !== courseId);
+        setSelectedCourse(remainingCourses.length > 0 ? remainingCourses[0] : null);
+      }
+
+      toast({ title: "Erfolg", description: "Kurs wurde gelöscht." });
+    } catch (err: any) {
+      toast({ title: "Fehler", description: err.message, variant: "destructive" });
     }
-    setCourses(prev => prev.filter(c => c.id !== courseId));
-    if (selectedCourse.id === courseId) {
-      setSelectedCourse(courses.find(c => c.id !== courseId) || courses[0]);
-    }
-    toast({ title: "Erfolg", description: "Kurs wurde gelöscht." });
   };
 
-  // Chapter handlers
   const openChapterDialog = (chapter?: Chapter) => {
     if (chapter) {
       setEditingChapter(chapter);
@@ -221,6 +263,7 @@ const Admin = () => {
 
   const saveChapter = async () => {
     if (!chapterForm.title.trim()) return;
+    if (!selectedCourse) return;
 
     try {
       const token = localStorage.getItem("token");
@@ -427,6 +470,7 @@ const Admin = () => {
   };
 
   const deleteTopic = async (chapterId: string, topicId: string) => {
+    if (!selectedCourse) return;
     try {
       const token = localStorage.getItem("token");
 
@@ -517,7 +561,7 @@ const Admin = () => {
       };
 
       const res = await fetch(
-          `http://localhost:5000/api/courses/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
+          `http://localhost:5000/api/courses/admin/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -557,7 +601,7 @@ const Admin = () => {
       const token = localStorage.getItem("token");
 
       const res = await fetch(
-          `http://localhost:5000/api/courses/${selectedCourse._id}/quizzes/${chapterId}`,
+          `http://localhost:5000/api/courses/admin${selectedCourse._id}/quizzes/${chapterId}`,
           { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -625,7 +669,7 @@ const Admin = () => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-          `http://localhost:5000/api/courses/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
+          `http://localhost:5000/api/courses/admin/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -669,7 +713,7 @@ const Admin = () => {
       const quizPayload = { ...editingQuiz, questions: updatedQuestions };
 
       const res = await fetch(
-          `http://localhost:5000/api/courses/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
+          `http://localhost:5000/api/courses/admin/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
           { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(quizPayload) }
       );
 
@@ -761,8 +805,10 @@ const Admin = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {courses.map((course) => (
                           <Card
-                              key={course.id}
-                              className={`cursor-pointer transition-all ${selectedCourse.id === course.id ? 'ring-2 ring-primary' : ''}`}
+                              key={course._id} // ✅ _id
+                              className={`cursor-pointer transition-all ${
+                                  selectedCourse?._id === course._id ? 'ring-2 ring-primary' : '' // ✅ _id
+                              }`}
                           >
                             <CardHeader className="pb-3">
                               <div className="flex items-start justify-between">
@@ -777,7 +823,10 @@ const Admin = () => {
                                   <Button
                                       variant="ghost"
                                       size="icon"
-                                      onClick={() => openCourseDialog(course)}
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // ✅ Zapobiega aktywacji karty
+                                        openCourseDialog(course);
+                                      }}
                                   >
                                     <Edit className="w-4 h-4" />
                                   </Button>
@@ -785,7 +834,10 @@ const Admin = () => {
                                       variant="ghost"
                                       size="icon"
                                       className="text-destructive hover:text-destructive"
-                                      onClick={() => deleteCourse(course.id)}
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // ✅ Zapobiega aktywacji karty
+                                        deleteCourse(course._id); // ✅ _id
+                                      }}
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </Button>
@@ -807,18 +859,20 @@ const Admin = () => {
 
               {/* Course Content Tab */}
               <TabsContent value="content" className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-display text-xl font-semibold text-foreground">
-                      Kapitel & Themen
-                    </h2>
-                    <p className="text-sm text-muted-foreground">Kurs: {selectedCourse.title}</p>
-                  </div>
-                  <Button onClick={() => openChapterDialog()}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Neues Kapitel
-                  </Button>
-                </div>
+                {selectedCourse ? (
+                        <>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h2 className="font-display text-xl font-semibold text-foreground">
+                              Kapitel & Themen
+                            </h2>
+                            <p className="text-sm text-muted-foreground">Kurs: {selectedCourse.title}</p>
+                          </div>
+                          <Button onClick={() => openChapterDialog()}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Neues Kapitel
+                          </Button>
+                        </div>
 
                 <div className="space-y-4">
                   {selectedCourse.chapters.map((chapter) => (
@@ -939,18 +993,29 @@ const Admin = () => {
                       </Card>
                   )}
                 </div>
+                        </>
+                        ) : (
+                        <Card>
+                          <CardContent className="py-12 text-center">
+                            <ClipboardCheck className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                            <p className="text-muted-foreground">Bitte wählen Sie zuerst einen Kurs aus.</p>
+                          </CardContent>
+                        </Card>
+                        )}
               </TabsContent>
 
               {/* Tests Tab */}
               <TabsContent value="tests" className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-display text-xl font-semibold text-foreground">
-                      Kapitel-Tests & Abschlusstest
-                    </h2>
-                    <p className="text-sm text-muted-foreground">Kurs: {selectedCourse.title}</p>
-                  </div>
-                </div>
+                {selectedCourse ? (
+                        <>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h2 className="font-display text-xl font-semibold text-foreground">
+                              Kapitel-Tests & Abschlusstest
+                            </h2>
+                            <p className="text-sm text-muted-foreground">Kurs: {selectedCourse.title}</p>
+                          </div>
+                        </div>
 
                 {/* Final Quiz Section */}
                 <Card className="border-2 border-primary/20">
@@ -1171,6 +1236,15 @@ const Admin = () => {
                       </Card>
                   ))}
                 </div>
+                        </>
+                ) : (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <ClipboardCheck className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                        <p className="text-muted-foreground">Bitte wählen Sie zuerst einen Kurs aus.</p>
+                      </CardContent>
+                    </Card>
+                )}
               </TabsContent>
 
               {/* Locations Tab */}
