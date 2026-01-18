@@ -14,6 +14,7 @@ import Navbar from "@/components/Navbar";
 import { mockCourse, Chapter, Topic, Course, Quiz, QuizQuestion } from "@/data/courseData";
 import { mockLocations, Location, CourseDate } from "@/data/practicalCourseData";
 import { mockOrders, Order, getOrderStatusLabel, getOrderStatusColor } from "@/data/orderData";
+import EnhancedTopicDialog from "@/components/EnhancedTopicDialog";
 import {
   Plus,
   Edit,
@@ -125,7 +126,7 @@ const Admin = () => {
       return;
     }
 
-    fetch("http://localhost:5000/api/courses", {
+    fetch("http://localhost:5000/api/courses/admin", {
       headers: { Authorization: `Bearer ${token}` },
     })
         .then(res => res.json())
@@ -230,8 +231,8 @@ const Admin = () => {
       };
 
       const url = editingChapter
-          ? `http://localhost:5000/api/courses/${selectedCourse._id}/chapters/${editingChapter._id}`
-          : `http://localhost:5000/api/courses/${selectedCourse._id}/chapters`;
+          ? `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters/${editingChapter.id}`
+          : `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters`;
 
       const method = editingChapter ? "PUT" : "POST";
 
@@ -276,12 +277,31 @@ const Admin = () => {
   };
 
 
-  const deleteChapter = (chapterId: string) => {
-    setSelectedCourse(prev => ({
-      ...prev,
-      chapters: prev.chapters.filter(ch => ch.id !== chapterId)
-    }));
-    toast({ title: "Erfolg", description: "Kapitel wurde gelöscht." });
+  const deleteChapter = async (chapterId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      // ✅ POPRAWKA: Dodaj /admin do URL
+      const url = `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters/${chapterId}`;
+
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message);
+      }
+
+      const updatedCourse = await res.json();
+      setSelectedCourse(updatedCourse);
+      setCourses(prev => prev.map(c => c._id === updatedCourse._id ? updatedCourse : c));
+
+      toast({ title: "Erfolg", description: "Kapitel wurde gelöscht." });
+    } catch (err: any) {
+      toast({ title: "Fehler", description: err.message, variant: "destructive" });
+    }
   };
 
   // Topic handlers
@@ -329,8 +349,8 @@ const Admin = () => {
       };
 
       const url = editingTopic
-          ? `http://localhost:5000/api/courses/${selectedCourse._id}/chapters/${selectedChapterId}/topics/${editingTopic._id}`
-          : `http://localhost:5000/api/courses/${selectedCourse._id}/chapters/${selectedChapterId}/topics`;
+          ? `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters/${selectedChapterId}/topics/${editingTopic._id}`
+          : `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters/${selectedChapterId}/topics`;
 
       const method = editingTopic ? "PUT" : "POST";
 
@@ -406,126 +426,169 @@ const Admin = () => {
     }));
   };
 
-  const deleteTopic = (chapterId: string, topicId: string) => {
-    setSelectedCourse(prev => ({
-      ...prev,
-      chapters: prev.chapters.map(ch =>
-          ch.id === chapterId
-              ? { ...ch, topics: ch.topics.filter(t => t.id !== topicId) }
-              : ch
-      )
-    }));
-    toast({ title: "Erfolg", description: "Thema wurde gelöscht." });
+  const deleteTopic = async (chapterId: string, topicId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      // ✅ POPRAWKA: Dodaj /admin do URL
+      const url = `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters/${chapterId}/topics/${topicId}`;
+
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message);
+      }
+
+      const updatedCourse = await res.json();
+      setSelectedCourse(updatedCourse);
+      setCourses(prev => prev.map(c => c._id === updatedCourse._id ? updatedCourse : c));
+
+      toast({ title: "Erfolg", description: "Thema wurde gelöscht." });
+    } catch (err: any) {
+      toast({ title: "Fehler", description: err.message, variant: "destructive" });
+    }
   };
 
-  // Quiz handlers
+  // --- Quiz handlers ---
   const openQuizDialog = (chapterId: string, quiz?: Quiz) => {
     setSelectedQuizChapterId(chapterId);
+
     if (quiz) {
       setEditingQuiz(quiz);
       setQuizForm({
         title: quiz.title,
-        description: quiz.description,
+        description: quiz.description || "",
         passingScore: quiz.passingScore.toString(),
-        chapterId: quiz.chapterId
+        chapterId: quiz.chapterId,
       });
     } else {
       setEditingQuiz(null);
-      setQuizForm({ title: "", description: "", passingScore: "70", chapterId });
+      setQuizForm({
+        title: "",
+        description: "",
+        passingScore: "70",
+        chapterId,
+      });
     }
+
     setIsQuizDialogOpen(true);
   };
 
-  const saveQuiz = () => {
+  const refreshSelectedCourse = async (): Promise<Course> => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`http://localhost:5000/api/courses/${selectedCourse._id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error("Kurs konnte nicht geladen werden");
+    const data = await res.json();
+    setSelectedCourse(data);
+    return data;
+  };
+
+  const saveQuiz = async () => {
     if (!quizForm.title.trim()) {
-      toast({ title: "Fehler", description: "Bitte geben Sie einen Titel ein.", variant: "destructive" });
+      toast({
+        title: "Fehler",
+        description: "Bitte geben Sie einen Titel ein.",
+        variant: "destructive",
+      });
       return;
     }
 
-    // Handle final quiz
-    if (selectedQuizChapterId === "final") {
-      if (editingQuiz) {
-        setSelectedCourse(prev => ({
-          ...prev,
-          finalQuiz: prev.finalQuiz ? {
-            ...prev.finalQuiz,
-            title: quizForm.title,
-            description: quizForm.description,
-            passingScore: parseInt(quizForm.passingScore) || 80
-          } : undefined
-        }));
-      } else {
-        const newQuiz: Quiz = {
-          id: `final-quiz-${Date.now()}`,
-          title: quizForm.title,
-          description: quizForm.description,
-          passingScore: parseInt(quizForm.passingScore) || 80,
-          isFinalQuiz: true,
-          questions: []
-        };
-        setSelectedCourse(prev => ({ ...prev, finalQuiz: newQuiz }));
-      }
-      toast({ title: "Erfolg", description: "Abschlusstest wurde gespeichert." });
-      setIsQuizDialogOpen(false);
+    if (!selectedCourse?._id || !selectedCourse.chapters) {
+      toast({ title: "Fehler", description: "Kapitelstruktur des Kurses ist nicht geladen.", variant: "destructive" });
       return;
     }
 
-    // Handle chapter quiz
-    if (editingQuiz) {
-      setSelectedCourse(prev => ({
-        ...prev,
-        chapters: prev.chapters.map(ch =>
-            ch.id === selectedQuizChapterId && ch.quiz
-                ? {
-                  ...ch,
-                  quiz: {
-                    ...ch.quiz,
-                    title: quizForm.title,
-                    description: quizForm.description,
-                    passingScore: parseInt(quizForm.passingScore) || 70
-                  }
-                }
-                : ch
-        )
-      }));
-      toast({ title: "Erfolg", description: "Test wurde aktualisiert." });
-    } else {
-      const newQuiz: Quiz = {
-        id: `quiz${Date.now()}`,
-        chapterId: selectedQuizChapterId,
+    try {
+      const token = localStorage.getItem("token");
+      const quizPayload: Quiz = {
+        id: editingQuiz?.id ?? `quiz-${Date.now()}`,
+        chapterId: selectedQuizChapterId !== "final" ? selectedQuizChapterId : undefined,
         title: quizForm.title,
         description: quizForm.description,
-        passingScore: parseInt(quizForm.passingScore) || 70,
-        questions: []
+        passingScore: Number(quizForm.passingScore),
+        isFinalQuiz: selectedQuizChapterId === "final",
+        questions: editingQuiz?.questions ?? [],
       };
-      setSelectedCourse(prev => ({
-        ...prev,
-        chapters: prev.chapters.map(ch =>
-            ch.id === selectedQuizChapterId
-                ? { ...ch, quiz: newQuiz }
-                : ch
-        )
-      }));
-      toast({ title: "Erfolg", description: "Test wurde erstellt." });
+
+      const res = await fetch(
+          `http://localhost:5000/api/courses/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify(quizPayload),
+          }
+      );
+
+      if (!res.ok) throw new Error("Quiz konnte nicht gespeichert werden.");
+
+      const updatedCourse: Course = await res.json();
+      setSelectedCourse(updatedCourse);
+
+      if (selectedQuizChapterId === "final") {
+        setEditingQuiz(updatedCourse.finalQuiz ?? null);
+      } else {
+        const chapterQuiz = updatedCourse.chapters.find(ch => ch.id === selectedQuizChapterId)?.quiz ?? null;
+        setEditingQuiz(chapterQuiz);
+      }
+
+      toast({
+        title: "Erfolg",
+        description: editingQuiz ? "Test wurde aktualisiert." : "Test wurde erstellt.",
+      });
+
+      setEditingQuiz(null);
+      setIsQuizDialogOpen(false);
+
+    } catch (err: any) {
+      toast({ title: "Fehler", description: err.message || "Quiz konnte nicht gespeichert werden.", variant: "destructive" });
     }
-    setIsQuizDialogOpen(false);
   };
 
-  const deleteQuiz = (chapterId: string) => {
-    setSelectedCourse(prev => ({
-      ...prev,
-      chapters: prev.chapters.map(ch =>
-          ch.id === chapterId
-              ? { ...ch, quiz: undefined }
-              : ch
-      )
-    }));
-    toast({ title: "Erfolg", description: "Test wurde gelöscht." });
+  const deleteQuiz = async (chapterId: string) => {
+    if (!selectedCourse?._id) return;
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(
+          `http://localhost:5000/api/courses/${selectedCourse._id}/quizzes/${chapterId}`,
+          { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!res.ok) throw new Error("Quiz konnte nicht gelöscht werden.");
+
+      const updatedCourse = await res.json();
+      setSelectedCourse(updatedCourse);
+
+      toast({ title: "Erfolg", description: "Test wurde gelöscht." });
+    } catch (err: any) {
+      toast({ title: "Fehler", description: err.message || "Quiz konnte nicht gelöscht werden.", variant: "destructive" });
+    }
   };
 
-  // Question handlers
+// --- Question handlers ---
   const openQuestionDialog = (chapterId: string, question?: QuizQuestion) => {
     setSelectedQuizChapterId(chapterId);
+
+    // Tworzymy lokalny quiz jeśli jeszcze nie istnieje
+    if (!editingQuiz) {
+      setEditingQuiz({
+        id: `quiz-${Date.now()}`,
+        chapterId: chapterId !== "final" ? chapterId : undefined,
+        title: quizForm.title || "",
+        description: quizForm.description || "",
+        passingScore: Number(quizForm.passingScore) || 70,
+        questions: [],
+        isFinalQuiz: chapterId === "final",
+      });
+    }
+
     if (question) {
       setEditingQuestion(question);
       setQuestionForm({
@@ -534,83 +597,93 @@ const Admin = () => {
         option2: question.options[1] || "",
         option3: question.options[2] || "",
         option4: question.options[3] || "",
-        correctAnswer: question.correctAnswer.toString()
+        correctAnswer: question.correctAnswer.toString(),
       });
     } else {
       setEditingQuestion(null);
-      setQuestionForm({
-        question: "",
-        option1: "",
-        option2: "",
-        option3: "",
-        option4: "",
-        correctAnswer: "0"
-      });
+      setQuestionForm({ question: "", option1: "", option2: "", option3: "", option4: "", correctAnswer: "0" });
     }
+
     setIsQuestionDialogOpen(true);
   };
 
-  const saveQuestion = () => {
-    if (!questionForm.question.trim() || !questionForm.option1.trim() || !questionForm.option2.trim()) {
-      toast({ title: "Fehler", description: "Bitte füllen Sie mindestens die Frage und 2 Antworten aus.", variant: "destructive" });
-      return;
-    }
+  const saveQuestion = async () => {
+    if (!editingQuiz) return;
 
-    const options = [questionForm.option1, questionForm.option2];
-    if (questionForm.option3.trim()) options.push(questionForm.option3);
-    if (questionForm.option4.trim()) options.push(questionForm.option4);
+    const options = [questionForm.option1, questionForm.option2, questionForm.option3, questionForm.option4].filter(Boolean);
 
-    if (editingQuestion) {
-      setSelectedCourse(prev => ({
-        ...prev,
-        chapters: prev.chapters.map(ch =>
-            ch.id === selectedQuizChapterId && ch.quiz
-                ? {
-                  ...ch,
-                  quiz: {
-                    ...ch.quiz,
-                    questions: ch.quiz.questions.map(q =>
-                        q.id === editingQuestion.id
-                            ? { ...q, question: questionForm.question, options, correctAnswer: parseInt(questionForm.correctAnswer) }
-                            : q
-                    )
-                  }
-                }
-                : ch
-        )
-      }));
-      toast({ title: "Erfolg", description: "Frage wurde aktualisiert." });
-    } else {
-      const newQuestion: QuizQuestion = {
-        id: `q${Date.now()}`,
-        question: questionForm.question,
-        options,
-        correctAnswer: parseInt(questionForm.correctAnswer)
-      };
-      setSelectedCourse(prev => ({
-        ...prev,
-        chapters: prev.chapters.map(ch =>
-            ch.id === selectedQuizChapterId && ch.quiz
-                ? { ...ch, quiz: { ...ch.quiz, questions: [...ch.quiz.questions, newQuestion] } }
-                : ch
-        )
-      }));
-      toast({ title: "Erfolg", description: "Frage wurde hinzugefügt." });
+    const newQuestion: QuizQuestion = editingQuestion
+        ? { ...editingQuestion, question: questionForm.question, options, correctAnswer: Number(questionForm.correctAnswer) }
+        : { id: `q-${Date.now()}`, question: questionForm.question, options, correctAnswer: Number(questionForm.correctAnswer) };
+
+    const updatedQuestions = editingQuestion
+        ? editingQuiz.questions.map(q => (q.id === editingQuestion.id ? newQuestion : q))
+        : [...editingQuiz.questions, newQuestion];
+
+    const quizPayload: Quiz = { ...editingQuiz, questions: updatedQuestions };
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+          `http://localhost:5000/api/courses/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify(quizPayload),
+          }
+      );
+
+      if (!res.ok) throw new Error("Frage konnte nicht gespeichert werden.");
+
+      const updatedCourse = await res.json();
+      setSelectedCourse(updatedCourse);
+
+      if (selectedQuizChapterId === "final") {
+        setEditingQuiz(updatedCourse.finalQuiz ?? null);
+      } else {
+        const chapterQuiz = updatedCourse.chapters.find(ch => ch.id === selectedQuizChapterId)?.quiz ?? null;
+        setEditingQuiz(chapterQuiz);
+      }
+
+      toast({ title: "Erfolg", description: editingQuestion ? "Frage aktualisiert" : "Frage hinzugefügt" });
+      setEditingQuestion(null);
+      setQuestionForm({ question: "", option1: "", option2: "", option3: "", option4: "", correctAnswer: "0" });
+      setIsQuestionDialogOpen(false);
+
+    } catch (err: any) {
+      toast({ title: "Fehler", description: err.message || "Frage konnte nicht gespeichert werden.", variant: "destructive" });
     }
-    setIsQuestionDialogOpen(false);
   };
 
-  const deleteQuestion = (chapterId: string, questionId: string) => {
-    setSelectedCourse(prev => ({
-      ...prev,
-      chapters: prev.chapters.map(ch =>
-          ch.id === chapterId && ch.quiz
-              ? { ...ch, quiz: { ...ch.quiz, questions: ch.quiz.questions.filter(q => q.id !== questionId) } }
-              : ch
-      )
-    }));
-    toast({ title: "Erfolg", description: "Frage wurde gelöscht." });
+
+
+
+  const deleteQuestion = async (questionId: string) => {
+    if (!editingQuiz) return;
+
+    const updatedQuestions = editingQuiz.questions.filter(q => q.id !== questionId);
+    setEditingQuiz(prev => prev ? { ...prev, questions: updatedQuestions } : null);
+
+    try {
+      const token = localStorage.getItem("token");
+      const quizPayload = { ...editingQuiz, questions: updatedQuestions };
+
+      const res = await fetch(
+          `http://localhost:5000/api/courses/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
+          { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(quizPayload) }
+      );
+
+      if (!res.ok) throw new Error("Frage konnte nicht gelöscht werden.");
+
+      const updatedCourse = await res.json();
+      setSelectedCourse(updatedCourse);
+      toast({ title: "Erfolg", description: "Frage wurde gelöscht." });
+
+    } catch (err: any) {
+      toast({ title: "Fehler", description: err.message || "Frage konnte nicht gelöscht werden.", variant: "destructive" });
+    }
   };
+
 
   if (!isLoggedIn || !isAdmin) return null;
 
@@ -1557,86 +1630,14 @@ const Admin = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Topic Dialog */}
-        <Dialog open={isTopicDialogOpen} onOpenChange={setIsTopicDialogOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingTopic ? "Thema bearbeiten" : "Neues Thema erstellen"}
-              </DialogTitle>
-              <DialogDescription>
-                Geben Sie die Details für das Thema ein.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="topic-title">Titel</Label>
-                  <Input
-                      id="topic-title"
-                      value={topicForm.title}
-                      onChange={(e) => setTopicForm(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="z.B. Was ist ein Gabelstapler?"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="topic-duration">Dauer</Label>
-                  <Input
-                      id="topic-duration"
-                      value={topicForm.duration}
-                      onChange={(e) => setTopicForm(prev => ({ ...prev, duration: e.target.value }))}
-                      placeholder="z.B. 15 min"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="topic-min-duration" className="flex items-center gap-2">
-                    <Timer className="w-4 h-4" />
-                    Mindestzeit (Sekunden)
-                  </Label>
-                  <Input
-                      id="topic-min-duration"
-                      type="number"
-                      value={topicForm.minDurationSeconds}
-                      onChange={(e) => setTopicForm(prev => ({ ...prev, minDurationSeconds: e.target.value }))}
-                      placeholder="z.B. 900 (15 Minuten)"
-                  />
-                </div>
-                <div className="space-y-2 flex items-end">
-                  <div className="flex items-center space-x-2 pb-2">
-                    <Switch
-                        id="require-duration"
-                        checked={topicForm.requireMinDuration}
-                        onCheckedChange={(checked) => setTopicForm(prev => ({ ...prev, requireMinDuration: checked }))}
-                    />
-                    <Label htmlFor="require-duration">Weiter blockieren bis Zeit abgelaufen</Label>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="topic-content">Inhalt (Markdown)</Label>
-                <Textarea
-                    id="topic-content"
-                    value={topicForm.content}
-                    onChange={(e) => setTopicForm(prev => ({ ...prev, content: e.target.value }))}
-                    placeholder="# Überschrift&#10;&#10;Ihr Inhalt hier...&#10;&#10;## Unterüberschrift&#10;&#10;- Punkt 1&#10;- Punkt 2"
-                    rows={10}
-                    className="font-mono text-sm"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsTopicDialogOpen(false)}>
-                Abbrechen
-              </Button>
-              <Button onClick={saveTopic}>
-                <Save className="w-4 h-4 mr-2" />
-                Speichern
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <EnhancedTopicDialog
+            open={isTopicDialogOpen}
+            onOpenChange={setIsTopicDialogOpen}
+            topicForm={topicForm}
+            setTopicForm={setTopicForm}
+            onSave={saveTopic}
+            editingTopic={editingTopic}
+        />
 
         {/* Location Dialog */}
         <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>

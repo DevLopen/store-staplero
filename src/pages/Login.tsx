@@ -8,6 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Mail, Lock, LogIn } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { saveUserSession } from "@/utils/auth";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -15,13 +19,14 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
@@ -29,26 +34,27 @@ const Login = () => {
 
       const data = await res.json();
 
-      if (res.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userEmail", data.user.email);
-        localStorage.setItem("userName", data.user.name);
-        if (data.user.isAdmin) localStorage.setItem("isAdmin", "true");
-
-        toast({
-          title: "Erfolgreich angemeldet",
-          description: "Willkommen zurück!"
-        });
-
-        navigate("/dashboard");
-      } else {
+      if (!res.ok) {
         toast({
           title: "Fehler",
           description: data.message || "Fehler beim Anmelden",
           variant: "destructive"
         });
+        setIsLoading(false);
+        return; // <--- krytyczne, bez tego login() dalej byłby wywołany
       }
+
+// dopiero teraz wywołujemy login
+      login(data.user, data.token);
+
+      toast({
+        title: "Erfolgreich angemeldet",
+        description: "Willkommen zurück!"
+      });
+
+      navigate("/dashboard")
     } catch (err) {
+      console.error(err);
       toast({
         title: "Fehler",
         description: "Server nicht erreichbar",
