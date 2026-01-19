@@ -17,6 +17,9 @@ import Admin from "./pages/Admin";
 import PracticalCourse from "./pages/PracticalCourse";
 import NotFound from "./pages/NotFound";
 import FinalQuizView from "@/pages/FinalQuizView";
+import Checkout from "./pages/Checkout";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
+import CheckoutCancel from "./pages/CheckoutCancel";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +42,9 @@ const App = () => (
                 <Route path="/course/:courseId/final-quiz" element={<FinalQuizView />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/practical-course" element={<PracticalCourse />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/checkout/success" element={<CheckoutSuccess />} />
+                <Route path="/checkout/cancel" element={<CheckoutCancel />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

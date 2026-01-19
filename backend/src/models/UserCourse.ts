@@ -1,32 +1,43 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export interface IUserCourse extends Document {
-    userId: mongoose.Types.ObjectId;
-    courseId: mongoose.Types.ObjectId;
-    purchasedAt: Date;
+export interface UserCourseDoc extends Document {
+    userId: string;
+    courseId: string;
+    purchaseDate: Date;
+    expiresAt: Date;
+    status: "active" | "expired";
+    orderNumber: string;
+    createdAt: Date;
 }
 
-const UserCourseSchema = new Schema<IUserCourse>(
+const UserCourseSchema = new Schema<UserCourseDoc>(
     {
-        userId: {
-            type: Schema.Types.ObjectId,
-            ref: "User",
-            required: true,
+        userId: { type: String, required: true },
+        courseId: { type: String, required: true },
+        purchaseDate: { type: Date, required: true },
+        expiresAt: { type: Date, required: true },
+        status: {
+            type: String,
+            enum: ["active", "expired"],
+            default: "active",
         },
-        courseId: {
-            type: Schema.Types.ObjectId,
-            ref: "Course",
-            required: true,
-        },
-        purchasedAt: {
-            type: Date,
-            default: Date.now,
-        },
+        orderNumber: { type: String, required: true },
     },
     { timestamps: true }
 );
 
-export const UserCourse = mongoose.model<IUserCourse>(
+// Compound index to prevent duplicates
+UserCourseSchema.index({ userId: 1, courseId: 1 }, { unique: true });
+
+// Auto-update status based on expiresAt
+UserCourseSchema.pre("save", function (next) {
+    if (new Date() > this.expiresAt) {
+        this.status = "expired";
+    }
+    next();
+});
+
+export const UserCourse = mongoose.model<UserCourseDoc>(
     "UserCourse",
     UserCourseSchema
 );

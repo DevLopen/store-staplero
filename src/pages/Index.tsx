@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Play,
   Shield,
@@ -45,6 +45,20 @@ const Index = () => {
     message: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
+
+  const handleOnlineCourseCheckout = () => {
+    // Tutaj możesz wstawić prawdziwy courseId z bazy danych
+    // Na razie używamy przykładowego ID
+    navigate("/checkout", {
+      state: {
+        type: "online",
+        courseId: "67890abcdef12345", // Replace with actual course ID
+        courseName: "Online Theorie - Staplerschein",
+        price: 49,
+      },
+    });
+  };
 
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -577,11 +591,14 @@ const Index = () => {
                   ))}
                 </div>
 
-                <Link to="/register" className="block">
-                  <Button variant="outline" size="xl" className="w-full">
-                    Jetzt starten
-                  </Button>
-                </Link>
+                <Button
+                    variant="outline"
+                    size="xl"
+                    className="w-full"
+                    onClick={handleOnlineCourseCheckout}
+                >
+                  Jetzt starten
+                </Button>
               </div>
 
               {/* Practical Course */}

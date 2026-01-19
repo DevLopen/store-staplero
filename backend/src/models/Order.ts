@@ -1,27 +1,104 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-export interface IOrder extends Document {
-    userId: string;
-    userEmail: string;
-    userName: string;
-    items: any[];
-    total: number;
-    status: 'pending' | 'paid' | 'completed' | 'cancelled';
-    createdAt: Date;
-    paidAt?: Date;
-    customerInfo?: any;
+export interface OrderItem {
+    courseId?: string;
+    courseName: string;
+    price: number;
+    type: "online" | "practical";
 }
 
-const OrderSchema: Schema = new Schema({
-    userId: { type: String, required: true },
-    userEmail: { type: String, required: true },
-    userName: { type: String, required: true },
-    items: { type: Array, required: true },
-    total: { type: Number, required: true },
-    status: { type: String, enum: ['pending','paid','completed','cancelled'], default: 'pending' },
-    createdAt: { type: Date, default: Date.now },
-    paidAt: { type: Date },
-    customerInfo: { type: Object }
+export interface PracticalCourseDetails {
+    locationId: string;
+    locationName: string;
+    locationAddress: string;
+    date: string;
+    time: string;
+    availableSpots: number;
+    wantsPlasticCard: boolean;
+    plasticCardPrice?: number;
+}
+
+export interface UserDetails {
+    name: string;
+    email: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+}
+
+export interface OrderDoc extends Document {
+    userId: string;
+    orderNumber: string;
+    type: "online" | "practical";
+    items: OrderItem[];
+    totalAmount: number;
+    status: "pending" | "paid" | "cancelled" | "expired";
+    paymentIntentId?: string;
+    stripeSessionId?: string;
+    userDetails: UserDetails;
+    practicalCourseDetails?: PracticalCourseDetails;
+    createdAt: Date;
+    paidAt?: Date;
+    expiresAt?: Date; // Dla kursów online - 30 dni od paidAt
+}
+
+const OrderItemSchema = new Schema<OrderItem>({
+    courseId: String,
+    courseName: { type: String, required: true },
+    price: { type: Number, required: true },
+    type: { type: String, enum: ["online", "practical"], required: true },
 });
 
-export default mongoose.model<IOrder>("Order", OrderSchema);
+const PracticalCourseDetailsSchema = new Schema<PracticalCourseDetails>({
+    locationId: { type: String, required: true },
+    locationName: { type: String, required: true },
+    locationAddress: { type: String, required: true },
+    date: { type: String, required: true },
+    time: { type: String, required: true },
+    availableSpots: { type: Number, required: true },
+    wantsPlasticCard: { type: Boolean, default: false },
+    plasticCardPrice: Number,
+});
+
+const UserDetailsSchema = new Schema<UserDetails>({
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    phone: String,
+    address: String,
+    city: String,
+    postalCode: String,
+});
+
+const OrderSchema = new Schema<OrderDoc>(
+    {
+        userId: { type: String, required: true },
+        orderNumber: { type: String, required: true, unique: true },
+        type: { type: String, enum: ["online", "practical"], required: true },
+        items: [OrderItemSchema],
+        totalAmount: { type: Number, required: true },
+        status: {
+            type: String,
+            enum: ["pending", "paid", "cancelled", "expired"],
+            default: "pending",
+        },
+        paymentIntentId: String,
+        stripeSessionId: String,
+        userDetails: { type: UserDetailsSchema, required: true },
+        practicalCourseDetails: PracticalCourseDetailsSchema,
+        paidAt: Date,
+        expiresAt: Date,
+    },
+    { timestamps: true }
+);
+
+// Generate unique order number
+OrderSchema.pre("save", async function (next) {
+    if (!this.orderNumber) {
+        const count = await mongoose.model("Order").countDocuments();
+        this.orderNumber = `ORD-${Date.now()}-${count + 1}`;
+    }
+    next();
+});
+
+export default mongoose.model<OrderDoc>("Order", OrderSchema);

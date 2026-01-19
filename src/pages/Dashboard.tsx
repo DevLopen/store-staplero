@@ -38,6 +38,9 @@ interface DashboardAPIResponse {
         quizzes: Record<string, { passed: boolean; score: number }>;
         finalQuizzes: Record<string, { passed: boolean; score: number }>;
     };
+    expiresAt?: Date;
+    purchaseDate?: Date;
+    daysRemaining?: number;
     orders: any[];
 }
 
@@ -259,6 +262,19 @@ const Dashboard = () => {
                                                 <BookOpen className="w-5 h-5 text-primary" />
                                                 {course.title}
                                             </CardTitle>
+                                            <CardDescription className="flex items-center gap-4">
+                                                {course.description}
+                                                {course.expiresAt && (
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                                        course.daysRemaining && course.daysRemaining <= 7
+                                                            ? 'bg-warning/20 text-warning'
+                                                            : 'bg-primary/10 text-primary'
+                                                    }`}>
+      <Clock className="w-3 h-3" />
+                                                        {course.daysRemaining} Tage
+    </span>
+                                                )}
+                                            </CardDescription>
                                             <CardDescription>{course.description}</CardDescription>
                                         </CardHeader>
                                         <CardContent>

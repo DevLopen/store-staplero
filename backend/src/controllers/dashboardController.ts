@@ -23,49 +23,57 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
         const userId = req.user._id;
         const userEmail = req.user.email;
 
-        // Kursy przypisane użytkownikowi
-        const userCourses = await UserCourse.find({ userId });
-        const courseIds = userCourses.map(uc => uc.courseId);
+        // Get active courses for user
+        const userCourses = await UserCourse.find({
+            userId,
+            status: "active" // Only show active courses
+        });
+        const courseIds = userCourses.map((uc) => uc.courseId);
 
         const [courses, topicProgressRaw, quizResultsRaw, orders] = await Promise.all([
             Course.find({ _id: { $in: courseIds } }),
             TopicProgress.find({ userId }),
             QuizResult.find({ userId }),
-            Order.find({ userEmail }),
+            Order.find({ userId }).sort({ createdAt: -1 }),
         ]);
 
-        // Przekształcamy progress w mapę topicId -> completed
+        // Transform progress into topic map
         const topics: Record<string, boolean> = {};
-        topicProgressRaw.forEach(t => {
+        topicProgressRaw.forEach((t) => {
             topics[t.topicId] = t.completed;
         });
 
-        // Przekształcamy quizy rozdziałów w mapę chapterId -> { passed, score }
+        // Transform chapter quizzes
         const quizzes: Record<string, { passed: boolean; score: number }> = {};
-        quizResultsRaw.forEach(q => {
+        quizResultsRaw.forEach((q) => {
             if (q.chapterId && !q.isFinalQuiz) {
                 quizzes[q.chapterId] = { passed: q.passed, score: q.score };
             }
         });
 
-        // Przekształcamy quizy końcowe w mapę courseId -> { passed, score }
+        // Transform final quizzes
         const finalQuizzes: Record<string, { passed: boolean; score: number }> = {};
-        quizResultsRaw.forEach(q => {
+        quizResultsRaw.forEach((q) => {
             if (q.isFinalQuiz) {
-                // quizId to courseId dla final quiz
                 finalQuizzes[q.quizId] = { passed: q.passed, score: q.score };
             }
         });
 
-        // Aktualizacja statusów rozdziałów dla każdego kursu
-        const coursesWithStatus = courses.map(course => {
+        // Add status and expiry info to courses
+        const coursesWithStatus = courses.map((course) => {
             const courseObj = course.toObject();
 
+            // Find user course data for expiry info
+            const userCourse = userCourses.find(
+                (uc) => uc.courseId === course._id.toString()
+            );
+
+            // Add chapters with status
             courseObj.chapters = courseObj.chapters.map((ch: any, idx: number) => {
                 const allTopicsDone = ch.topics.every((t: any) => topics[t.id]);
                 const quizPassed = ch.quiz ? quizzes[ch.id]?.passed : true;
 
-                // Sprawdź czy poprzedni rozdział jest ukończony
+                // Check if previous chapter is complete
                 if (idx > 0) {
                     const prevCh = courseObj.chapters[idx - 1];
                     const prevAllTopicsDone = prevCh.topics.every((t: any) => topics[t.id]);
@@ -76,17 +84,27 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
                     }
                 }
 
-                // Ustaw status na podstawie postępu
                 if (allTopicsDone && quizPassed) {
                     return { ...ch, status: "complete" };
                 } else if (allTopicsDone && ch.quiz && !quizPassed) {
-                    return { ...ch, status: "pending" }; // czeka na quiz
+                    return { ...ch, status: "pending" };
                 } else {
                     return { ...ch, status: "pending" };
                 }
             });
 
-            return courseObj;
+            // Add expiry information
+            return {
+                ...courseObj,
+                expiresAt: userCourse?.expiresAt,
+                purchaseDate: userCourse?.purchaseDate,
+                daysRemaining: userCourse
+                    ? Math.ceil(
+                        (new Date(userCourse.expiresAt).getTime() - Date.now()) /
+                        (1000 * 60 * 60 * 24)
+                    )
+                    : null,
+            };
         });
 
         res.json({
