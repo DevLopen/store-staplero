@@ -103,7 +103,7 @@ export default function EnhancedTopicDialog({
                 formData.append('files', file);
             });
 
-            const response = await fetch('${API_URL}/ai/generate-content', {
+            const response = await fetch(`${API_URL}/ai/generate-content`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

@@ -96,12 +96,17 @@ const Admin = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    console.log(token);
+    console.log(token);
+    console.log(token);
+    console.log(token);
+    console.log(token);
     if (!token) {
       navigate("/login");
       return;
     }
 
-    fetch('${API_URL}/auth/me', {
+    fetch(`${API_URL}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
         .then(res => res.json())
@@ -125,7 +130,7 @@ const Admin = () => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch('${API_URL}/courses/admin', {
+    fetch(`${API_URL}/courses/admin`, {
       headers: { Authorization: `Bearer ${token}` },
     })
         .then(res => res.json())
@@ -153,7 +158,7 @@ const Admin = () => {
       return;
     }
 
-    fetch('${API_URL}//courses/admin', {
+    fetch(`${API_URL}//courses/admin`, {
       headers: { Authorization: `Bearer ${token}` },
     })
         .then(res => res.json())
@@ -166,7 +171,7 @@ const Admin = () => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch('${API_URL}/orders', {
+    fetch(`${API_URL}/orders`, {
       headers: { Authorization: `Bearer ${token}` },
     })
         .then(res => res.json())
@@ -196,7 +201,7 @@ const Admin = () => {
     const method = editingCourse ? "PUT" : "POST";
     const url = editingCourse
         ? `${API_URL}/${editingCourse._id}` // ✅ _id
-        : '${API_URL}//courses/admin';
+        : `${API_URL}//courses/admin`;
 
     const res = await fetch(url, {
       method,
