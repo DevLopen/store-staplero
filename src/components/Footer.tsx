@@ -42,11 +42,11 @@ const Footer = () => {
                   Preise
                 </a>
               </li>
-              <li>
-                <Link to="/login" className="text-primary-foreground/70 hover:text-primary text-sm transition-colors">
-                  Anmelden
-                </Link>
-              </li>
+              {/*<li>*/}
+              {/*  <Link to="/login" className="text-primary-foreground/70 hover:text-primary text-sm transition-colors">*/}
+              {/*    Anmelden*/}
+              {/*  </Link>*/}
+              {/*</li>*/}
             </ul>
           </div>
 

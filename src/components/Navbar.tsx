@@ -96,7 +96,7 @@ const Navbar = ({ isLoggedIn = false, isAdmin = false, onLogout }: NavbarProps) 
                         {t('nav.login')}
                       </Button>
                     </Link>
-                    <Link to="/register">
+                    <Link to="/practical-course">
                       <Button variant="default" size="sm">
                         {t('nav.start')}
                       </Button>
@@ -172,12 +172,12 @@ const Navbar = ({ isLoggedIn = false, isAdmin = false, onLogout }: NavbarProps) 
                       </>
                   ) : (
                       <>
-                        <Link to="/login" onClick={() => setIsOpen(false)}>
-                          <Button variant="ghost" className="w-full">
-                            {t('nav.login')}
-                          </Button>
-                        </Link>
-                        <Link to="/register" onClick={() => setIsOpen(false)}>
+                        {/*<Link to="/login" onClick={() => setIsOpen(false)}>*/}
+                        {/*  <Button variant="ghost" className="w-full">*/}
+                        {/*    {t('nav.login')}*/}
+                        {/*  </Button>*/}
+                        {/*</Link>*/}
+                        <Link to="/practical-course" onClick={() => setIsOpen(false)}>
                           <Button variant="default" className="w-full">
                             {t('nav.start')}
                           </Button>

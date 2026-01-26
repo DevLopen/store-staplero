@@ -144,7 +144,7 @@ const Index = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4 animate-fade-in" style={{ animationDelay: "0.3s" }}>
-                <Link to="/register">
+                <Link to="/practical-course">
                   <Button variant="hero" size="xl">
                     <Play className="w-5 h-5" />
                     Jetzt starten
@@ -867,7 +867,7 @@ const Index = () => {
               STAPLERO – schnell, professionell, anerkannt.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/register">
+              <Link to="/practical-course">
                 <Button variant="hero" size="xl">
                   Jetzt registrieren
                   <ChevronRight className="w-5 h-5" />
