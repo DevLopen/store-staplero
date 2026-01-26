@@ -279,9 +279,81 @@ export const sendExpiryReminderEmail = async (
     });
 };
 
+/**
+ * **NOWE: Wyślij fakturę do klienta**
+ */
+export const sendInvoiceEmail = async (
+    to: string,
+    name: string,
+    orderNumber: string,
+    invoiceNumber: string,
+    invoicePdfUrl?: string
+): Promise<void> => {
+    const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .info-box { background: white; padding: 20px; border-left: 4px solid #FF6B35; margin: 20px 0; }
+          .button { display: inline-block; background: #FF6B35; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          .highlight { color: #FF6B35; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🧾 Ihre Rechnung</h1>
+          </div>
+          <div class="content">
+            <h2>Hallo ${name}!</h2>
+            <p>Vielen Dank für Ihren Kauf bei STAPLERO. Im Anhang finden Sie Ihre Rechnung.</p>
+            
+            <div class="info-box">
+              <p><strong>Bestellnummer:</strong> ${orderNumber}</p>
+              <p><strong>Rechnungsnummer:</strong> <span class="highlight">${invoiceNumber}</span></p>
+              <p><strong>Ausstellungsdatum:</strong> ${new Date().toLocaleDateString("de-DE")}</p>
+            </div>
+
+            ${invoicePdfUrl ? `
+            <p>Sie können Ihre Rechnung auch direkt herunterladen:</p>
+            <a href="${invoicePdfUrl}" class="button">Rechnung herunterladen (PDF)</a>
+            ` : ''}
+
+            <p>Die Rechnung wurde automatisch erstellt und ist rechtsgültig.</p>
+            
+            <p>Bei Fragen zu Ihrer Rechnung kontaktieren Sie uns bitte unter <strong>info@staplero.de</strong></p>
+            <p><strong>Mit freundlichen Grüßen,</strong><br>Ihr STAPLERO Team</p>
+          </div>
+          <div class="footer">
+            <p>STAPLERO GmbH | info@staplero.de | +49 (0) 123 456 789</p>
+            <p>Steuernummer: DE123456789 | Handelsregister: HRB 12345</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+    // Opcjonalnie: załącz PDF jako attachment jeśli masz URL
+    // Musisz najpierw pobrać PDF z Lexware API
+
+    await resend.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject: `Ihre Rechnung ${invoiceNumber} - STAPLERO`,
+        html,
+    });
+};
+
 export default {
     sendWelcomeEmail,
     sendOnlineCoursePurchaseEmail,
     sendPracticalCourseBookingEmail,
     sendExpiryReminderEmail,
+    sendInvoiceEmail, // NOWA FUNKCJA
 };

@@ -12,7 +12,7 @@ const Footer = () => {
                 <span className="text-primary-foreground font-bold text-xl">S</span>
               </div>
               <span className="font-display font-bold text-xl text-primary-foreground">
-                Staplerschein<span className="text-primary">Pro</span>
+                Stapler<span className="text-primary">o</span>
               </span>
             </div>
             <p className="text-primary-foreground/70 text-sm max-w-sm">
@@ -56,8 +56,9 @@ const Footer = () => {
               Kontakt
             </h4>
             <ul className="space-y-2 text-sm text-primary-foreground/70">
-              <li>info@staplerschein-pro.de</li>
-              <li>+49 123 456 789</li>
+              <li>info@staplero.com</li>
+              <li>+49 176 22067783</li>
+              <li>+49 160 92490070</li>
               <li>Mo-Fr: 9:00 - 17:00 Uhr</li>
             </ul>
           </div>
@@ -65,7 +66,7 @@ const Footer = () => {
 
         <div className="border-t border-primary-foreground/10 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-primary-foreground/50 text-sm">
-            © 2024 StaplerscheinPro. Alle Rechte vorbehalten.
+            © 2025 Staplero. Alle Rechte vorbehalten.
           </p>
           <div className="flex gap-6 text-sm">
             <a href="#" className="text-primary-foreground/50 hover:text-primary transition-colors">

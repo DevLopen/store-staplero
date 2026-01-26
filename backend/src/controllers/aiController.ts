@@ -47,7 +47,7 @@ export const generateContent = async (req: AuthRequest, res: Response) => {
 
         // Wyciągnij tekst z uploadowanych plików
         const fileContents: string[] = [];
-
+console.log(files);
         if (files && files.length > 0) {
             for (const file of files) {
                 try {

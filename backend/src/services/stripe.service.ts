@@ -5,7 +5,9 @@ if (!process.env.STRIPE_SECRET_KEY) {
     throw new Error("⚠️ STRIPE_SECRET_KEY is required!");
 }
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-12-15.clover' });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2025-12-15.clover'
+});
 
 console.log('💳 Stripe initialized successfully');
 
@@ -15,6 +17,7 @@ export interface CheckoutSessionData {
     userEmail: string;
     type: "online" | "practical";
     items: Array<{
+        priceId?: string;
         name: string;
         price: number;
         quantity: number;
@@ -30,28 +33,39 @@ export const createCheckoutSession = async (
     data: CheckoutSessionData
 ): Promise<Stripe.Checkout.Session> => {
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = data.items.map(
-        (item) => ({
-            price_data: {
-                currency: "eur",
-                product_data: {
-                    name: item.name,
-                    description:
-                        data.type === "online"
-                            ? "30 Tage Zugang zum Online-Kurs"
-                            : "Praktischer Staplerführerschein-Kurs",
-                },
-                unit_amount: Math.round(item.price * 100), // Stripe uses cents
-            },
-            quantity: item.quantity,
-        })
+        (item) => {
+            if (item.priceId) {
+                // Użyj istniejącego Price ID ze Stripe
+                return {
+                    price: item.priceId,
+                    quantity: item.quantity,
+                };
+            } else {
+                // Fallback: Utwórz cenę dynamicznie (dla produktów bez priceId)
+                return {
+                    price_data: {
+                        currency: "eur",
+                        product_data: {
+                            name: item.name,
+                            description:
+                                data.type === "online"
+                                    ? "30 Tage Zugang zum Online-Kurs"
+                                    : "Praktischer Staplerführerschein-Kurs",
+                        },
+                        unit_amount: Math.round(item.price * 100),
+                    },
+                    quantity: item.quantity,
+                };
+            }
+        }
     );
-
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card", "paypal", "klarna"],
         line_items: lineItems,
         mode: "payment",
-        success_url: `${process.env.FRONTEND_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.FRONTEND_URL}/checkout/cancel`,
+        success_url: `${frontendUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${frontendUrl}/checkout/cancel`,
         customer_email: data.userEmail,
         client_reference_id: data.userId,
         metadata: {

@@ -94,8 +94,9 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 return res.status(404).json({ message: "Course not found" });
             }
 
-            const coursePrice = 49; // €49/month as per pricing
+            const coursePrice = 64.99; // €49/month as per pricing
             items.push({
+                priceId: process.env.STRIPE_PRICE_ONLINE_COURSE,
                 courseId: course._id.toString(),
                 courseName: course.title,
                 price: coursePrice,

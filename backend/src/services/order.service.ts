@@ -2,14 +2,22 @@ import Order, { OrderDoc } from "../models/Order";
 import User from "../models/User";
 import { UserCourse } from "../models/UserCourse";
 import emailService from "./email.service";
+import lexwareService from "./lexware.service";
 
 /**
  * Create a new order
  */
 export const createOrder = async (orderData: Partial<OrderDoc>): Promise<OrderDoc> => {
+    // Generate unique order number
+    if (!orderData.orderNumber) {
+        const count = await Order.countDocuments();
+        orderData.orderNumber = `ORD-${Date.now()}-${count + 1}`;
+    }
+
     const order = new Order(orderData);
     await order.save();
-    return order;
+
+    return order as OrderDoc;
 };
 
 /**
@@ -82,28 +90,87 @@ export const markOrderAsPaid = async (
                     })),
             },
         });
+    }
 
-        // Send confirmation email
+    // **NOWE: Generuj fakturę w Lexware**
+    try {
         const user = await User.findById(order.userId);
-        if (user) {
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        // Przygotuj pozycje faktury
+        const invoiceItems = order.items.map((item) => ({
+            name: item.courseName,
+            quantity: 1,
+            unitPrice: item.price,
+            vatRate: 19, // Można to zmienić w zależności od typu produktu
+        }));
+
+        // Dodaj plastikkarte jeśli wybrana (dla kursów praktycznych)
+        if (order.type === "practical" && order.practicalCourseDetails?.wantsPlasticCard) {
+            invoiceItems.push({
+                name: "Plastikkarte Staplerführerschein",
+                quantity: 1,
+                unitPrice: 14.99,
+                vatRate: 19,
+            });
+        }
+
+        // Stwórz fakturę
+        const invoice = await lexwareService.createInvoice({
+            orderNumber: order.orderNumber,
+            customerName: user.name,
+            customerEmail: user.email,
+            customerAddress: user.address,
+            customerCity: user.city,
+            customerPostalCode: user.postalCode,
+            items: invoiceItems,
+            totalAmount: order.totalAmount,
+            currency: "EUR",
+        });
+
+        // Zapisz dane faktury w zamówieniu
+        order.invoiceId = invoice.id;
+        order.invoiceNumber = invoice.invoiceNumber;
+        order.invoicePdfUrl = invoice.pdfUrl;
+
+        console.log(`✅ Invoice created: ${invoice.invoiceNumber} for order ${order.orderNumber}`);
+
+        // Wyślij fakturę na email
+        await emailService.sendInvoiceEmail(
+            user.email,
+            user.name,
+            order.orderNumber,
+            invoice.invoiceNumber,
+            invoice.pdfUrl
+        );
+    } catch (error: any) {
+        console.error("❌ Failed to create invoice:", error.message);
+        // Nie przerywamy procesu - zamówienie pozostaje paid
+        // Można dodać logikę retry lub flagę do późniejszej generacji
+    }
+
+    await order.save();
+
+    // Send confirmation emails (jak wcześniej)
+    const user = await User.findById(order.userId);
+    if (user) {
+        if (order.type === "online") {
             for (const item of order.items) {
-                if (item.courseId) {
+                if (item.courseId && order.expiresAt) {
                     await emailService.sendOnlineCoursePurchaseEmail(
                         user.email,
                         user.name,
                         item.courseName,
                         order.orderNumber,
-                        expiresAt
+                        order.expiresAt
                     );
                 }
             }
         }
-    }
 
-    // For practical courses, send booking confirmation
-    if (order.type === "practical" && order.practicalCourseDetails) {
-        const user = await User.findById(order.userId);
-        if (user) {
+        if (order.type === "practical" && order.practicalCourseDetails) {
             await emailService.sendPracticalCourseBookingEmail(
                 user.email,
                 user.name,
@@ -116,8 +183,6 @@ export const markOrderAsPaid = async (
             );
         }
     }
-
-    await order.save();
 };
 
 /**
@@ -132,14 +197,12 @@ export const assignCourseToUser = async (
     const existingCourse = await UserCourse.findOne({ userId, courseId });
 
     if (existingCourse) {
-        // Extend expiration if already exists
         existingCourse.expiresAt = expiresAt;
         existingCourse.status = "active";
         existingCourse.purchaseDate = new Date();
         existingCourse.orderNumber = orderNumber;
         await existingCourse.save();
     } else {
-        // Create new course assignment
         await UserCourse.create({
             userId,
             courseId,
@@ -157,19 +220,16 @@ export const assignCourseToUser = async (
 export const expireOldCourses = async (): Promise<void> => {
     const now = new Date();
 
-    // Expire UserCourses
     await UserCourse.updateMany(
         { expiresAt: { $lt: now }, status: "active" },
         { status: "expired" }
     );
 
-    // Expire Orders
     await Order.updateMany(
         { expiresAt: { $lt: now }, status: "paid", type: "online" },
         { status: "expired" }
     );
 
-    // Update user's purchased courses
     const expiredCourses = await UserCourse.find({
         expiresAt: { $lt: now },
         status: "expired",
@@ -216,7 +276,6 @@ export const sendExpiryReminders = async (): Promise<void> => {
     for (const course of expiringCourses) {
         const user = await User.findById(course.userId);
         if (user) {
-            // Get course name from order
             const order = await Order.findOne({ orderNumber: course.orderNumber });
             const courseName = order?.items[0]?.courseName || "Ihr Kurs";
 

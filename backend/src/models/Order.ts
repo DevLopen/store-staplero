@@ -41,6 +41,10 @@ export interface OrderDoc extends Document {
     createdAt: Date;
     paidAt?: Date;
     expiresAt?: Date; // Dla kursów online - 30 dni od paidAt
+    invoiceId: { type: String, index: true },
+    invoiceNumber: { type: String, index: true },
+    invoicePdfUrl: String,
+    invoiceCreatedAt: Date,
 }
 
 const OrderItemSchema = new Schema<OrderItem>({
@@ -73,7 +77,7 @@ const UserDetailsSchema = new Schema<UserDetails>({
 const OrderSchema = new Schema<OrderDoc>(
     {
         userId: { type: String, required: true },
-        orderNumber: { type: String, required: true, unique: true },
+        orderNumber: { type: String, unique: true },
         type: { type: String, enum: ["online", "practical"], required: true },
         items: [OrderItemSchema],
         totalAmount: { type: Number, required: true },
@@ -93,7 +97,7 @@ const OrderSchema = new Schema<OrderDoc>(
 );
 
 // Generate unique order number
-OrderSchema.pre("save", async function (next) {
+OrderSchema.pre("validate", async function (next) {
     if (!this.orderNumber) {
         const count = await mongoose.model("Order").countDocuments();
         this.orderNumber = `ORD-${Date.now()}-${count + 1}`;

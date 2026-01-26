@@ -351,10 +351,6 @@ const Checkout = () => {
                                                 <Lock className="w-4 h-4 text-success" />
                                                 <span>SSL-verschlüsselt</span>
                                             </div>
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                <CheckCircle className="w-4 h-4 text-success" />
-                                                <span>14 Tage Widerrufsrecht</span>
-                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
