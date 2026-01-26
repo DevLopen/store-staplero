@@ -41,9 +41,9 @@ export interface OrderDoc extends Document {
     createdAt: Date;
     paidAt?: Date;
     expiresAt?: Date; // Dla kursów online - 30 dni od paidAt
-    invoiceId: { type: String, index: true },
-    invoiceNumber: { type: String, index: true },
-    invoicePdfUrl: String,
+    invoiceId: string,
+    invoiceNumber: string,
+    invoicePdfUrl?: string,
     invoiceCreatedAt: Date,
 }
 

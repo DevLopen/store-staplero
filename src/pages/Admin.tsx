@@ -49,6 +49,7 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
   // Locations state
   const [locations, setLocations] = useState<Location[]>(mockLocations);
@@ -100,7 +101,7 @@ const Admin = () => {
       return;
     }
 
-    fetch("http://localhost:5000/api/auth/me", {
+    fetch('${API_URL}/auth/me', {
       headers: { Authorization: `Bearer ${token}` },
     })
         .then(res => res.json())
@@ -124,7 +125,7 @@ const Admin = () => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch("http://localhost:5000/api/courses/admin", {
+    fetch('${API_URL}/courses/admin', {
       headers: { Authorization: `Bearer ${token}` },
     })
         .then(res => res.json())
@@ -152,7 +153,7 @@ const Admin = () => {
       return;
     }
 
-    fetch("http://localhost:5000/api/courses/admin", {
+    fetch('${API_URL}//courses/admin', {
       headers: { Authorization: `Bearer ${token}` },
     })
         .then(res => res.json())
@@ -165,7 +166,7 @@ const Admin = () => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch("http://localhost:5000/api/orders", {
+    fetch('${API_URL}/orders', {
       headers: { Authorization: `Bearer ${token}` },
     })
         .then(res => res.json())
@@ -194,8 +195,8 @@ const Admin = () => {
     const token = localStorage.getItem("token");
     const method = editingCourse ? "PUT" : "POST";
     const url = editingCourse
-        ? `http://localhost:5000/api/courses/admin/${editingCourse._id}` // ✅ _id
-        : "http://localhost:5000/api/courses/admin";
+        ? `${API_URL}/${editingCourse._id}` // ✅ _id
+        : '${API_URL}//courses/admin';
 
     const res = await fetch(url, {
       method,
@@ -225,7 +226,7 @@ const Admin = () => {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await fetch(`http://localhost:5000/api/courses/admin/${courseId}`, {
+      const res = await fetch(`${API_URL}/courses/admin/${courseId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -274,8 +275,8 @@ const Admin = () => {
       };
 
       const url = editingChapter
-          ? `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters/${editingChapter.id}`
-          : `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters`;
+          ? `${API_URL}/courses/admin/${selectedCourse._id}/chapters/${editingChapter.id}`
+          : `${API_URL}/courses/admin/${selectedCourse._id}/chapters`;
 
       const method = editingChapter ? "PUT" : "POST";
 
@@ -325,7 +326,7 @@ const Admin = () => {
       const token = localStorage.getItem("token");
 
       // ✅ POPRAWKA: Dodaj /admin do URL
-      const url = `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters/${chapterId}`;
+      const url = `${API_URL}/courses/admin/${selectedCourse._id}/chapters/${chapterId}`;
 
       const res = await fetch(url, {
         method: "DELETE",
@@ -392,8 +393,8 @@ const Admin = () => {
       };
 
       const url = editingTopic
-          ? `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters/${selectedChapterId}/topics/${editingTopic._id}`
-          : `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters/${selectedChapterId}/topics`;
+          ? `${API_URL}/courses/admin/${selectedCourse._id}/chapters/${selectedChapterId}/topics/${editingTopic._id}`
+          : `${API_URL}/courses/admin/${selectedCourse._id}/chapters/${selectedChapterId}/topics`;
 
       const method = editingTopic ? "PUT" : "POST";
 
@@ -475,7 +476,7 @@ const Admin = () => {
       const token = localStorage.getItem("token");
 
       // ✅ POPRAWKA: Dodaj /admin do URL
-      const url = `http://localhost:5000/api/courses/admin/${selectedCourse._id}/chapters/${chapterId}/topics/${topicId}`;
+      const url = `${API_URL}/courses/admin/${selectedCourse._id}/chapters/${chapterId}/topics/${topicId}`;
 
       const res = await fetch(url, {
         method: "DELETE",
@@ -524,7 +525,7 @@ const Admin = () => {
 
   const refreshSelectedCourse = async (): Promise<Course> => {
     const token = localStorage.getItem("token");
-    const res = await fetch(`http://localhost:5000/api/courses/${selectedCourse._id}`, {
+    const res = await fetch(`${API_URL}/courses/${selectedCourse._id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!res.ok) throw new Error("Kurs konnte nicht geladen werden");
@@ -561,7 +562,7 @@ const Admin = () => {
       };
 
       const res = await fetch(
-          `http://localhost:5000/api/courses/admin/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
+          `${API_URL}/courses/admin/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -601,7 +602,7 @@ const Admin = () => {
       const token = localStorage.getItem("token");
 
       const res = await fetch(
-          `http://localhost:5000/api/courses/admin${selectedCourse._id}/quizzes/${chapterId}`,
+          `${API_URL}/courses/admin${selectedCourse._id}/quizzes/${chapterId}`,
           { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -669,7 +670,7 @@ const Admin = () => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-          `http://localhost:5000/api/courses/admin/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
+          `${API_URL}/courses/admin/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -713,7 +714,7 @@ const Admin = () => {
       const quizPayload = { ...editingQuiz, questions: updatedQuestions };
 
       const res = await fetch(
-          `http://localhost:5000/api/courses/admin/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
+          `${API_URL}/courses/admin/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
           { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(quizPayload) }
       );
 

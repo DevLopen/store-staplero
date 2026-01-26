@@ -70,6 +70,7 @@ export default function EnhancedTopicDialog({
     const [aiPrompt, setAiPrompt] = useState("");
     const [aiGenerating, setAiGenerating] = useState(false);
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -102,7 +103,7 @@ export default function EnhancedTopicDialog({
                 formData.append('files', file);
             });
 
-            const response = await fetch('http://localhost:5000/api/ai/generate-content', {
+            const response = await fetch('${API_URL}/ai/generate-content', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

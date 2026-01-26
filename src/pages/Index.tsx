@@ -137,7 +137,7 @@ const Index = () => {
                   <div>
                     <p className="font-semibold text-primary-foreground">Sprachlich flexibel</p>
                     <p className="text-primary-foreground/80 text-sm">
-                      Deutsch, Polnisch, Ukrainisch, Russisch und Rumänisch
+                      Deutsch, English, Polnisch, Ukrainisch, Russisch und Rumänisch
                     </p>
                   </div>
                 </div>
@@ -220,7 +220,7 @@ const Index = () => {
                   </div>
                   <h3 className="font-semibold text-foreground mb-2">Praxisausbildung</h3>
                   <p className="text-sm text-muted-foreground">
-                    Praktische Fahrausbildung mit modernen Gabelstaplern
+                    Praxisorientiertes training für maximale Sicherheit im Arbeitsalltag
                   </p>
                 </CardContent>
               </Card>
