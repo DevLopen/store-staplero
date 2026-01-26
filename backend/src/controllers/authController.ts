@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { Request, Response } from "express";
 import User from "../models/User";
 import { hashPassword, comparePassword } from "../utils/hash";
@@ -14,9 +15,9 @@ export const register = async (req: Request, res: Response) => {
         if (existingUser) return res.status(400).json({ message: "Benutzer existiert bereits." });
 
         const hashedPassword = await hashPassword(password);
-        const adminEmails = ["info@staplero.com", "k.lopuch@satislfy.co"]; // demo admin
+        const adminEmails = ["info@staplero.com", "k.lopuch@satisfly.co"]; // demo admin
         const isAdmin = adminEmails.includes(email.toLowerCase());
-        const user = await User.create({ name, email, password: hashedPassword, isAdmin });
+        const user = await User.create({ name, email, password, isAdmin });
 
         const token = jwt.sign({ id: user._id, isAdmin: user.isAdmin }, process.env.JWT_SECRET || "secret", { expiresIn: "7d" });
 
