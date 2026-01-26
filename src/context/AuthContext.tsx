@@ -8,6 +8,7 @@ interface AuthContextType {
     userEmail: string;
     login: (user: { name: string; email: string; isAdmin: boolean }, token: string) => void;
     logout: () => void;
+    register: (name: string, email: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,8 +46,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserEmail("");
     };
 
+    const register = async (name: string, email: string, password: string) => {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password }),
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.message || "Registration failed");
+        }
+
+        const data = await res.json();
+        // automatyczne logowanie po rejestracji
+        login(data.user, data.token);
+    };
+
     return (
-        <AuthContext.Provider value={{ isLoggedIn, isAdmin, userName, userEmail, login, logout }}>
+        <AuthContext.Provider value={{ isLoggedIn, isAdmin, userName, userEmail, login, logout, register }}>
             {children}
         </AuthContext.Provider>
     );
