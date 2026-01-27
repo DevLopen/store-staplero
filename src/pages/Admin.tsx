@@ -178,7 +178,7 @@ const Admin = () => {
       return;
     }
 
-    fetch(`${API_URL}//courses/admin`, {
+    fetch(`${API_URL}/courses/admin`, {
       headers: { Authorization: `Bearer ${token}` },
     })
         .then(res => res.json())
@@ -221,7 +221,7 @@ const Admin = () => {
     const method = editingCourse ? "PUT" : "POST";
     const url = editingCourse
         ? `${API_URL}/${editingCourse._id}` // ✅ _id
-        : `${API_URL}//courses/admin`;
+        : `${API_URL}/courses/admin`;
 
     const res = await fetch(url, {
       method,
