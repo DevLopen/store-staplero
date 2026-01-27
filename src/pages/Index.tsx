@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Link } from "react-router-dom";
 import {
   Play,
@@ -26,7 +27,7 @@ import {
   Truck,
   RefreshCcw,
   Send,
-  Calendar
+  Calendar,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -852,6 +853,145 @@ const Index = () => {
                   </form>
                 </CardContent>
               </Card>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ Section */}
+        <section className="py-24 bg-background">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-16">
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
+                Häufig gestellte <span className="text-primary">Fragen</span>
+              </h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Alles, was Sie über unsere Schulungen wissen müssen
+              </p>
+            </div>
+
+            <div className="max-w-4xl mx-auto">
+              <Accordion type="single" collapsible className="w-full space-y-4">
+                <AccordionItem value="faq1" className="border rounded-lg px-6">
+                  <AccordionTrigger className="text-left hover:no-underline">
+                    <span className="font-semibold">Bieten Sie auch Inhouse-Schulungen in unserem Unternehmen an?</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    Ja, wir führen deutschlandweit Inhouse-Schulungen direkt bei Ihnen vor Ort durch. Die Ausbildung erfolgt nach den aktuellen Vorschriften DGUV Vorschrift 68 und DGUV Grundsatz 308-001.
+                    <br/><br/>
+                    Die Schulung besteht aus einem Theorieteil mit schriftlicher Prüfung sowie einem Praxisteil mit Fahrprüfung. Unsere Trainer bringen alle erforderlichen Schulungsunterlagen mit. Voraussetzung ist eine geeignete Fläche für die praktischen Übungen.
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="faq2" className="border rounded-lg px-6">
+                  <AccordionTrigger className="text-left hover:no-underline">
+                    <span className="font-semibold">Wie hoch sind die Kosten für eine Inhouse-Schulung?</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    Da jede Schulung individuell geplant wird, bitten wir Sie, uns folgende Informationen mitzuteilen. Auf dieser Basis können wir Ihnen ein maßgeschneidertes Angebot erstellen:
+                    <ul className="list-disc ml-6 mt-2 space-y-1">
+                      <li>Anzahl der Mitarbeitenden, die geschult werden sollen</li>
+                      <li>Ort der Schulung (wo soll die Ausbildung stattfinden?)</li>
+                      <li>Geräteart, die die Teilnehmenden bedienen sollen (z. B. Frontstapler, Schubmaststapler, Elektro-Ameise, Hochhubwagen etc.)</li>
+                      <li>Vorerfahrung der Teilnehmenden (falls bekannt – haben sie bereits praktische Erfahrung?)</li>
+                    </ul>
+                    <br/>
+                    Für Schulungen in rumänischer Sprache fällt zusätzlich ein Dolmetscherzuschlag von 179,99 € netto pro Tag an.
+                    <br/><br/>
+                    Kontaktieren Sie uns gern direkt – wir beraten Sie persönlich.
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="faq3" className="border rounded-lg px-6">
+                  <AccordionTrigger className="text-left hover:no-underline">
+                    <span className="font-semibold">In welchen Sprachen bieten Sie die Schulung an?</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    Wir führen die Schulung vollständig in der von Ihnen gewünschten Sprache durch – sowohl Theorie- als auch Praxisteil.
+                    <br/><br/>
+                    Folgende Sprachen stehen zur Verfügung:
+                    <ul className="list-disc ml-6 mt-2 space-y-1">
+                      <li>Deutsch</li>
+                      <li>Polnisch</li>
+                      <li>Ukrainisch</li>
+                      <li>Russisch</li>
+                      <li>Rumänisch (Dolmetscherzuschlag: 179,99 € netto pro Tag)</li>
+                    </ul>
+                    <br/>
+                    Bitte geben Sie bei der Anmeldung an, in welcher Sprache die Schulung und Prüfung erfolgen soll.
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="faq4" className="border rounded-lg px-6">
+                  <AccordionTrigger className="text-left hover:no-underline">
+                    <span className="font-semibold">Welche Unterlagen und Ausrüstung müssen die Teilnehmenden mitbringen?</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    Für die Teilnahme benötigen Ihre Mitarbeitenden:
+                    <ul className="list-disc ml-6 mt-2 space-y-1">
+                      <li>Gültiger Ausweis (Personalausweis oder Reisepass)</li>
+                      <li>Passfoto (für den Fahrausweis)</li>
+                      <li>Sicherheitsschuhe (Pflicht für den praktischen Teil)</li>
+                    </ul>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="faq5" className="border rounded-lg px-6">
+                  <AccordionTrigger className="text-left hover:no-underline">
+                    <span className="font-semibold">Erhalten die Teilnehmenden einen anerkannten Staplerschein?</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    Ja. Nach erfolgreich bestandener Theorie- und Praxisprüfung erhalten alle Teilnehmenden einen offiziellen deutschen Staplerschein, gültig gemäß DGUV Vorschrift 68 und DGUV Grundsatz 308-001 – bundesweit anerkannt.
+                    <br/><br/>
+                    Optional bieten wir die Staplero ProCard an – ein robuster Fahrausweis im Scheckkartenformat (ähnlich einem Führerschein), ideal zum Vorzeigen im Betrieb oder bei Kontrollen. Aufpreis: 14,99 € netto pro Person
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="faq6" className="border rounded-lg px-6">
+                  <AccordionTrigger className="text-left hover:no-underline">
+                    <span className="font-semibold">Was benötigen wir als Unternehmen, um die Schulung bei uns durchzuführen?</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    Damit wir die Schulung erfolgreich in Ihrem Unternehmen durchführen können, benötigen wir folgende Voraussetzungen vor Ort:
+                    <br/><br/>
+                    <strong>Für den ersten Schulungstag (Theorie):</strong> Einen ruhigen Raum mit Tischen und Stühlen für alle Teilnehmenden. Der Raum sollte ausreichend beleuchtet sein und möglichst über Stromanschluss verfügen.
+                    <br/><br/>
+                    <strong>Für den zweiten Schulungstag (Praxis):</strong>
+                    <ul className="list-disc ml-6 mt-2 space-y-1">
+                      <li>Einen geeigneten Übungsbereich (z. B. Lagerfläche, Betriebshof), auf dem sicher und ungestört Fahrübungen durchgeführt werden können</li>
+                      <li>Einen funktionsfähigen Gabelstapler (entsprechend dem Schulungsbedarf – z. B. Frontstapler, Schubmaststapler, Ameise etc.)</li>
+                      <li>Einige Europaletten und idealerweise Gitterboxen, um praxisnahe Übungen unter realistischen Bedingungen durchführen zu können</li>
+                    </ul>
+                    <br/>
+                    Sollten Sie unsicher sein, ob Ihre Gegebenheiten ausreichen, sprechen Sie uns gerne an – wir beraten Sie individuell.
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="faq7" className="border rounded-lg px-6">
+                  <AccordionTrigger className="text-left hover:no-underline">
+                    <span className="font-semibold">Wie lange dauert die Ausbildung?</span>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground">
+                    Die Dauer der Schulung richtet sich nach dem Gerätetyp und den Vorkenntnissen der Teilnehmenden.
+                    <br/><br/>
+                    <strong>Standard-Schulung (für Gabelstapler): 2 Tage</strong>
+                    <ul className="list-disc ml-6 mt-2 space-y-1">
+                      <li>Tag 1: Theorie mit schriftlicher Prüfung</li>
+                      <li>Tag 2: Praxis mit Fahrübungen und praktischer Prüfung</li>
+                    </ul>
+                    <br/>
+                    <strong>Verkürzte Schulungsvarianten:</strong>
+                    <ul className="list-disc ml-6 mt-2 space-y-1">
+                      <li><strong>1 Tag:</strong> Für Teilnehmende mit mindestens 6 Monaten praktischer Erfahrung oder bei vorherigem Abschluss unserer Online-Theorieschulung</li>
+                      <li><strong>2 Tage Praxis:</strong> Wenn die Theorie bereits online absolviert wurde</li>
+                      <li><strong>3 Tage (intensiv):</strong> Auf Wunsch möglich, z. B. bei Schubmaststaplern</li>
+                    </ul>
+                    <br/>
+                    <strong>Niederhubwagen (Ameise / Schnellläufer): 1 Tag</strong> Schulung inklusive Theorie, Praxis und Prüfung
+                    <br/><br/>
+                    Wir beraten Sie gerne individuell zur passenden Schulungsdauer für Ihre Mitarbeitenden – kontaktieren Sie uns einfach.
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           </div>
         </section>

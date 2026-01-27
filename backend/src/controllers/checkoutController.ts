@@ -28,7 +28,8 @@ interface CheckoutRequest {
         locationId: string;
         locationName: string;
         locationAddress: string;
-        date: string;
+        startDate: string;
+        endDate: string;
         time: string;
         availableSpots: number;
         price: number;
@@ -124,7 +125,8 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 locationId: data.practicalCourse.locationId,
                 locationName: data.practicalCourse.locationName,
                 locationAddress: data.practicalCourse.locationAddress,
-                date: data.practicalCourse.date,
+                startDate: data.practicalCourse.startDate,
+                endDate: data.practicalCourse.endDate,
                 time: data.practicalCourse.time,
                 availableSpots: data.practicalCourse.availableSpots,
                 wantsPlasticCard: data.practicalCourse.wantsPlasticCard,
@@ -168,7 +170,8 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 courseId: data.courseId || "",
                 ...(practicalCourseDetails && {
                     locationId: practicalCourseDetails.locationId,
-                    date: practicalCourseDetails.date,
+                    startDate: practicalCourseDetails.startDate,
+                    endDate: practicalCourseDetails.endDate,
                     time: practicalCourseDetails.time,
                 }),
             },

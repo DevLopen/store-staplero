@@ -13,6 +13,7 @@ import dashboardRoutes from "./routes/dashboardRoutes";
 import aiRoutes from "./routes/aiRoutes";
 import checkoutRoutes from "./routes/checkout";
 import webhookRoutes from "./routes/webhooks";
+import locationRoutes from "./routes/location.routes";
 
 // Import services
 import orderService from "./services/order.service";
@@ -51,6 +52,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/progress", progressRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/checkout", checkoutRoutes);
+app.use("/api/locations", locationRoutes);
 
 // Connect MongoDB
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/stapler-dashboard";

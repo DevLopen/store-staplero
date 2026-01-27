@@ -11,7 +11,8 @@ export interface PracticalCourseDetails {
     locationId: string;
     locationName: string;
     locationAddress: string;
-    date: string;
+    startDate: string;
+    endDate: string;
     time: string;
     availableSpots: number;
     wantsPlasticCard: boolean;
@@ -58,7 +59,8 @@ const PracticalCourseDetailsSchema = new Schema<PracticalCourseDetails>({
     locationId: { type: String, required: true },
     locationName: { type: String, required: true },
     locationAddress: { type: String, required: true },
-    date: { type: String, required: true },
+    startDate: { type: String, required: true },
+    endDate: { type: String, required: true },
     time: { type: String, required: true },
     availableSpots: { type: Number, required: true },
     wantsPlasticCard: { type: Boolean, default: false },

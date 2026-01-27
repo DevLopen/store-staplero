@@ -52,14 +52,19 @@ const Admin = () => {
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
   // Locations state
-  const [locations, setLocations] = useState<Location[]>(mockLocations);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   const [editingDate, setEditingDate] = useState<CourseDate | null>(null);
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
   const [selectedLocationId, setSelectedLocationId] = useState<string>("");
   const [locationForm, setLocationForm] = useState({ city: "", address: "", price: "299", isActive: true });
-  const [dateForm, setDateForm] = useState({ date: "", time: "08:00 - 16:00", availableSpots: "10" });
+  const [dateForm, setDateForm] = useState({
+    startDate: "",
+    endDate: "",
+    time: "08:00 - 16:00",
+    availableSpots: "10"
+  });
 
   // Orders state
   const [orders, setOrders] = useState<Order[]>([]);
@@ -93,6 +98,21 @@ const Admin = () => {
   });
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
   const [selectedQuizChapterId, setSelectedQuizChapterId] = useState<string>("");
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    fetch(`${API_URL}/locations`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+        .then(res => res.json())
+        .then(data => {
+          const mappedLocations = data.map(loc => ({ ...loc, id: loc._id }));
+          setLocations(mappedLocations);
+        })
+        .catch(err => console.error(err));
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -1309,9 +1329,19 @@ const Admin = () => {
                                   variant="ghost"
                                   size="icon"
                                   className="text-destructive hover:text-destructive"
-                                  onClick={() => {
-                                    setLocations(prev => prev.filter(l => l.id !== location.id));
-                                    toast({ title: "Erfolg", description: "Standort wurde gelöscht." });
+                                  onClick={async () => {
+                                    try {
+                                      const token = localStorage.getItem("token");
+                                      await fetch(`${API_URL}/locations/${location.id}`, {
+                                        method: 'DELETE',
+                                        headers: { 'Authorization': `Bearer ${token}` }
+                                      });
+
+                                      setLocations(prev => prev.filter(l => l.id !== location.id));
+                                      toast({ title: "Erfolg", description: "Standort wurde gelöscht." });
+                                    } catch (err) {
+                                      toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
+                                    }
                                   }}
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1333,7 +1363,10 @@ const Admin = () => {
                                     <Calendar className="w-4 h-4 text-muted-foreground" />
                                     <div>
                                       <p className="font-medium text-foreground">
-                                        {new Date(date.date).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                        {date.startDate === date.endDate
+                                            ? new Date(date.startDate).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+                                            : `${new Date(date.startDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' })} - ${new Date(date.endDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' })}`
+                                        }
                                       </p>
                                       <p className="text-sm text-muted-foreground">{date.time} • {date.availableSpots} Plätze</p>
                                     </div>
@@ -1343,7 +1376,8 @@ const Admin = () => {
                                       setSelectedLocationId(location.id);
                                       setEditingDate(date);
                                       setDateForm({
-                                        date: date.date,
+                                        startDate: date.startDate,
+                                        endDate: date.endDate,
                                         time: date.time,
                                         availableSpots: date.availableSpots.toString()
                                       });
@@ -1355,13 +1389,29 @@ const Admin = () => {
                                         variant="ghost"
                                         size="icon"
                                         className="text-destructive hover:text-destructive"
-                                        onClick={() => {
-                                          setLocations(prev => prev.map(l =>
-                                              l.id === location.id
-                                                  ? { ...l, dates: l.dates.filter(d => d.id !== date.id) }
-                                                  : l
-                                          ));
-                                          toast({ title: "Erfolg", description: "Termin wurde gelöscht." });
+                                        onClick={async () => {
+                                          try {
+                                            const token = localStorage.getItem("token");
+                                            const updatedDates = location.dates.filter(d => d.id !== date.id);
+
+                                            await fetch(`${API_URL}/locations/${location.id}`, {
+                                              method: 'PUT',
+                                              headers: {
+                                                'Content-Type': 'application/json',
+                                                'Authorization': `Bearer ${token}`
+                                              },
+                                              body: JSON.stringify({ ...location, dates: updatedDates })
+                                            });
+
+                                            setLocations(prev => prev.map(l =>
+                                                l.id === location.id
+                                                    ? { ...l, dates: updatedDates }
+                                                    : l
+                                            ));
+                                            toast({ title: "Erfolg", description: "Termin wurde gelöscht." });
+                                          } catch (err) {
+                                            toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
+                                          }
                                         }}
                                     >
                                       <Trash2 className="w-4 h-4" />
@@ -1375,7 +1425,12 @@ const Admin = () => {
                                 onClick={() => {
                                   setSelectedLocationId(location.id);
                                   setEditingDate(null);
-                                  setDateForm({ date: "", time: "08:00 - 16:00", availableSpots: "10" });
+                                  setDateForm({
+                                    startDate: "",
+                                    endDate: "",
+                                    time: "08:00 - 16:00",
+                                    availableSpots: "10"
+                                  });
                                   setIsDateDialogOpen(true);
                                 }}
                             >
@@ -1746,21 +1801,51 @@ const Admin = () => {
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsLocationDialogOpen(false)}>Abbrechen</Button>
-              <Button onClick={() => {
+              <Button onClick={async () => {
                 if (!locationForm.city.trim()) {
                   toast({ title: "Fehler", description: "Bitte geben Sie eine Stadt ein.", variant: "destructive" });
                   return;
                 }
-                if (editingLocation) {
-                  setLocations(prev => prev.map(l => l.id === editingLocation.id ? { ...l, city: locationForm.city, address: locationForm.address, price: parseFloat(locationForm.price) || 299, isActive: locationForm.isActive } : l));
-                  toast({ title: "Erfolg", description: "Standort wurde aktualisiert." });
-                } else {
-                  const newLocation: Location = { id: `loc${Date.now()}`, city: locationForm.city, address: locationForm.address, price: parseFloat(locationForm.price) || 299, isActive: locationForm.isActive, dates: [] };
-                  setLocations(prev => [...prev, newLocation]);
-                  toast({ title: "Erfolg", description: "Standort wurde erstellt." });
+
+                try {
+                  const token = localStorage.getItem("token");
+                  const method = editingLocation ? 'PUT' : 'POST';
+                  const url = editingLocation
+                      ? `${API_URL}/locations/${editingLocation.id}`
+                      : `${API_URL}/locations`;
+
+                  const res = await fetch(url, {
+                    method,
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                      city: locationForm.city,
+                      address: locationForm.address,
+                      price: parseFloat(locationForm.price) || 299,
+                      isActive: locationForm.isActive,
+                      dates: editingLocation?.dates || []
+                    })
+                  });
+
+                  const data = await res.json();
+
+                  if (editingLocation) {
+                    setLocations(prev => prev.map(l => l.id === editingLocation.id ? { ...data, id: data._id } : l));
+                    toast({ title: "Erfolg", description: "Standort wurde aktualisiert." });
+                  } else {
+                    setLocations(prev => [...prev, { ...data, id: data._id }]);
+                    toast({ title: "Erfolg", description: "Standort wurde erstellt." });
+                  }
+
+                  setIsLocationDialogOpen(false);
+                } catch (err) {
+                  toast({ title: "Fehler", description: "Speichern fehlgeschlagen.", variant: "destructive" });
                 }
-                setIsLocationDialogOpen(false);
-              }}><Save className="w-4 h-4 mr-2" />Speichern</Button>
+              }}>
+                <Save className="w-4 h-4 mr-2" />Speichern
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -1774,8 +1859,12 @@ const Admin = () => {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="date-date">Datum</Label>
-                <Input id="date-date" type="date" value={dateForm.date} onChange={(e) => setDateForm(prev => ({ ...prev, date: e.target.value }))} />
+                <Label htmlFor="date-start">Startdatum</Label>
+                <Input id="date-start" type="date" value={dateForm.startDate} onChange={(e) => setDateForm(prev => ({ ...prev, startDate: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="date-end">Enddatum</Label>
+                <Input id="date-end" type="date" value={dateForm.endDate} onChange={(e) => setDateForm(prev => ({ ...prev, endDate: e.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="date-time">Zeit</Label>
@@ -1788,20 +1877,48 @@ const Admin = () => {
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsDateDialogOpen(false)}>Abbrechen</Button>
-              <Button onClick={() => {
-                if (!dateForm.date) {
-                  toast({ title: "Fehler", description: "Bitte wählen Sie ein Datum.", variant: "destructive" });
+              <Button onClick={async () => {
+                if (!dateForm.startDate || !dateForm.endDate) {
+                  toast({ title: "Fehler", description: "Bitte wählen Sie Start- und Enddatum.", variant: "destructive" });
                   return;
                 }
-                if (editingDate) {
-                  setLocations(prev => prev.map(l => l.id === selectedLocationId ? { ...l, dates: l.dates.map(d => d.id === editingDate.id ? { ...d, date: dateForm.date, time: dateForm.time, availableSpots: parseInt(dateForm.availableSpots) || 10 } : d) } : l));
-                  toast({ title: "Erfolg", description: "Termin wurde aktualisiert." });
-                } else {
-                  const newDate: CourseDate = { id: `d${Date.now()}`, date: dateForm.date, time: dateForm.time, availableSpots: parseInt(dateForm.availableSpots) || 10 };
-                  setLocations(prev => prev.map(l => l.id === selectedLocationId ? { ...l, dates: [...l.dates, newDate] } : l));
-                  toast({ title: "Erfolg", description: "Termin wurde hinzugefügt." });
+                if (new Date(dateForm.endDate) < new Date(dateForm.startDate)) {
+                  toast({ title: "Fehler", description: "Enddatum muss nach Startdatum liegen.", variant: "destructive" });
+                  return;
                 }
-                setIsDateDialogOpen(false);
+
+                try {
+                  const token = localStorage.getItem("token");
+                  const location = locations.find(l => l.id === selectedLocationId);
+
+                  let updatedDates;
+                  if (editingDate) {
+                    updatedDates = location.dates.map(d =>
+                        d.id === editingDate.id
+                            ? { ...d, startDate: dateForm.startDate, endDate: dateForm.endDate, time: dateForm.time, availableSpots: parseInt(dateForm.availableSpots) || 10 }
+                            : d
+                    );
+                  } else {
+                    const newDate = { id: `d${Date.now()}`, startDate: dateForm.startDate, endDate: dateForm.endDate, time: dateForm.time, availableSpots: parseInt(dateForm.availableSpots) || 10 };
+                    updatedDates = [...location.dates, newDate];
+                  }
+
+                  const res = await fetch(`${API_URL}/locations/${selectedLocationId}`, {
+                    method: 'PUT',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ ...location, dates: updatedDates })
+                  });
+
+                  const data = await res.json();
+                  setLocations(prev => prev.map(l => l.id === selectedLocationId ? { ...data, id: data._id } : l));
+                  toast({ title: "Erfolg", description: editingDate ? "Termin wurde aktualisiert." : "Termin wurde hinzugefügt." });
+                  setIsDateDialogOpen(false);
+                } catch (err) {
+                  toast({ title: "Fehler", description: "Speichern fehlgeschlagen.", variant: "destructive" });
+                }
               }}><Save className="w-4 h-4 mr-2" />Speichern</Button>
             </div>
           </DialogContent>

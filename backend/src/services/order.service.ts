@@ -177,7 +177,7 @@ export const markOrderAsPaid = async (
                 order.orderNumber,
                 order.practicalCourseDetails.locationName,
                 order.practicalCourseDetails.locationAddress,
-                order.practicalCourseDetails.date,
+                `${order.practicalCourseDetails.startDate} - ${order.practicalCourseDetails.endDate}`,
                 order.practicalCourseDetails.time,
                 order.practicalCourseDetails.wantsPlasticCard
             );

@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useEffect } from "react";
 import { mockLocations, Location, CourseDate } from "@/data/practicalCourseData";
 import {
   MapPin,
@@ -23,14 +24,25 @@ import {
 } from "lucide-react";
 
 const PracticalCourse = () => {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
 
-  const [locations] = useState<Location[]>(mockLocations);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [selectedDate, setSelectedDate] = useState<CourseDate | null>(null);
   const [wantsPlasticCard, setWantsPlasticCard] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_URL}/locations`)
+        .then(res => res.json())
+        .then(data => {
+          const mappedLocations = data.map(loc => ({ ...loc, id: loc._id }));
+          setLocations(mappedLocations);
+        })
+        .catch(err => console.error(err));
+  }, []);
 
   const handleLocationSelect = (location: Location) => {
     if (!location.isActive) return;
@@ -63,7 +75,8 @@ const PracticalCourse = () => {
           locationId: selectedLocation.id,
           locationName: selectedLocation.city,
           locationAddress: selectedLocation.address,
-          date: selectedDate.date,
+          startDate: selectedDate.startDate,
+          endDate: selectedDate.endDate,
           time: selectedDate.time,
           availableSpots: selectedDate.availableSpots,
           price: selectedLocation.price,
@@ -73,14 +86,16 @@ const PracticalCourse = () => {
     });
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('de-DE', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const formatDate = (startDate: string, endDate: string) => {
+    if (startDate === endDate) {
+      return new Date(startDate).toLocaleDateString('de-DE', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+    return `${new Date(startDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' })} - ${new Date(endDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' })}`;
   };
 
   return (
@@ -121,6 +136,7 @@ const PracticalCourse = () => {
                         <div>
                           <p className="font-medium text-foreground">{t('practical.duration')}</p>
                           <p className="text-sm text-muted-foreground">{t('practical.durationText')}</p>
+                          <p className="text-sm text-muted-foreground">{t('practical.durationText.2')}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3">
@@ -241,7 +257,7 @@ const PracticalCourse = () => {
                                 <CardContent className="p-4">
                                   <div className="flex items-center justify-between">
                                     <div>
-                                      <p className="font-medium text-foreground">{formatDate(date.date)}</p>
+                                      <p className="font-medium text-foreground">{formatDate(date.startDate, date.endDate)}</p>
                                       <p className="text-sm text-muted-foreground flex items-center gap-1">
                                         <Clock className="w-3 h-3" />
                                         {date.time}
@@ -284,7 +300,7 @@ const PracticalCourse = () => {
 
                           {selectedDate && (
                               <div className="p-3 bg-muted/50 rounded-lg">
-                                <p className="font-medium text-foreground">{formatDate(selectedDate.date)}</p>
+                                <p className="font-medium text-foreground">{formatDate(selectedDate.startDate, selectedDate.endDate)}</p>
                                 <p className="text-sm text-muted-foreground">{selectedDate.time}</p>
                               </div>
                           )}
