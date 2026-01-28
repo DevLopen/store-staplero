@@ -20,6 +20,8 @@ import FinalQuizView from "@/pages/FinalQuizView";
 import Checkout from "./pages/Checkout";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import CheckoutCancel from "./pages/CheckoutCancel";
+import ScrollToTop from "@/components/ScrollToTop";
+import ChatWidget from "./components/ChatWidget";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +33,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <ScrollToTop />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Login />} />
@@ -47,6 +50,7 @@ const App = () => (
                 <Route path="/checkout/cancel" element={<CheckoutCancel />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              <ChatWidget />
             </BrowserRouter>
           </TooltipProvider>
         </AuthProvider>

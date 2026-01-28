@@ -25,6 +25,9 @@ import {
 
 const PracticalCourse = () => {
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+  const VAT_RATE = 0.19; // 19% VAT
+  const PLASTIC_CARD_PRICE = 14.99;
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -43,6 +46,17 @@ const PracticalCourse = () => {
         })
         .catch(err => console.error(err));
   }, []);
+
+  const calculatePriceWithVAT = (basePrice: number) => {
+    return basePrice * (1 + VAT_RATE);
+  };
+
+  const calculateTotal = () => {
+    if (!selectedLocation) return 0;
+    const coursePrice = calculatePriceWithVAT(selectedLocation.price);
+    const cardPrice = wantsPlasticCard ? calculatePriceWithVAT(PLASTIC_CARD_PRICE) : 0;
+    return coursePrice + cardPrice;
+  };
 
   const handleLocationSelect = (location: Location) => {
     if (!location.isActive) return;
@@ -65,12 +79,14 @@ const PracticalCourse = () => {
       return;
     }
 
+    const finalPrice = calculateTotal();
+
     // Redirect to checkout with course data
     navigate("/checkout", {
       state: {
         type: "practical",
         courseName: `Praktischer Staplerführerschein - ${selectedLocation.city}`,
-        price: selectedLocation.price,
+        price: finalPrice,
         practicalCourse: {
           locationId: selectedLocation.id,
           locationName: selectedLocation.city,
@@ -79,7 +95,8 @@ const PracticalCourse = () => {
           endDate: selectedDate.endDate,
           time: selectedDate.time,
           availableSpots: selectedDate.availableSpots,
-          price: selectedLocation.price,
+          basePrice: selectedLocation.price,
+          price: finalPrice,
           wantsPlasticCard,
         },
       },
@@ -221,9 +238,12 @@ const PracticalCourse = () => {
                               </div>
                               <p className="text-sm text-muted-foreground mb-3">{location.address}</p>
                               <div className="flex items-center justify-between">
-                                <span className="font-bold text-primary text-lg">{location.price} €</span>
+                                <span className="font-bold text-primary text-lg">
+                                  {calculatePriceWithVAT(location.price).toFixed(2)} €
+                                </span>
                                 <span className="text-xs text-muted-foreground">{t('practical.perPerson')}</span>
                               </div>
+                              <p className="text-xs text-muted-foreground mt-1">inkl. 19% MwSt.</p>
                             </CardContent>
                           </Card>
                       ))}
@@ -315,25 +335,45 @@ const PracticalCourse = () => {
                               <Label htmlFor="plasticCard" className="cursor-pointer">
                                 {t('practical.plasticCard')}
                               </Label>
-                              <p className="text-sm font-medium text-primary">{t('practical.plasticCardPrice')}</p>
+                              <p className="text-sm font-medium text-primary">
+                                {calculatePriceWithVAT(PLASTIC_CARD_PRICE).toFixed(2)} € (inkl. MwSt.)
+                              </p>
                             </div>
                           </div>
 
                           <div className="border-t border-border pt-4">
                             <div className="flex justify-between text-sm mb-2">
-                              <span className="text-muted-foreground">Kurs</span>
+                              <span className="text-muted-foreground">Kurs (netto)</span>
                               <span>{selectedLocation.price.toFixed(2)} €</span>
                             </div>
+                            <div className="flex justify-between text-sm mb-2">
+                              <span className="text-muted-foreground">MwSt. (19%)</span>
+                              <span>{(selectedLocation.price * VAT_RATE).toFixed(2)} €</span>
+                            </div>
+                            <div className="flex justify-between text-sm mb-2">
+                              <span className="text-muted-foreground">Kurs (brutto)</span>
+                              <span>{calculatePriceWithVAT(selectedLocation.price).toFixed(2)} €</span>
+                            </div>
                             {wantsPlasticCard && (
-                                <div className="flex justify-between text-sm mb-2">
-                                  <span className="text-muted-foreground">Plastikkarte</span>
-                                  <span>14,99 €</span>
-                                </div>
+                                <>
+                                  <div className="flex justify-between text-sm mb-2">
+                                    <span className="text-muted-foreground">Plastikkarte (netto)</span>
+                                    <span>{PLASTIC_CARD_PRICE.toFixed(2)} €</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm mb-2">
+                                    <span className="text-muted-foreground">MwSt. (19%)</span>
+                                    <span>{(PLASTIC_CARD_PRICE * VAT_RATE).toFixed(2)} €</span>
+                                  </div>
+                                  <div className="flex justify-between text-sm mb-2">
+                                    <span className="text-muted-foreground">Plastikkarte (brutto)</span>
+                                    <span>{calculatePriceWithVAT(PLASTIC_CARD_PRICE).toFixed(2)} €</span>
+                                  </div>
+                                </>
                             )}
-                            <div className="flex justify-between font-bold text-lg mt-3">
-                              <span>Gesamt</span>
+                            <div className="flex justify-between font-bold text-lg mt-3 pt-3 border-t">
+                              <span>Gesamt (inkl. MwSt.)</span>
                               <span className="text-primary">
-                            {(selectedLocation.price + (wantsPlasticCard ? 14.99 : 0)).toFixed(2)} €
+                            {calculateTotal().toFixed(2)} €
                           </span>
                             </div>
                           </div>

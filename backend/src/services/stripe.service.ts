@@ -61,7 +61,7 @@ export const createCheckoutSession = async (
     );
     const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
     const session = await stripe.checkout.sessions.create({
-        payment_method_types: ["blik", "card", "klarna"],
+        payment_method_types: ["card", "klarna"],
         line_items: lineItems,
         mode: "payment",
         success_url: `${frontendUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
