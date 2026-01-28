@@ -2,7 +2,7 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM_EMAIL = process.env.FROM_EMAIL || "STAPLERO <noreply@staplero.de>";
+const FROM_EMAIL = process.env.FROM_EMAIL || "STAPLERO <noreply@staplero.com>";
 
 /**
  * Send welcome email after registration
@@ -40,7 +40,7 @@ export const sendWelcomeEmail = async (
             <p><strong>Ihr STAPLERO Team</strong></p>
           </div>
           <div class="footer">
-            <p>STAPLERO GmbH | info@staplero.de | +49 (0) 123 456 789</p>
+            <p>STAPLERO | info@staplero.com | +49 176 22067783</p>
           </div>
         </div>
       </body>
@@ -111,7 +111,7 @@ export const sendOnlineCoursePurchaseEmail = async (
             <p><strong>Viel Erfolg!</strong><br>Ihr STAPLERO Team</p>
           </div>
           <div class="footer">
-            <p>STAPLERO GmbH | info@staplero.de | +49 (0) 123 456 789</p>
+            <p>STAPLERO | info@staplero.com | +49 176 22067783</p>
           </div>
         </div>
       </body>
@@ -198,7 +198,7 @@ export const sendPracticalCourseBookingEmail = async (
             <p><strong>Wir freuen uns auf Sie!</strong><br>Ihr STAPLERO Team</p>
           </div>
           <div class="footer">
-            <p>STAPLERO GmbH | info@staplero.de | +49 (0) 123 456 789</p>
+            <p>STAPLERO | info@staplero.com | +49 176 22067783</p>
           </div>
         </div>
       </body>
@@ -264,7 +264,7 @@ export const sendExpiryReminderEmail = async (
             <p><strong>Ihr STAPLERO Team</strong></p>
           </div>
           <div class="footer">
-            <p>STAPLERO GmbH | info@staplero.de | +49 (0) 123 456 789</p>
+            <p>STAPLERO | info@staplero.com | +49 176 22067783</p>
           </div>
         </div>
       </body>
@@ -327,11 +327,11 @@ export const sendInvoiceEmail = async (
 
             <p>Die Rechnung wurde automatisch erstellt und ist rechtsgültig.</p>
             
-            <p>Bei Fragen zu Ihrer Rechnung kontaktieren Sie uns bitte unter <strong>info@staplero.de</strong></p>
+            <p>Bei Fragen zu Ihrer Rechnung kontaktieren Sie uns bitte unter <strong>info@staplero.com</strong></p>
             <p><strong>Mit freundlichen Grüßen,</strong><br>Ihr STAPLERO Team</p>
           </div>
           <div class="footer">
-            <p>STAPLERO GmbH | info@staplero.de | +49 (0) 123 456 789</p>
+            <p>STAPLERO | info@staplero.com | +49 176 22067783</p>
             <p>Steuernummer: DE123456789 | Handelsregister: HRB 12345</p>
           </div>
         </div>
@@ -350,10 +350,140 @@ export const sendInvoiceEmail = async (
     });
 };
 
+/**
+ * Send contact form email
+ */
+export const sendContactFormEmail = async (
+    name: string,
+    email: string,
+    phone: string,
+    company: string,
+    message: string
+): Promise<void> => {
+    const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .info-box { background: white; padding: 15px; margin: 10px 0; border-left: 4px solid #FF6B35; }
+          .message-box { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; border: 1px solid #ddd; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          .label { font-weight: bold; color: #FF6B35; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📧 Neue Kontaktanfrage</h1>
+          </div>
+          <div class="content">
+            <h2>Sie haben eine neue Nachricht erhalten</h2>
+            
+            <div class="info-box">
+              <p><span class="label">Name:</span> ${name}</p>
+            </div>
+            
+            <div class="info-box">
+              <p><span class="label">E-Mail:</span> <a href="mailto:${email}">${email}</a></p>
+            </div>
+            
+            ${phone ? `
+            <div class="info-box">
+              <p><span class="label">Telefon:</span> <a href="tel:${phone}">${phone}</a></p>
+            </div>
+            ` : ''}
+            
+            ${company ? `
+            <div class="info-box">
+              <p><span class="label">Firma:</span> ${company}</p>
+            </div>
+            ` : ''}
+            
+            <div class="message-box">
+              <p class="label">Nachricht:</p>
+              <p>${message.replace(/\n/g, '<br>')}</p>
+            </div>
+            
+            <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+              <small>Diese Nachricht wurde über das Kontaktformular auf staplero.de gesendet am ${new Date().toLocaleString('de-DE')}</small>
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+    // Wysyłka do firmy (info@staplero.de)
+    await resend.emails.send({
+        from: FROM_EMAIL,
+        to: 'info@staplero.com', // Twój email firmowy
+        replyTo: email, // Odpowiedź będzie szła do klienta
+        subject: `Neue Kontaktanfrage von ${name}`,
+        html,
+    });
+
+    // Opcjonalnie: Wysyłka potwierdzenia do klienta
+    await sendContactConfirmationEmail(email, name);
+};
+
+/**
+ * Send confirmation email to customer (optional)
+ */
+export const sendContactConfirmationEmail = async (
+    to: string,
+    name: string
+): Promise<void> => {
+    const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✅ Nachricht erhalten</h1>
+          </div>
+          <div class="content">
+            <h2>Hallo ${name}!</h2>
+            <p>Vielen Dank für Ihre Nachricht. Wir haben Ihre Anfrage erhalten und werden uns schnellstmöglich bei Ihnen melden.</p>
+            <p>In der Regel antworten wir innerhalb von 24 Stunden.</p>
+            <p><strong>Mit freundlichen Grüßen,</strong><br>Ihr STAPLERO Team</p>
+          </div>
+          <div class="footer">
+            <p>STAPLERO | info@staplero.com | +49 176 22067783</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+    await resend.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject: 'Wir haben Ihre Nachricht erhalten - STAPLERO',
+        html,
+    });
+};
+
 export default {
     sendWelcomeEmail,
     sendOnlineCoursePurchaseEmail,
     sendPracticalCourseBookingEmail,
     sendExpiryReminderEmail,
-    sendInvoiceEmail, // NOWA FUNKCJA
+    sendInvoiceEmail,
+    sendContactFormEmail,
+    sendContactConfirmationEmail,
 };

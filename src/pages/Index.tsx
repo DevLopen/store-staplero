@@ -58,20 +58,41 @@ const Index = () => {
   // FAQ toggle state
   const [faqCustomerType, setFaqCustomerType] = useState('b2b');
 
-  const handleContactSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+    const handleContactSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
 
-    // Simulate form submission
-    setTimeout(() => {
-      toast({
-        title: "Nachricht gesendet!",
-        description: "Wir werden uns in Kürze bei Ihnen melden."
-      });
-      setContactForm({ name: "", email: "", phone: "", company: "", message: "" });
-      setIsSubmitting(false);
-    }, 1000);
-  };
+        try {
+            const response = await fetch(`${process.env.VITE_API_URL || 'http://localhost:3001'}/api/contact`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(contactForm),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                toast({
+                    title: "Nachricht gesendet!",
+                    description: "Wir werden uns in Kürze bei Ihnen melden."
+                });
+                setContactForm({ name: "", email: "", phone: "", company: "", message: "" });
+            } else {
+                throw new Error(data.error || 'Failed to send message');
+            }
+        } catch (error) {
+            console.error('Contact form error:', error);
+            toast({
+                title: "Fehler",
+                description: "Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es später erneut.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
   const googleReviews = [
     {
@@ -1076,7 +1097,7 @@ const Index = () => {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">E-Mail</p>
-                      <p className="font-medium text-foreground">info@staplero.de</p>
+                      <p className="font-medium text-foreground">info@staplero.com</p>
                     </div>
                   </div>
 

@@ -257,7 +257,7 @@ const CheckoutSuccess = () => {
                                                 Bei Fragen kontaktieren Sie uns
                                             </p>
                                             <p className="text-sm text-muted-foreground">
-                                                Wir helfen Ihnen gerne weiter: info@staplero.de
+                                                Wir helfen Ihnen gerne weiter: info@staplero.com
                                             </p>
                                         </div>
                                     </div>
