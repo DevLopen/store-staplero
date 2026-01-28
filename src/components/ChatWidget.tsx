@@ -1,9 +1,11 @@
+// src/components/ChatWidget.tsx
 import { useState, useRef, useEffect } from "react";
-import { Headset, X, Send, Sparkles, User } from "lucide-react";
+import { Headset, X, Send, Sparkles, User, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { sendChatMessage } from "@/services/chatApi";
 
 interface Message {
     id: string;
@@ -24,6 +26,7 @@ const ChatWidget = () => {
     ]);
     const [inputValue, setInputValue] = useState("");
     const [isTyping, setIsTyping] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -37,10 +40,10 @@ const ChatWidget = () => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages]);
+    }, [messages, isTyping]);
 
     const handleSend = async () => {
-        if (!inputValue.trim()) return;
+        if (!inputValue.trim() || isTyping) return;
 
         const userMessage: Message = {
             id: Date.now().toString(),
@@ -52,35 +55,44 @@ const ChatWidget = () => {
         setMessages((prev) => [...prev, userMessage]);
         setInputValue("");
         setIsTyping(true);
+        setError(null);
 
-        // Simulate AI response (placeholder for actual AI integration)
-        setTimeout(() => {
+        try {
+            // Przygotuj historię konwersacji (ostatnie 10 wiadomości bez welcome message)
+            const conversationHistory = messages
+                .filter(msg => msg.id !== "welcome")
+                .slice(-10)
+                .map(msg => ({
+                    role: msg.role,
+                    content: msg.content
+                }));
+
+            // Wywołaj AI API
+            const aiResponse = await sendChatMessage(inputValue, conversationHistory);
+
             const assistantMessage: Message = {
                 id: (Date.now() + 1).toString(),
-                content: getSimulatedResponse(inputValue),
+                content: aiResponse,
                 role: "assistant",
                 timestamp: new Date(),
             };
-            setMessages((prev) => [...prev, assistantMessage]);
-            setIsTyping(false);
-        }, 1000 + Math.random() * 1000);
-    };
 
-    const getSimulatedResponse = (input: string): string => {
-        const lowered = input.toLowerCase();
-        if (lowered.includes("preis") || lowered.includes("kost")) {
-            return "Unsere Online-Theorie kostet 69€ und die Praxis-Ausbildung ab 299€. Schauen Sie sich unsere Preisübersicht auf der Startseite an! 💰";
+            setMessages((prev) => [...prev, assistantMessage]);
+        } catch (error: any) {
+            console.error("Chat error:", error);
+            setError(error.message);
+
+            // Dodaj wiadomość o błędzie
+            const errorMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                content: "Entschuldigung, es gab einen Fehler bei der Verarbeitung Ihrer Nachricht. Bitte versuchen Sie es erneut oder kontaktieren Sie uns direkt.",
+                role: "assistant",
+                timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, errorMessage]);
+        } finally {
+            setIsTyping(false);
         }
-        if (lowered.includes("kurs") || lowered.includes("schulung")) {
-            return "Wir bieten Online-Theorie, Live-Theorie und Praxis-Ausbildung für Gabelstapler an. Was interessiert Sie am meisten? 📚";
-        }
-        if (lowered.includes("kontakt") || lowered.includes("telefon")) {
-            return "Sie können uns über das Kontaktformular auf der Startseite erreichen oder direkt anrufen. Wir helfen Ihnen gerne! 📞";
-        }
-        if (lowered.includes("personal") || lowered.includes("vermittlung")) {
-            return "Wir bieten auch Personalvermittlung für Produktion, Lager und Logistik an. Besuchen Sie unsere Personalvermittlung-Seite für mehr Infos! 👷";
-        }
-        return "Vielen Dank für Ihre Nachricht! Haben Sie Fragen zu unseren Staplerschulungen ? Ich helfe Ihnen gerne weiter! 😊";
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -131,14 +143,27 @@ const ChatWidget = () => {
                         </div>
                         <div className="flex-1">
                             <h3 className="font-display font-semibold text-lg">STAPLERO Assistent</h3>
-                            <p className="text-xs text-primary-foreground/80">Immer für Sie da</p>
+                            <p className="text-xs text-primary-foreground/80">
+                                {isTyping ? "Schreibt..." : "Immer für Sie da"}
+                            </p>
                         </div>
                         <div className="flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                            <span className="text-xs">Online</span>
+                            <span className={cn(
+                                "w-2 h-2 rounded-full",
+                                error ? "bg-red-400" : "bg-green-400 animate-pulse"
+                            )} />
+                            <span className="text-xs">{error ? "Fehler" : "Online"}</span>
                         </div>
                     </div>
                 </div>
+
+                {/* Error Banner */}
+                {error && (
+                    <div className="bg-red-50 border-b border-red-200 p-3 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-red-800">{error}</p>
+                    </div>
+                )}
 
                 {/* Messages Area */}
                 <ScrollArea className="h-[350px] p-4" ref={scrollRef}>
@@ -206,6 +231,7 @@ const ChatWidget = () => {
                             onKeyPress={handleKeyPress}
                             placeholder="Schreiben Sie eine Nachricht..."
                             className="flex-1 rounded-full bg-muted border-0 focus-visible:ring-primary"
+                            disabled={isTyping}
                         />
                         <Button
                             onClick={handleSend}
