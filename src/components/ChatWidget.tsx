@@ -1,11 +1,15 @@
-// src/components/ChatWidget.tsx
 import { useState, useRef, useEffect } from "react";
-import { Headset, X, Send, Sparkles, User, AlertCircle } from "lucide-react";
+import { Headset, X, Send, Sparkles, User, AlertCircle, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { sendChatMessage } from "@/services/chatApi";
+import {
+    sendChatMessage,
+    RateLimitError,
+    SpamBlockError,
+    formatBlockedTime
+} from "@/services/chatApi";
 
 interface Message {
     id: string;
@@ -27,6 +31,9 @@ const ChatWidget = () => {
     const [inputValue, setInputValue] = useState("");
     const [isTyping, setIsTyping] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isBlocked, setIsBlocked] = useState(false);
+    const [blockedUntil, setBlockedUntil] = useState<string | null>(null);
+    const [rateLimited, setRateLimited] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -42,8 +49,27 @@ const ChatWidget = () => {
         }
     }, [messages, isTyping]);
 
+    // Sprawdź czy blokada już minęła
+    useEffect(() => {
+        if (blockedUntil) {
+            const checkInterval = setInterval(() => {
+                const now = new Date();
+                const until = new Date(blockedUntil);
+
+                if (now >= until) {
+                    setIsBlocked(false);
+                    setBlockedUntil(null);
+                    setError(null);
+                    clearInterval(checkInterval);
+                }
+            }, 1000);
+
+            return () => clearInterval(checkInterval);
+        }
+    }, [blockedUntil]);
+
     const handleSend = async () => {
-        if (!inputValue.trim() || isTyping) return;
+        if (!inputValue.trim() || isTyping || isBlocked) return;
 
         const userMessage: Message = {
             id: Date.now().toString(),
@@ -56,9 +82,10 @@ const ChatWidget = () => {
         setInputValue("");
         setIsTyping(true);
         setError(null);
+        setRateLimited(false);
 
         try {
-            // Przygotuj historię konwersacji (ostatnie 10 wiadomości bez welcome message)
+            // Przygotuj historię konwersacji
             const conversationHistory = messages
                 .filter(msg => msg.id !== "welcome")
                 .slice(-10)
@@ -80,16 +107,51 @@ const ChatWidget = () => {
             setMessages((prev) => [...prev, assistantMessage]);
         } catch (error: any) {
             console.error("Chat error:", error);
-            setError(error.message);
 
-            // Dodaj wiadomość o błędzie
-            const errorMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                content: "Entschuldigung, es gab einen Fehler bei der Verarbeitung Ihrer Nachricht. Bitte versuchen Sie es erneut oder kontaktieren Sie uns direkt.",
-                role: "assistant",
-                timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, errorMessage]);
+            // Obsługa różnych typów błędów
+            if (error instanceof SpamBlockError) {
+                // Trwała blokada
+                setIsBlocked(true);
+                setBlockedUntil(error.blockedUntil || null);
+                setError(error.message);
+
+                const blockMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    content: `⚠️ ${error.message}\n\n${error.blockedUntil ? formatBlockedTime(error.blockedUntil) : ''}`,
+                    role: "assistant",
+                    timestamp: new Date(),
+                };
+                setMessages((prev) => [...prev, blockMessage]);
+            } else if (error instanceof RateLimitError) {
+                // Rate limit
+                setRateLimited(true);
+                setError(error.message);
+
+                const rateLimitMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    content: `⏱️ ${error.message}\n\nBitte warten Sie einen Moment, bevor Sie die nächste Nachricht senden.`,
+                    role: "assistant",
+                    timestamp: new Date(),
+                };
+                setMessages((prev) => [...prev, rateLimitMessage]);
+
+                // Auto-reset rate limit po 2 sekundach
+                setTimeout(() => {
+                    setRateLimited(false);
+                    setError(null);
+                }, 2000);
+            } else {
+                // Inny błąd
+                setError(error.message);
+
+                const errorMessage: Message = {
+                    id: (Date.now() + 1).toString(),
+                    content: "Entschuldigung, es gab einen Fehler bei der Verarbeitung Ihrer Nachricht. Bitte versuchen Sie es erneut.",
+                    role: "assistant",
+                    timestamp: new Date(),
+                };
+                setMessages((prev) => [...prev, errorMessage]);
+            }
         } finally {
             setIsTyping(false);
         }
@@ -111,19 +173,23 @@ const ChatWidget = () => {
                     "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg transition-all duration-300 flex items-center justify-center",
                     "bg-gradient-to-r from-primary to-accent text-primary-foreground",
                     "hover:scale-110 hover:shadow-xl",
-                    isOpen && "rotate-90"
+                    isOpen && "rotate-90",
+                    isBlocked && "opacity-50"
                 )}
                 aria-label={isOpen ? "Chat schließen" : "Chat öffnen"}
+                disabled={isBlocked}
             >
                 {isOpen ? (
                     <X className="w-6 h-6" />
+                ) : isBlocked ? (
+                    <ShieldAlert className="w-6 h-6" />
                 ) : (
                     <Headset className="w-6 h-6" />
                 )}
             </button>
 
             {/* Pulse indicator when closed */}
-            {!isOpen && (
+            {!isOpen && !isBlocked && (
                 <div className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-primary/30 animate-ping pointer-events-none" />
             )}
 
@@ -136,32 +202,61 @@ const ChatWidget = () => {
                 )}
             >
                 {/* Header */}
-                <div className="bg-gradient-to-r from-primary to-accent p-4 text-primary-foreground">
+                <div className={cn(
+                    "bg-gradient-to-r p-4 text-primary-foreground",
+                    isBlocked ? "from-red-600 to-red-700" : "from-primary to-accent"
+                )}>
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-                            <Sparkles className="w-5 h-5" />
+                            {isBlocked ? (
+                                <ShieldAlert className="w-5 h-5" />
+                            ) : (
+                                <Sparkles className="w-5 h-5" />
+                            )}
                         </div>
                         <div className="flex-1">
-                            <h3 className="font-display font-semibold text-lg">STAPLERO Assistent</h3>
+                            <h3 className="font-display font-semibold text-lg">
+                                {isBlocked ? "Chat Gesperrt" : "STAPLERO Assistent"}
+                            </h3>
                             <p className="text-xs text-primary-foreground/80">
-                                {isTyping ? "Schreibt..." : "Immer für Sie da"}
+                                {isBlocked
+                                    ? blockedUntil ? formatBlockedTime(blockedUntil) : "Vorübergehend gesperrt"
+                                    : isTyping
+                                        ? "Schreibt..."
+                                        : "Immer für Sie da"
+                                }
                             </p>
                         </div>
                         <div className="flex items-center gap-1">
                             <span className={cn(
                                 "w-2 h-2 rounded-full",
-                                error ? "bg-red-400" : "bg-green-400 animate-pulse"
+                                isBlocked ? "bg-red-400" :
+                                    error ? "bg-yellow-400" :
+                                        "bg-green-400 animate-pulse"
                             )} />
-                            <span className="text-xs">{error ? "Fehler" : "Online"}</span>
+                            <span className="text-xs">
+                                {isBlocked ? "Gesperrt" : error ? "Warnung" : "Online"}
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Error Banner */}
-                {error && (
-                    <div className="bg-red-50 border-b border-red-200 p-3 flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-red-800">{error}</p>
+                {/* Error/Warning Banner */}
+                {(error || rateLimited) && !isBlocked && (
+                    <div className={cn(
+                        "border-b p-3 flex items-start gap-2",
+                        rateLimited ? "bg-yellow-50 border-yellow-200" : "bg-red-50 border-red-200"
+                    )}>
+                        <AlertCircle className={cn(
+                            "w-4 h-4 flex-shrink-0 mt-0.5",
+                            rateLimited ? "text-yellow-600" : "text-red-600"
+                        )} />
+                        <p className={cn(
+                            "text-xs",
+                            rateLimited ? "text-yellow-800" : "text-red-800"
+                        )}>
+                            {error}
+                        </p>
                     </div>
                 )}
 
@@ -192,7 +287,7 @@ const ChatWidget = () => {
                                 </div>
                                 <div
                                     className={cn(
-                                        "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm",
+                                        "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-line",
                                         message.role === "user"
                                             ? "bg-primary text-primary-foreground rounded-br-md"
                                             : "bg-muted text-foreground rounded-bl-md"
@@ -223,28 +318,45 @@ const ChatWidget = () => {
 
                 {/* Input Area */}
                 <div className="p-4 border-t border-border bg-card">
-                    <div className="flex gap-2">
-                        <Input
-                            ref={inputRef}
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            placeholder="Schreiben Sie eine Nachricht..."
-                            className="flex-1 rounded-full bg-muted border-0 focus-visible:ring-primary"
-                            disabled={isTyping}
-                        />
-                        <Button
-                            onClick={handleSend}
-                            disabled={!inputValue.trim() || isTyping}
-                            size="icon"
-                            className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground w-10 h-10 flex-shrink-0"
-                        >
-                            <Send className="w-4 h-4" />
-                        </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                        Powered by STAPLERO AI
-                    </p>
+                    {isBlocked ? (
+                        <div className="text-center py-2">
+                            <ShieldAlert className="w-8 h-8 mx-auto text-red-500 mb-2" />
+                            <p className="text-sm text-red-600 font-medium">
+                                Chat vorübergehend gesperrt
+                            </p>
+                            {blockedUntil && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {formatBlockedTime(blockedUntil)}
+                                </p>
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex gap-2">
+                                <Input
+                                    ref={inputRef}
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    placeholder="Schreiben Sie eine Nachricht..."
+                                    className="flex-1 rounded-full bg-muted border-0 focus-visible:ring-primary"
+                                    disabled={isTyping || rateLimited}
+                                    maxLength={500}
+                                />
+                                <Button
+                                    onClick={handleSend}
+                                    disabled={!inputValue.trim() || isTyping || rateLimited}
+                                    size="icon"
+                                    className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground w-10 h-10 flex-shrink-0"
+                                >
+                                    <Send className="w-4 h-4" />
+                                </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground text-center mt-2">
+                                Powered by STAPLERO AI • {inputValue.length}/500
+                            </p>
+                        </>
+                    )}
                 </div>
             </div>
         </>
