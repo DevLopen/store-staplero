@@ -39,10 +39,10 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import heroImage from "@/assets/hero.webp";
+import heroImage from "@/assets/bodzio.png";
 import warehouseImage from "@/assets/index-1.jpg";
 import controlsImage from "@/assets/forklift-controls.jpg";
-import trainingImage from "@/assets/training-room.jpg";
+import trainingImage from "@/assets/training-room.png";
 
 const Index = () => {
   const { toast } = useToast();
