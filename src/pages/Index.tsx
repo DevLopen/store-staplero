@@ -54,6 +54,7 @@ const Index = () => {
     message: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
   // FAQ toggle state
   const [faqCustomerType, setFaqCustomerType] = useState('b2b');
@@ -63,7 +64,7 @@ const Index = () => {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch(`${process.env.VITE_API_URL || 'http://localhost:3001'}/api/contact`, {
+            const response = await fetch(`${API_URL}/contact`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
