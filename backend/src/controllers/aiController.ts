@@ -14,20 +14,17 @@ interface AuthRequest extends Request {
 // Konfiguracja multer dla uploadów
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB max
-    },
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         const allowedTypes = [
-            "text/plain",
-            "application/pdf",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "text/plain", "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "image/jpeg", "image/png", "image/webp" // DODANO OBRAZY
         ];
-
         if (allowedTypes.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            cb(new Error("Nieunterstütztes Dateiformat. Nur TXT, PDF und DOCX erlaubt."));
+            cb(new Error("Format nieobsługiwany. Dozwolone: TXT, PDF, DOCX, JPG, PNG"));
         }
     }
 });
@@ -39,46 +36,27 @@ export const generateContent = async (req: AuthRequest, res: Response) => {
         const { title, prompt } = req.body;
         const files = req.files as Express.Multer.File[];
 
-        if (!title || !prompt) {
+        if (!title) {
             return res.status(400).json({
-                message: "Titel und Prompt sind erforderlich"
+                message: "Ein Titel ist erforderlich, um die KI zu steuern."
             });
         }
 
-        // Wyciągnij tekst z uploadowanych plików
-        const fileContents: string[] = [];
-console.log(files);
-        if (files && files.length > 0) {
-            for (const file of files) {
-                try {
-                    const text = await extractTextFromFile(file.buffer, file.mimetype);
-                    fileContents.push(`=== ${file.originalname} ===\n${text}`);
-                } catch (err) {
-                    console.error(`Fehler beim Extrahieren von ${file.originalname}:`, err);
-                }
-            }
-        }
-
-        // Generuj content z OpenAI
+        // Przekazujemy pełne obiekty plików do serwisu
         const generatedContent = await generateTopicContent({
             title,
-            prompt,
-            fileContents,
+            prompt: prompt || "",
+            files: files || [], // Zmienione z fileContents
             language: "de"
         });
 
         res.json({
             success: true,
             content: generatedContent,
-            filesProcessed: fileContents.length
+            filesProcessed: files?.length || 0
         });
-
     } catch (error: any) {
-        console.error("AI Generation Error:", error);
-        res.status(500).json({
-            message: "Fehler bei der AI-Generierung",
-            error: error.message
-        });
+        res.status(500).json({ message: "Fehler bei der AI-Generierung", error: error.message });
     }
 };
 

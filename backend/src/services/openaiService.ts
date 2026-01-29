@@ -1,5 +1,7 @@
-// backend/src/services/openaiService.ts
 import OpenAI from "openai";
+import * as mammoth from "mammoth";
+// Zmiana na bezpieczniejszy fork
+const pdf = require("pdf-parse-fork");
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY || "",
@@ -8,7 +10,7 @@ const openai = new OpenAI({
 interface GenerateContentParams {
     title: string;
     prompt: string;
-    fileContents?: string[];
+    files?: Express.Multer.File[];
     language?: string;
 }
 
@@ -195,6 +197,29 @@ Beispiel-Antworten:
 - "Gerne! Für ein individuelles Angebot benötigen wir..."
 `;
 
+const EXPERT_SYSTEM_PROMPT = `
+Du bist ein hochqualifizierter Dozent für Flurförderzeuge bei STAPLERO.
+
+WICHTIG - QUELLEN-PRIORITÄT:
+1. Deine Hauptquelle sind die vom Nutzer hochgeladenen Dokumente und Bilder.
+2. Verwende primär die Informationen aus diesen Materialien (Redaktioneller Fokus).
+3. Nutze dein eigenes Expertenwissen nur, um Lücken zu füllen oder rechtliche Grundlagen (z.B. DGUV Vorschriften) zu präzisieren.
+4. Wenn Materialien vorliegen, haben diese Vorrang vor generischem Wissen.
+
+QUALITÄTS-STANDARDS:
+1. RECHTLICHER FOKUS: Nutze konkrete deutsche Rechtsgrundlagen (z.B. DGUV Vorschrift 1, DGUV Vorschrift 68, BetrSichV, ArbSchG). 
+2. KEINE GENERISCHEN BEISPIELE: Bleibe bei fachlichen Fakten und realen Gefahrenpotenzialen.
+3. TECHNISCHE TIEFE: Erkläre physikalische Grundsätze (Standsicherheit, Lastschwerpunkt).
+4. GRAFIK-MANDAT: Wenn es sinnvoll ist, füge am Ende einen Platzhalter für DALL-E ein: [GENERATE_IMAGE: Beschreibung einer fachlichen Situation].
+
+STRUKTUR:
+# [Titel des Moduls]
+## Rechtliche Grundlagen & Normen
+## Kernkompetenzen
+## Gefahrenanalyse & Prävention
+## STAPLERO Experten-Check
+`;
+
 export const generateChatResponse = async (
     userMessage: string,
     conversationHistory: ChatMessage[] = []
@@ -241,55 +266,87 @@ export const generateChatResponse = async (
 // Pozostałe funkcje z oryginalnego pliku
 export const generateTopicContent = async ({
                                                title,
-                                               prompt,
-                                               fileContents = [],
+                                               prompt = "Erstelle eine detaillierte Lektion basierend auf dem Titel und den Materialien.",
+                                               files = [],
                                                language = "de"
                                            }: GenerateContentParams): Promise<string> => {
 
-    const filesContext = fileContents.length > 0
-        ? `\n\nZawartość załączonych plików:\n${fileContents.join("\n\n---\n\n")}`
-        : "";
+    const imageFiles = files.filter(f => f.mimetype.startsWith('image/'));
+    const docFiles = files.filter(f => !f.mimetype.startsWith('image/'));
 
-    const systemPrompt = `Du bist ein Experte für Staplerschulungen und technische Dokumentation. 
-Deine Aufgabe ist es, professionelle, gut strukturierte Lehrinhalte zu erstellen.
+    // WYCIĄGANIE TEKSTU Z PLIKÓW
+    let docsText = "";
+    for (const file of docFiles) {
+        const text = await extractTextFromFile(file.buffer, file.mimetype);
+        docsText += `\n--- INHALT AUS DATEI: ${file.originalname} ---\n${text}\n`;
+    }
 
-Formatierung:
-- Verwende Markdown-Formatierung
-- Beginne mit einer klaren Überschrift (# Titel)
-- Strukturiere den Inhalt mit Unterüberschriften (## und ###)
-- Verwende Aufzählungen für Listen
-- Hebe wichtige Punkte **fett** hervor
-- Füge praktische Beispiele hinzu
+    // BUDOWANIE WIADOMOŚCI - tutaj dodajemy docsText!
+    const userMessageContent: any[] = [
+        {
+            type: "text",
+            text: `THEMA: "${title}"
+            ANWEISUNG: ${prompt}
+            
+            UNBEDINGT ZU BEACHTENDE MATERIALIEN (TEXT):
+            ${docsText || "Keine Textdateien bereitgestellt."}
+            
+            Analysiere sowohl den obigen Text als auch die beigefügten Bilder (falls vorhanden) und erstelle daraus das Lernmodul.`
+        }
+    ];
 
-Stil:
-- Schreibe klar und verständlich
-- Verwende eine professionelle, aber zugängliche Sprache
-- Fokussiere dich auf praktische Anwendung
-- Füge Sicherheitshinweise hinzu wo relevant`;
-
-    const userPrompt = `Erstelle einen Schulungsinhalt zum Thema: "${title}"
-
-Anforderungen:
-${prompt}
-${filesContext}
-
-Erstelle einen vollständigen, gut strukturierten Lehrinhalt in Markdown-Format.`;
+    // Dodanie zdjęć do analizy Vision
+    imageFiles.forEach(file => {
+        userMessageContent.push({
+            type: "image_url",
+            image_url: { url: `data:${file.mimetype};base64,${file.buffer.toString('base64')}` }
+        });
+    });
 
     try {
+        // KROK A: Generowanie treści i promptu dla grafiki
         const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: "gpt-4o",
             messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userPrompt }
+                { role: "system", content: EXPERT_SYSTEM_PROMPT }, // Stała tożsamość
+                { role: "user", content: userMessageContent }
             ],
-            temperature: 0.7,
-            max_tokens: 2000,
+            temperature: 0.3,
+            max_tokens: 2500
         });
 
-        return completion.choices[0]?.message?.content || "Fehler bei der Generierung";
+        let finalContent = completion.choices[0]?.message?.content || "";
+
+        // // KROK B: Automatyczne generowanie grafiki DALL-E 3
+        // const imageTagMatch = finalContent.match(/\[GENERATE_IMAGE: (.*?)\]/);
+        //
+        // if (imageTagMatch) {
+        //     const imageDescription = imageTagMatch[1];
+        //     const imageResponse = await openai.images.generate({
+        //         model: "dall-e-3",
+        //         prompt: `Professional, clean educational illustration for a forklift safety course: ${imageDescription}`,
+        //         n: 1,
+        //         size: "1024x1024"
+        //     });
+        //
+        //     // Sprawdzenie czy dane istnieją i czy tablica nie jest pusta
+        //     if (imageResponse.data && imageResponse.data.length > 0) {
+        //         const imageUrl = imageResponse.data[0].url;
+        //
+        //         if (imageUrl) {
+        //             finalContent = finalContent.replace(imageTagMatch[0], `\n\n![Illustration](${imageUrl})\n\n`);
+        //         }
+        //     } else {
+        //         // Jeśli grafika się nie wygenerowała, usuwamy tag promptu, by nie "śmiecił" w tekście
+        //         finalContent = finalContent.replace(imageTagMatch[0], "");
+        //         console.error("OpenAI Image Error: No data received");
+        //     }
+        // }
+
+        return finalContent;
     } catch (error: any) {
-        console.error("OpenAI API Error:", error);
-        throw new Error(`AI-Generierung fehlgeschlagen: ${error.message}`);
+        console.error("OpenAI Multimodal Error:", error);
+        throw new Error(`Generowanie nie powiodło się: ${error.message}`);
     }
 };
 
@@ -323,17 +380,25 @@ Behalte die Markdown-Formatierung bei.`;
 };
 
 export const extractTextFromFile = async (fileBuffer: Buffer, mimeType: string): Promise<string> => {
-    if (mimeType === "text/plain") {
-        return fileBuffer.toString("utf-8");
-    }
+    if (!fileBuffer || fileBuffer.length === 0) return "";
 
-    if (mimeType === "application/pdf") {
-        return "[PDF content extraction not implemented yet]";
+    try {
+        if (mimeType === "text/plain") {
+            return fileBuffer.toString("utf-8");
+        }
+        if (mimeType === "application/pdf") {
+            // pdf-parse zwraca Promise, który rozwiązuje się do obiektu z polem text
+            const data = await pdf(fileBuffer);
+            return data.text || "";
+        }
+        if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+            // mammoth wymaga obiektu z buforem
+            const result = await mammoth.extractRawText({ buffer: fileBuffer });
+            return result.value || "";
+        }
+        return "";
+    } catch (error) {
+        console.error("Błąd ekstrakcji tekstu z pliku:", mimeType, error);
+        return ""; // Zwracamy pusty tekst, by nie przerywać pracy AI
     }
-
-    if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-        return "[DOCX content extraction not implemented yet]";
-    }
-
-    throw new Error("Nieunterstütztes Dateiformat");
 };

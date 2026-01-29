@@ -80,10 +80,6 @@ export default function EnhancedTopicDialog({
     };
 
     const handleAIGenerate = async () => {
-        if (!aiPrompt.trim() && uploadedFiles.length === 0) {
-            alert("Bitte geben Sie einen Prompt ein oder laden Sie Dateien hoch");
-            return;
-        }
 
         if (!topicForm.title.trim()) {
             alert("Bitte geben Sie zuerst einen Titel ein");
@@ -99,9 +95,16 @@ export default function EnhancedTopicDialog({
             formData.append('title', topicForm.title);
             formData.append('prompt', aiPrompt);
 
-            uploadedFiles.forEach(file => {
-                formData.append('files', file);
+            // Pliki - każdy jako osobne pole
+            uploadedFiles.forEach((file, index) => {
+                console.log(`Adding file ${index}:`, file.name, file.type);
+                formData.append('files', file); // nazwa musi być 'files'
             });
+
+            // Debug - zobacz co wysyłasz
+            for (let pair of formData.entries()) {
+                console.log(pair[0], pair[1]);
+            }
 
             const response = await fetch(`${API_URL}/ai/generate-content`, {
                 method: 'POST',
@@ -239,12 +242,12 @@ export default function EnhancedTopicDialog({
 
                         <div className="space-y-3">
                             <div className="space-y-2">
-                                <Label htmlFor="ai-prompt">Beschreiben Sie den gewünschten Inhalt</Label>
+                                <Label htmlFor="ai-prompt">Zusätzliche Anweisungen (Optional)</Label>
                                 <Textarea
                                     id="ai-prompt"
                                     value={aiPrompt}
                                     onChange={(e) => setAiPrompt(e.target.value)}
-                                    placeholder="z.B. 'Erstelle eine Einführung in die Sicherheitsvorschriften beim Staplerfahren mit 3 Hauptpunkten'"
+                                    placeholder="Lass das Feld leer, wenn die KI den Inhalt basierend auf dem Titel und den Fotos selbst erstellen soll."
                                     rows={2}
                                 />
                             </div>
@@ -256,7 +259,7 @@ export default function EnhancedTopicDialog({
                                         type="file"
                                         onChange={handleFileUpload}
                                         multiple
-                                        accept=".pdf,.docx,.txt"
+                                        accept=".pdf,.docx,.txt,image/*"
                                         className="flex-1"
                                     />
                                     <Button variant="outline" size="sm" onClick={() => setUploadedFiles([])}>
