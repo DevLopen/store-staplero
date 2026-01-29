@@ -39,7 +39,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import heroImage from "@/assets/bodzio.jpg";
+import heroImage from "@/assets/bodzio.webp";
 import warehouseImage from "@/assets/index-1.jpg";
 import controlsImage from "@/assets/forklift-controls.jpg";
 import trainingImage from "@/assets/sala.jpg";
