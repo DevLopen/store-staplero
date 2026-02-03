@@ -66,3 +66,29 @@ export const me = async (req: Request, res: Response) => {
     }
 };
 
+export const getAllUsers = async (req: Request, res: Response) => {
+    try {
+        const users = await User.find().select("-password").sort({ createdAt: -1 });
+
+        const usersWithStats = users.map(user => ({
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            isAdmin: user.isAdmin,
+            phone: user.phone,
+            address: user.address,
+            city: user.city,
+            postalCode: user.postalCode,
+            createdAt: user.createdAt,
+            purchasedCoursesCount: user.purchasedCourses?.length || 0,
+            activeCourses: user.purchasedCourses?.filter(c => c.status === "active").length || 0,
+        }));
+
+        console.log(`✅ Fetched ${usersWithStats.length} users`);
+        res.json({ users: usersWithStats });
+    } catch (err) {
+        console.error("❌ Error fetching users:", err);
+        res.status(500).json({ message: "Server error", error: err });
+    }
+};
+

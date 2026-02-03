@@ -469,28 +469,123 @@ const Dashboard = () => {
                         </TabsContent>
 
                         {/* Orders Tab */}
+                        {/* Orders Tab */}
                         <TabsContent value="orders" className="space-y-4">
                             {userOrders.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50"/>
-                                    <p className="text-muted-foreground">Keine Bestellungen vorhanden</p>
-                                </div>
+                                <Card>
+                                    <CardContent className="py-12 text-center">
+                                        <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50"/>
+                                        <p className="text-muted-foreground mb-2">Keine Bestellungen vorhanden</p>
+                                        <Button asChild>
+                                            <Link to="/courses">
+                                                <ShoppingBag className="w-4 h-4 mr-2" />
+                                                Kurse kaufen
+                                            </Link>
+                                        </Button>
+                                    </CardContent>
+                                </Card>
                             ) : (
-                                userOrders.map(order => (
-                                    <Card key={order.id} className="mb-4">
-                                        <CardContent className="flex justify-between items-center pt-6">
-                                            <div>
-                                                <p className="text-sm font-medium">Bestellung #{order.id}</p>
-                                                <p className="text-xs text-muted-foreground">{order.date}</p>
-                                                <p className="text-xs text-muted-foreground">Gesamt: {order.total} €</p>
-                                                <p className="text-xs text-muted-foreground">Status: {order.status}</p>
-                                            </div>
-                                            <Button size="sm" asChild>
-                                                <Link to={`/orders/${order.id}`}>Details</Link>
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-                                ))
+                                <div className="space-y-4">
+                                    {userOrders.map(order => (
+                                        <Card key={order._id || order.id} className="mb-4">
+                                            <CardHeader>
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <CardTitle className="text-lg flex items-center gap-2">
+                                                            <ShoppingBag className="w-5 h-5 text-primary" />
+                                                            Bestellung #{order.orderNumber}
+                                                        </CardTitle>
+                                                        <CardDescription className="flex items-center gap-2 mt-1">
+                                                            <Calendar className="w-4 h-4" />
+                                                            {new Date(order.createdAt).toLocaleDateString('de-DE', {
+                                                                year: 'numeric',
+                                                                month: 'long',
+                                                                day: 'numeric'
+                                                            })}
+                                                        </CardDescription>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-2xl font-bold text-primary">{order.totalAmount?.toFixed(2) || order.total?.toFixed(2)} €</p>
+                                                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-2 ${
+                                                            order.status === 'paid' || order.status === 'completed'
+                                                                ? 'bg-success/10 text-success'
+                                                                : order.status === 'pending'
+                                                                    ? 'bg-warning/10 text-warning'
+                                                                    : 'bg-destructive/10 text-destructive'
+                                                        }`}>
+                  {order.status === 'paid' && 'Bezahlt'}
+                                                            {order.status === 'completed' && 'Abgeschlossen'}
+                                                            {order.status === 'pending' && 'Ausstehend'}
+                                                            {order.status === 'cancelled' && 'Storniert'}
+                                                            {order.status === 'expired' && 'Abgelaufen'}
+                </span>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="space-y-3">
+                                                    <div>
+                                                        <h4 className="font-semibold mb-2 text-sm text-muted-foreground">Artikel</h4>
+                                                        <div className="space-y-2">
+                                                            {order.items.map((item: any, idx: number) => (
+                                                                <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                                                                    <div className="flex items-center gap-3">
+                                                                        {item.type === 'online' || item.type === 'online_course' ? (
+                                                                            <BookOpen className="w-4 h-4 text-primary" />
+                                                                        ) : (
+                                                                            <MapPin className="w-4 h-4 text-accent" />
+                                                                        )}
+                                                                        <span className="text-sm font-medium">{item.courseName || item.name}</span>
+                                                                    </div>
+                                                                    <span className="font-semibold">{item.price.toFixed(2)} €</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {order.practicalCourseDetails && (
+                                                        <div className="mt-4 p-3 bg-accent/10 rounded-lg">
+                                                            <h4 className="font-semibold mb-2 text-sm flex items-center gap-2">
+                                                                <MapPin className="w-4 h-4 text-accent" />
+                                                                Praktischer Kurs
+                                                            </h4>
+                                                            <div className="space-y-1 text-sm text-muted-foreground">
+                                                                <p className="font-medium text-foreground">{order.practicalCourseDetails.locationName}</p>
+                                                                <p>{order.practicalCourseDetails.locationAddress}</p>
+                                                                <p className="flex items-center gap-2">
+                                                                    <Calendar className="w-3 h-3" />
+                                                                    {order.practicalCourseDetails.startDate === order.practicalCourseDetails.endDate
+                                                                        ? new Date(order.practicalCourseDetails.startDate).toLocaleDateString('de-DE')
+                                                                        : `${new Date(order.practicalCourseDetails.startDate).toLocaleDateString('de-DE')} - ${new Date(order.practicalCourseDetails.endDate).toLocaleDateString('de-DE')}`
+                                                                    }
+                                                                </p>
+                                                                <p className="flex items-center gap-2">
+                                                                    <Clock className="w-3 h-3" />
+                                                                    {order.practicalCourseDetails.time}
+                                                                </p>
+                                                                {order.practicalCourseDetails.wantsPlasticCard && (
+                                                                    <p className="flex items-center gap-2 text-warning">
+                                                                        <Award className="w-3 h-3" />
+                                                                        Plastikkarte bestellt
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {order.expiresAt && order.status === 'paid' && (
+                                                        <div className="mt-4 p-3 bg-primary/10 rounded-lg">
+                                                            <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                                <Clock className="w-4 h-4 text-primary" />
+                                                                Läuft ab: {new Date(order.expiresAt).toLocaleDateString('de-DE')}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
                             )}
                         </TabsContent>
                     </Tabs>
