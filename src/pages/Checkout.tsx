@@ -63,7 +63,7 @@ const Checkout = () => {
         if (checkoutData.type === "practical" && checkoutData.practicalCourse) {
             const base = checkoutData.practicalCourse.price;
             const card = checkoutData.practicalCourse.wantsPlasticCard ? 14.99 : 0;
-            return base + card;
+            return base;
         }
         return checkoutData.price;
     };
