@@ -161,44 +161,57 @@ export const sendPracticalCourseBookingEmail = async (
           .highlight { color: #FF6B35; font-weight: bold; }
           .checklist { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
           .checklist li { margin: 10px 0; }
+          .warning-box { background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; border-radius: 4px; }
+          .info-section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎓 Anmeldung bestätigt!</h1>
+            <h1>✅ Zahlungsbestätigung & Anmeldung</h1>
           </div>
           <div class="content">
-            <h2>Hallo ${name}!</h2>
-            <p>Ihre Anmeldung zum praktischen Staplerführerschein-Kurs wurde erfolgreich bestätigt.</p>
+            <p>Sehr geehrte/r ${name},</p>
+            <p>hiermit bestätigen wir den Zahlungseingang sowie Ihre verbindliche Anmeldung zur Gabelstaplerschulung in Berlin.</p>
             
             <div class="info-box">
-              <h3>📍 Kursdetails</h3>
+              <h3>📍 Schulungstermin</h3>
               <p><strong>Bestellnummer:</strong> ${orderNumber}</p>
-              <p><strong>Standort:</strong> ${locationName}</p>
-              <p><strong>Adresse:</strong> ${locationAddress}</p>
               <p><strong>Datum:</strong> <span class="highlight">${formattedDate}</span></p>
-              <p><strong>Uhrzeit:</strong> <span class="highlight">${time}</span></p>
-              ${wantsPlasticCard ? '<p><strong>Plastikkarte:</strong> ✅ Ja</p>' : ''}
+              <p><strong>Uhrzeit:</strong> <span class="highlight">jeweils von ${time} bis ca. 17:00 Uhr</span></p>
+              <p><strong>Adresse:</strong> ${locationAddress}</p>
+              <p style="margin-top: 10px; font-size: 14px; color: #666;">
+                <em>Zufahrt über den Hof neben dem Loui-Motorradteile-Shop</em>
+              </p>
             </div>
 
             <div class="checklist">
-              <h3>✅ Was Sie mitbringen müssen:</h3>
+              <h3>📋 Bitte bringen Sie Folgendes mit:</h3>
               <ul>
-                <li>Gültiger Personalausweis oder Reisepass</li>
-                <li>Bequeme Kleidung und festes Schuhwerk</li>
-                <li>Ausreichend Verpflegung für den Tag</li>
-                <li>Gute Laune und Lernbereitschaft 😊</li>
+                <li><strong>Am Theorietag:</strong> Personalausweis oder Reisepass sowie ein Passbild</li>
+                <li><strong>Am Praxistag:</strong> Sicherheitsschuhe (Arbeitsschuhe mit Stahlkappe)</li>
               </ul>
             </div>
 
-            <p><strong>Wichtig:</strong> Bitte erscheinen Sie pünktlich 15 Minuten vor Kursbeginn.</p>
-            
-            <p>Bei Fragen oder wenn Sie den Termin ändern möchten, kontaktieren Sie uns bitte rechtzeitig.</p>
-            <p><strong>Wir freuen uns auf Sie!</strong><br>Ihr STAPLERO Team</p>
+            <div class="info-section">
+              <h3>📜 Schulungsinformationen</h3>
+              <p>Die Schulung erfolgt gemäß den deutschen Vorschriften <strong>DGUV Vorschrift 68</strong> und <strong>DGUV Grundsatz 308-001</strong>.</p>
+              <p>Nach erfolgreich bestandener Theorie- und Praxisprüfung erhalten Sie den offiziellen deutschen Staplerschein.</p>
+              ${wantsPlasticCard ? '<p><strong>Plastikkarte:</strong> ✅ Wird ausgestellt</p>' : ''}
+            </div>
+
+            <div class="warning-box">
+              <h3>⚠️ Stornierungsbedingungen</h3>
+              <p><strong>Kostenfreie Stornierung:</strong> bis spätestens 7 Kalendertage vor dem Schulungstermin möglich.</p>
+              <p><strong>Bei späterer Absage:</strong> wird eine Stornogebühr in Höhe von 100 % des Schulungspreises fällig.</p>
+            </div>
+
+            <p>Für Rückfragen stehen wir Ihnen jederzeit gerne zur Verfügung.</p>
+            <p><strong>Mit freundlichen Grüßen<br>Ihr Staplero Team</strong></p>
           </div>
           <div class="footer">
-            <p>STAPLERO | info@staplero.com | +49 176 22067783</p>
+            <p><strong>STAPLERO</strong></p>
+            <p>info@staplero.com<br>+49 176 22067783 | +49 160 92490070</p>
           </div>
         </div>
       </body>
@@ -208,7 +221,7 @@ export const sendPracticalCourseBookingEmail = async (
     await resend.emails.send({
         from: FROM_EMAIL,
         to,
-        subject: `Ihr Staplerführerschein-Kurs am ${formattedDate}`,
+        subject: `Zahlungsbestätigung – Gabelstaplerschulung am ${formattedDate}`,
         html,
     });
 };
