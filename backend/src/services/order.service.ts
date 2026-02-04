@@ -136,6 +136,7 @@ export const markOrderAsPaid = async (
         order.invoicePdfUrl = invoice.pdfUrl;
 
         console.log(`✅ Invoice created: ${invoice.invoiceNumber} for order ${order.orderNumber}`);
+        const pdfBuffer = await lexwareService.getInvoicePDF(invoice.id);
 
         // Wyślij fakturę na email
         await emailService.sendInvoiceEmail(
@@ -143,7 +144,7 @@ export const markOrderAsPaid = async (
             user.name,
             order.orderNumber,
             invoice.invoiceNumber,
-            invoice.pdfUrl
+            pdfBuffer
         );
     } catch (error: any) {
         console.error("❌ Failed to create invoice:", error.message);
