@@ -139,12 +139,6 @@ export const sendPracticalCourseBookingEmail = async (
     time: string,
     wantsPlasticCard: boolean
 ): Promise<void> => {
-    const formattedDate = new Date(date).toLocaleDateString("de-DE", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-    });
 
     const html = `
     <!DOCTYPE html>
@@ -177,7 +171,7 @@ export const sendPracticalCourseBookingEmail = async (
             <div class="info-box">
               <h3>📍 Schulungstermin</h3>
               <p><strong>Bestellnummer:</strong> ${orderNumber}</p>
-              <p><strong>Datum:</strong> <span class="highlight">${formattedDate}</span></p>
+              <p><strong>Datum:</strong> <span class="highlight">${date}</span></p>
               <p><strong>Uhrzeit:</strong> <span class="highlight">jeweils von ${time} bis ca. 17:00 Uhr</span></p>
               <p><strong>Adresse:</strong> ${locationAddress}</p>
               <p style="margin-top: 10px; font-size: 14px; color: #666;">
@@ -221,7 +215,7 @@ export const sendPracticalCourseBookingEmail = async (
     await resend.emails.send({
         from: FROM_EMAIL,
         to,
-        subject: `Zahlungsbestätigung – Gabelstaplerschulung am ${formattedDate}`,
+        subject: `Zahlungsbestätigung – Gabelstaplerschulung am ${date}`,
         html,
     });
 };

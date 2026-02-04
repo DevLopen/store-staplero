@@ -145,18 +145,10 @@ export const createInvoice = async (
             throw new Error("LEXWARE_API_KEY not configured");
         }
 
-        // 1. Utwórz lub pobierz kontakt
-        const contactId = await createOrGetContact({
-            name: invoiceData.customerName,
-            email: invoiceData.customerEmail,
-            address: invoiceData.customerAddress,
-            city: invoiceData.customerCity,
-            postalCode: invoiceData.customerPostalCode
-        });
-
         // 2. Przygotuj pozycje faktury według formatu Lexware
         const lineItems = invoiceData.items.map((item) => {
             const netPrice = calculateNetPrice(item.unitPrice, item.vatRate);
+            const grossAmount = Math.round(item.unitPrice * 100) / 100;
 
             return {
                 type: "custom",
@@ -167,7 +159,7 @@ export const createInvoice = async (
                 unitPrice: {
                     currency: invoiceData.currency,
                     netAmount: netPrice,
-                    grossPrice: item.unitPrice,
+                    grossAmount: grossAmount,
                     taxRatePercentage: item.vatRate
                 }
             };
