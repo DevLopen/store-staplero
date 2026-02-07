@@ -3,6 +3,7 @@ import User from "../models/User";
 import { UserCourse } from "../models/UserCourse";
 import emailService from "./email.service";
 import lexwareService from "./lexware.service";
+import practicalCourseService from "./practicalCourse.service";
 
 /**
  * Create a new order
@@ -92,30 +93,25 @@ export const markOrderAsPaid = async (
         });
     }
 
-    // **NOWE: Generuj fakturę w Lexware**
+    // **Generuj fakturę w Lexware**
     try {
         const user = await User.findById(order.userId);
         if (!user) {
             throw new Error("User not found");
         }
 
-        // Przygotuj pozycje faktury
+        console.log(`📄 Rozpoczynam generowanie faktury dla zamówienia ${order.orderNumber}...`);
+
+        // Przygotuj pozycje faktury - użyj już istniejących items z zamówienia
+        // Każdy item zawiera już prawidłową cenę brutto (gross)
         const invoiceItems = order.items.map((item) => ({
             name: item.courseName,
             quantity: 1,
-            unitPrice: item.price,
-            vatRate: 19, // Można to zmienić w zależności od typu produktu
+            unitPrice: item.price, // To jest już cena brutto z VAT
+            vatRate: 19,
         }));
 
-        // Dodaj plastikkarte jeśli wybrana (dla kursów praktycznych)
-        if (order.type === "practical" && order.practicalCourseDetails?.wantsPlasticCard) {
-            invoiceItems.push({
-                name: "Plastikkarte Staplerführerschein",
-                quantity: 1,
-                unitPrice: 14.99,
-                vatRate: 19,
-            });
-        }
+        console.log(`📋 Pozycje faktury:`, JSON.stringify(invoiceItems, null, 2));
 
         // Stwórz fakturę
         const invoice = await lexwareService.createInvoice({
@@ -135,19 +131,34 @@ export const markOrderAsPaid = async (
         order.invoiceNumber = invoice.invoiceNumber;
         order.invoicePdfUrl = invoice.pdfUrl;
 
-        console.log(`✅ Invoice created: ${invoice.invoiceNumber} for order ${order.orderNumber}`);
-        const pdfBuffer = await lexwareService.getInvoicePDF(invoice.id);
+        console.log(`✅ Faktura utworzona: ${invoice.invoiceNumber} (ID: ${invoice.id})`);
 
-        // Wyślij fakturę na email
-        await emailService.sendInvoiceEmail(
-            user.email,
-            user.name,
-            order.orderNumber,
-            invoice.invoiceNumber,
-            pdfBuffer
-        );
+        // Pobierz PDF faktury (z retry)
+        try {
+            console.log(`📥 Pobieranie PDF faktury...`);
+            const pdfBuffer = await lexwareService.getInvoicePDF(invoice.id);
+            console.log(`✅ PDF pobrany, rozmiar: ${pdfBuffer.length} bytes`);
+
+            // Wyślij fakturę na email
+            console.log(`📧 Wysyłam fakturę na email: ${user.email}...`);
+            await emailService.sendInvoiceEmail(
+                user.email,
+                user.name,
+                order.orderNumber,
+                invoice.invoiceNumber,
+                pdfBuffer
+            );
+            console.log(`✅ Faktura wysłana na email`);
+
+        } catch (pdfError: any) {
+            console.error("❌ Błąd podczas pobierania lub wysyłki PDF:", pdfError.message);
+            // Faktura została utworzona, ale nie udało się wysłać emaila
+            // Można dodać flagę do ponownej próby później
+        }
+
     } catch (error: any) {
         console.error("❌ Failed to create invoice:", error.message);
+        console.error("Stack:", error.stack);
         // Nie przerywamy procesu - zamówienie pozostaje paid
         // Można dodać logikę retry lub flagę do późniejszej generacji
     }
@@ -157,6 +168,34 @@ export const markOrderAsPaid = async (
     // Send confirmation emails (jak wcześniej)
     const user = await User.findById(order.userId);
     if (user) {
+        // **Obsługa kursów praktycznych - dodaj uczestnika i zmniejsz miejsca**
+        if (order.type === "practical" && order.practicalCourseDetails) {
+            try {
+                // Dodaj uczestnika do listy
+                await practicalCourseService.addParticipantToCourse(
+                    order,
+                    user._id.toString(),
+                    user.name,
+                    user.email,
+                    user.phone
+                );
+
+                // Zmniejsz liczbę dostępnych miejsc
+                const dateId = order.practicalCourseDetails.dateId ||
+                    `${order.practicalCourseDetails.startDate}_${order.practicalCourseDetails.endDate}`.replace(/\-/g, '');
+
+                await practicalCourseService.decreaseAvailableSpots(
+                    order.practicalCourseDetails.locationId,
+                    dateId
+                );
+
+                console.log(`✅ Practical course participant added for order ${order.orderNumber}`);
+            } catch (error: any) {
+                console.error("❌ Failed to add participant:", error.message);
+                // Nie przerywamy procesu - uczestnik może być dodany ręcznie później
+            }
+        }
+
         if (order.type === "online") {
             for (const item of order.items) {
                 if (item.courseId && order.expiresAt) {

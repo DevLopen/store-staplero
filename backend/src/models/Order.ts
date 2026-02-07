@@ -14,6 +14,7 @@ export interface PracticalCourseDetails {
     startDate: string;
     endDate: string;
     time: string;
+    dateId: string;
     availableSpots: number;
     wantsPlasticCard: boolean;
     plasticCardPrice?: number;

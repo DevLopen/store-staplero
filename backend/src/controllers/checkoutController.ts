@@ -6,6 +6,7 @@ import orderService from "../services/order.service";
 import emailService from "../services/email.service";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { calculateGrossPrice, PRICING } from "../config/pricing.config";
 
 interface CheckoutRequest {
     // User details
@@ -28,6 +29,7 @@ interface CheckoutRequest {
         locationId: string;
         locationName: string;
         locationAddress: string;
+        dateId: string;        // ID terminu z Location.dates[].id
         startDate: string;
         endDate: string;
         time: string;
@@ -95,7 +97,8 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 return res.status(404).json({ message: "Course not found" });
             }
 
-            const coursePrice = 64.99; // €49/month as per pricing
+            // Cena online course z konfiguracji (NETTO + VAT)
+            const coursePrice = PRICING.getOnlineCourseGross();
             items.push({
                 priceId: process.env.STRIPE_PRICE_ONLINE_COURSE,
                 courseId: course._id.toString(),
@@ -111,26 +114,43 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 return res.status(400).json({ message: "Practical course details required" });
             }
 
-            const basePrice = data.practicalCourse.price;
-            const plasticCardPrice = data.practicalCourse.wantsPlasticCard ? 14.99 : 0;
-            totalAmount = basePrice + plasticCardPrice;
+            // Cena kursu z konfiguracji (NETTO) + VAT 19%
+            const courseNetPrice = data.practicalCourse.price;
+            const courseGrossPrice = calculateGrossPrice(courseNetPrice);
 
+            // Dodaj kurs do items
             items.push({
                 courseName: `Praktischer Staplerführerschein - ${data.practicalCourse.locationName}`,
-                price: basePrice,
+                price: courseGrossPrice,
                 type: "practical",
             });
+
+            totalAmount = courseGrossPrice;
+
+            const cardGrossPrice = PRICING.getPlasticCardGross();
+            // Jeśli wybrano kartę plastikową, dodaj jako osobną pozycję
+            if (data.practicalCourse.wantsPlasticCard) {
+
+                items.push({
+                    courseName: "Plastikkarte Staplerführerschein",
+                    price: cardGrossPrice,
+                    type: "practical-addon",
+                });
+
+                totalAmount += cardGrossPrice;
+            }
 
             practicalCourseDetails = {
                 locationId: data.practicalCourse.locationId,
                 locationName: data.practicalCourse.locationName,
                 locationAddress: data.practicalCourse.locationAddress,
+                dateId: data.practicalCourse.dateId,
                 startDate: data.practicalCourse.startDate,
                 endDate: data.practicalCourse.endDate,
                 time: data.practicalCourse.time,
                 availableSpots: data.practicalCourse.availableSpots,
                 wantsPlasticCard: data.practicalCourse.wantsPlasticCard,
-                plasticCardPrice: data.practicalCourse.wantsPlasticCard ? 14.99 : undefined,
+                plasticCardPrice: data.practicalCourse.wantsPlasticCard ? cardGrossPrice : undefined,
             };
         }
 

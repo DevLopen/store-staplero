@@ -192,7 +192,7 @@ export const createInvoice = async (
             taxConditions: {
                 taxType: "net"
             },
-            title: `${invoiceData.orderNumber}`,
+            title: `Rechnung ${invoiceData.orderNumber}`,
             introduction: "Vielen Dank für Ihre Bestellung.",
             remark: `Bestellnummer: ${invoiceData.orderNumber}`
         };
@@ -215,11 +215,17 @@ export const createInvoice = async (
         const invoiceId = response.data.id ||
             response.headers.location?.split('/').pop();
 
-        console.log(`Faktura utworzona: ${invoiceId}`);
+        if (!invoiceId) {
+            throw new Error("Failed to get invoice ID from Lexware response");
+        }
 
-        // 6. Pobierz szczegóły faktury (aby uzyskać numer)
+        console.log(`✅ Faktura utworzona: ${invoiceId}`);
+
+        // 6. Poczekaj chwilę, aby Lexware wygenerował fakturę
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // 7. Pobierz szczegóły faktury (aby uzyskać numer)
         let invoiceNumber = invoiceData.orderNumber;
-        let pdfUrl: string | undefined = undefined;
 
         try {
             const invoiceDetails = await axios.get(
@@ -233,24 +239,22 @@ export const createInvoice = async (
             );
 
             invoiceNumber = invoiceDetails.data.voucherNumber || invoiceNumber;
+            console.log(`✅ Numer faktury: ${invoiceNumber}`);
 
-            // 7. Spróbuj pobrać URL do PDF
-            pdfUrl = `${LEXWARE_API_URL}/invoices/${invoiceId}/document`;
-
-        } catch (detailsError) {
-            console.warn("Nie udało się pobrać szczegółów faktury:", detailsError);
+        } catch (detailsError: any) {
+            console.warn("⚠️ Nie udało się pobrać szczegółów faktury:", detailsError.response?.data || detailsError.message);
         }
 
         return {
-            id: invoiceId!,
+            id: invoiceId,
             invoiceNumber: invoiceNumber,
-            pdfUrl: pdfUrl,
+            pdfUrl: `${LEXWARE_API_URL}/invoices/${invoiceId}/document`,
             status: "created"
         };
 
     } catch (error: any) {
         if (error.response) {
-            console.error("Lexware API Error:", JSON.stringify(error.response.data, null, 2));
+            console.error("❌ Lexware API Error:", JSON.stringify(error.response.data, null, 2));
             throw new Error(`Failed to create invoice: ${error.response.data.message || error.message}`);
         }
         throw new Error(`Failed to create invoice: ${error.message}`);
@@ -274,32 +278,56 @@ export const getInvoice = async (invoiceId: string): Promise<any> => {
 
         return response.data;
     } catch (error: any) {
-        console.error("Lexware API Error:", error.response?.data || error.message);
+        console.error("❌ Lexware API Error:", error.response?.data || error.message);
         throw new Error(`Failed to get invoice: ${error.message}`);
     }
 };
 
 /**
- * Pobierz PDF faktury
+ * Pobierz PDF faktury - z retry logic
  */
-export const getInvoicePDF = async (invoiceId: string): Promise<Buffer> => {
-    try {
-        const response = await axios.get(
-            `${LEXWARE_API_URL}/invoices/${invoiceId}/document`,
-            {
-                headers: {
-                    "Authorization": `Bearer ${LEXWARE_API_KEY}`,
-                    "Accept": "application/pdf"
-                },
-                responseType: "arraybuffer"
-            }
-        );
+export const getInvoicePDF = async (invoiceId: string, maxRetries: number = 3): Promise<Buffer> => {
+    let lastError: any;
 
-        return Buffer.from(response.data);
-    } catch (error: any) {
-        console.error("Lexware API Error:", error.response?.data || error.message);
-        throw new Error(`Failed to get invoice PDF: ${error.message}`);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`📄 Próba pobrania PDF faktury ${invoiceId} (próba ${attempt}/${maxRetries})...`);
+
+            const response = await axios.get(
+                `${LEXWARE_API_URL}/invoices/${invoiceId}/document`,
+                {
+                    headers: {
+                        "Authorization": `Bearer ${LEXWARE_API_KEY}`,
+                        "Accept": "application/pdf"
+                    },
+                    responseType: "arraybuffer",
+                    timeout: 30000 // 30 sekund timeout
+                }
+            );
+
+            if (!response.data || response.data.byteLength === 0) {
+                throw new Error("PDF is empty");
+            }
+
+            console.log(`✅ PDF pobrany pomyślnie: ${response.data.byteLength} bytes`);
+            return Buffer.from(response.data);
+
+        } catch (error: any) {
+            lastError = error;
+            console.error(`❌ Próba ${attempt} nie powiodła się:`, error.response?.data || error.message);
+
+            // Jeśli to nie ostatnia próba, czekamy przed kolejną
+            if (attempt < maxRetries) {
+                const waitTime = attempt * 2000; // 2s, 4s, 6s...
+                console.log(`⏳ Czekam ${waitTime}ms przed kolejną próbą...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+            }
+        }
     }
+
+    // Wszystkie próby się nie powiodły
+    console.error(`❌ Nie udało się pobrać PDF po ${maxRetries} próbach`);
+    throw new Error(`Failed to get invoice PDF after ${maxRetries} attempts: ${lastError.message}`);
 };
 
 export default {

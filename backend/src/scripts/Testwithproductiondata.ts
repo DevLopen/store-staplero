@@ -77,10 +77,10 @@ async function testInvoiceSystem() {
                 log.success("Zamówienie zaktualizowane");
 
                 // 7. Testuj email (tylko jeśli skonfigurowane)
-                if (config.hasResend) {
-                    log.step("Testowanie wysyłki emaila...");
-                    await testEmailService(testUser, testOrder, invoice);
-                }
+                // if (config.hasResend) {
+                //     log.step("Testowanie wysyłki emaila...");
+                //     await testEmailService(testUser, testOrder, invoice);
+                // }
             }
         } else {
             log.warning("Lexware API nie skonfigurowane - pominięto testy API");
@@ -216,21 +216,6 @@ async function testLexwareAPI(order: any) {
         log.error(`Błąd Lexware API: ${error.message}`);
         log.error(`Błąd Lexware API: ${error}`);
         return null;
-    }
-}
-
-async function testEmailService(user: any, order: any, invoice: any) {
-    try {
-        await emailService.sendInvoiceEmail(
-            user.email,
-            user.name,
-            order.orderNumber,
-            invoice.invoiceNumber,
-            invoice.pdfUrl
-        );
-        log.success("Email wysłany pomyślnie!");
-    } catch (error: any) {
-        log.error(`Błąd wysyłki emaila: ${error.message}`);
     }
 }
 

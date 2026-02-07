@@ -1075,7 +1075,6 @@ const Index = () => {
                                     <div>
                                         <p className="text-sm text-muted-foreground">Telefon</p>
                                         <p className="font-medium text-foreground">+49 176 22067783</p>
-                                        <p className="font-medium text-foreground">+49 176 22067783</p>
                                     </div>
                                 </div>
 

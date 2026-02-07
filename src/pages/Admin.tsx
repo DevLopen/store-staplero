@@ -15,6 +15,7 @@ import { mockCourse, Chapter, Topic, Course, Quiz, QuizQuestion } from "@/data/c
 import { mockLocations, Location, CourseDate } from "@/data/practicalCourseData";
 import { mockOrders, Order, getOrderStatusLabel, getOrderStatusColor } from "@/data/orderData";
 import EnhancedTopicDialog from "@/components/EnhancedTopicDialog";
+import ParticipantsListDialog from "@/components/ParticipantsListDialog";
 import {
   Plus,
   Edit,
@@ -39,7 +40,8 @@ import {
   Euro,
   Eye,
   Phone,
-  Mail
+  Mail,
+  List
 } from "lucide-react";
 
 const Admin = () => {
@@ -64,6 +66,14 @@ const Admin = () => {
     endDate: "",
     time: "08:00 - 16:00",
     availableSpots: "10"
+  });
+
+  const [participantsDialog, setParticipantsDialog] = useState({
+    open: false,
+    locationId: "",
+    dateId: "",
+    locationName: "",
+    dateInfo: ""
   });
 
   // Orders state
@@ -725,9 +735,6 @@ const Admin = () => {
     }
   };
 
-
-
-
   const deleteQuestion = async (questionId: string) => {
     if (!editingQuiz) return;
 
@@ -752,6 +759,37 @@ const Admin = () => {
     } catch (err: any) {
       toast({ title: "Fehler", description: err.message || "Frage konnte nicht gelöscht werden.", variant: "destructive" });
     }
+  };
+
+  const openParticipantsList = (
+      locationId: string,
+      locationName: string,
+      date: CourseDate
+  ) => {
+    const dateInfo = date.startDate === date.endDate
+        ? new Date(date.startDate).toLocaleDateString('de-DE', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })
+        : `${new Date(date.startDate).toLocaleDateString('de-DE', {
+          day: 'numeric',
+          month: 'numeric',
+          year: 'numeric'
+        })} - ${new Date(date.endDate).toLocaleDateString('de-DE', {
+          day: 'numeric',
+          month: 'numeric',
+          year: 'numeric'
+        })}`;
+
+    setParticipantsDialog({
+      open: true,
+      locationId,
+      dateId: date.id,
+      locationName,
+      dateInfo: `${dateInfo} • ${date.time}`
+    });
   };
 
 
@@ -1364,14 +1402,39 @@ const Admin = () => {
                                     <div>
                                       <p className="font-medium text-foreground">
                                         {date.startDate === date.endDate
-                                            ? new Date(date.startDate).toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-                                            : `${new Date(date.startDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' })} - ${new Date(date.endDate).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' })}`
+                                            ? new Date(date.startDate).toLocaleDateString('de-DE', {
+                                              weekday: 'long',
+                                              year: 'numeric',
+                                              month: 'long',
+                                              day: 'numeric'
+                                            })
+                                            : `${new Date(date.startDate).toLocaleDateString('de-DE', {
+                                              day: 'numeric',
+                                              month: 'numeric',
+                                              year: 'numeric'
+                                            })} - ${new Date(date.endDate).toLocaleDateString('de-DE', {
+                                              day: 'numeric',
+                                              month: 'numeric',
+                                              year: 'numeric'
+                                            })}`
                                         }
                                       </p>
-                                      <p className="text-sm text-muted-foreground">{date.time} • {date.availableSpots} Plätze</p>
+                                      <p className="text-sm text-muted-foreground">
+                                        {date.time} • {date.availableSpots} Plätze verfügbar
+                                      </p>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
+                                    {/* ✅ NOWY PRZYCISK DO WYŚWIETLANIA LISTY */}
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => openParticipantsList(location.id, location.city, date)}
+                                        title="Teilnehmerliste anzeigen"
+                                    >
+                                      <List className="w-4 h-4" />
+                                    </Button>
+
                                     <Button variant="ghost" size="icon" onClick={() => {
                                       setSelectedLocationId(location.id);
                                       setEditingDate(date);
@@ -1385,6 +1448,7 @@ const Admin = () => {
                                     }}>
                                       <Edit className="w-4 h-4" />
                                     </Button>
+
                                     <Button
                                         variant="ghost"
                                         size="icon"
@@ -2000,6 +2064,15 @@ const Admin = () => {
                 </div>
             )}
           </DialogContent>
+
+          <ParticipantsListDialog
+              open={participantsDialog.open}
+              onClose={() => setParticipantsDialog({ ...participantsDialog, open: false })}
+              locationId={participantsDialog.locationId}
+              dateId={participantsDialog.dateId}
+              locationName={participantsDialog.locationName}
+              dateInfo={participantsDialog.dateInfo}
+          />
         </Dialog>
       </div>
   );
