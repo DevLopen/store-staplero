@@ -1,6 +1,6 @@
 import express from "express";
-import practicalCourseController from "../controllers/practicalCourse.controller";
-import { authMiddleware, adminMiddleware } from "../middleware/auth.middleware";
+import practicalCourseController from "../controllers/practicalcourseController";
+import { protect, admin } from "../middleware/authMiddleware";
 
 const router = express.Router();
 
@@ -11,48 +11,48 @@ const router = express.Router();
 // GET /api/admin/practical-courses/participants - lista wszystkich uczestników
 router.get(
     "/participants",
-    authMiddleware,
-    adminMiddleware,
+    protect,
+    admin,
     practicalCourseController.getAllParticipants
 );
 
 // GET /api/admin/practical-courses/participants/location/:locationId - uczestnicy dla lokalizacji
 router.get(
     "/participants/location/:locationId",
-    authMiddleware,
-    adminMiddleware,
+    protect,
+    admin,
     practicalCourseController.getParticipantsByLocation
 );
 
 // GET /api/admin/practical-courses/participants/date/:locationId/:dateId - uczestnicy dla terminu
 router.get(
     "/participants/date/:locationId/:dateId",
-    authMiddleware,
-    adminMiddleware,
+    protect,
+    admin,
     practicalCourseController.getParticipantsByDate
 );
 
 // GET /api/admin/practical-courses/locations-with-participants - lokalizacje z licznikami
 router.get(
     "/locations-with-participants",
-    authMiddleware,
-    adminMiddleware,
+    protect,
+    admin,
     practicalCourseController.getLocationsWithParticipants
 );
 
 // POST /api/admin/practical-courses/participants/:orderNumber/cancel - anuluj uczestnika
 router.post(
     "/participants/:orderNumber/cancel",
-    authMiddleware,
-    adminMiddleware,
+    protect,
+    admin,
     practicalCourseController.cancelParticipant
 );
 
 // GET /api/admin/practical-courses/stats - statystyki
 router.get(
     "/stats",
-    authMiddleware,
-    adminMiddleware,
+    protect,
+    admin,
     practicalCourseController.getParticipantsStats
 );
 

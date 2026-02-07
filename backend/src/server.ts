@@ -16,6 +16,7 @@ import webhookRoutes from "./routes/webhooks";
 import locationRoutes from "./routes/location.routes";
 import contactRoutes from './routes/contact.routes';
 import chatRoutes from './routes/chatRoutes';
+import practicalCourseRoutes from "./routes/practicalcourseRoutes";
 
 // Import services
 import orderService from "./services/order.service";
@@ -57,6 +58,7 @@ app.use("/api/checkout", checkoutRoutes);
 app.use("/api/locations", locationRoutes);
 app.use('/api', contactRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/admin/practical-courses', practicalCourseRoutes);
 
 // Connect MongoDB
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/stapler-dashboard";
