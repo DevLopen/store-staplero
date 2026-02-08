@@ -121,7 +121,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             // Dodaj kurs do items
             items.push({
                 courseName: `Praktischer Staplerführerschein - ${data.practicalCourse.locationName}`,
-                price: courseGrossPrice,
+                price: courseNetPrice,
                 type: "practical",
             });
 
