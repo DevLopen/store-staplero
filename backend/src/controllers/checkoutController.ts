@@ -114,30 +114,38 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 return res.status(400).json({ message: "Practical course details required" });
             }
 
-            // Cena kursu z konfiguracji (NETTO) + VAT 19%
-            const courseNetPrice = data.practicalCourse.price;
-            const courseGrossPrice = calculateGrossPrice(courseNetPrice);
+            // 1. USTAL CENY NETTO (Stripe doliczy VAT sam, jeśli wyślesz mu Netto)
+            // Zakładamy, że data.practicalCourse.price to suma netto (kurs + ewentualna karta)
+            const totalNetPriceFromFrontend = data.practicalCourse.price;
+            const cardNetPrice = 12.60; // 14.99 / 1.19
 
-            // Dodaj kurs do items
+            let courseNetPrice = totalNetPriceFromFrontend;
+
+            // 2. JEŚLI KLIENT CHCE KARTĘ, ODEJMIJ JĄ OD CENY GŁÓWNEJ
+            if (data.practicalCourse.wantsPlasticCard) {
+                courseNetPrice = totalNetPriceFromFrontend - cardNetPrice;
+            }
+
+            // 3. OBLICZ BRUTTO DLA BAZY DANYCH I LEXWARE
+            const courseGrossPrice = calculateGrossPrice(courseNetPrice);
+            const cardGrossPrice = PRICING.getPlasticCardGross(); // 14.99
+
+            // 4. DODAJ DO ITEMS (Wysyłaj NETTO, bo Stripe dolicza VAT - widzieliśmy to po 17.84)
             items.push({
                 courseName: `Praktischer Staplerführerschein - ${data.practicalCourse.locationName}`,
-                price: courseNetPrice,
+                price: courseNetPrice, // Wysyłamy czyste Netto kursu
                 type: "practical",
             });
 
-            totalAmount = courseGrossPrice;
-
-            const cardGrossPrice = PRICING.getPlasticCardGross();
-            // Jeśli wybrano kartę plastikową, dodaj jako osobną pozycję
             if (data.practicalCourse.wantsPlasticCard) {
-
                 items.push({
                     courseName: "Plastikkarte Staplerführerschein",
-                    price: cardGrossPrice,
+                    price: cardNetPrice, // Wysyłamy czyste Netto karty
                     type: "practical-addon",
                 });
-
-                totalAmount += cardGrossPrice;
+                totalAmount = courseGrossPrice + cardGrossPrice;
+            } else {
+                totalAmount = courseGrossPrice;
             }
 
             practicalCourseDetails = {
