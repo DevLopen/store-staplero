@@ -110,39 +110,35 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
         }
 
         if (data.type === "practical") {
-            if (!data.practicalCourse) {
-                return res.status(400).json({ message: "Practical course details required" });
-            }
+            // CENY ZGODNE Z TWOIM WYPISEM (Karta 14.99 Netto)
+            const COURSE_NET = 249.99;
+            const CARD_NET = 14.99; // Zmienione z 12.60 na 14.99
+            const VAT_RATE = 1.19;
 
-            // 1. POBIERZ CENY Z KONFIGURACJI (Zamiast ufać temu, co przyszło z frontendu)
-            // Zakładamy: Kurs Netto = 249.99, Karta Netto = 12.60
-            const courseNetPrice = 249.99;
-            const cardNetPrice = 12.60;
+            // Obliczamy Brutto
+            const courseGross = Math.round(COURSE_NET * VAT_RATE * 100) / 100; // 297.49
+            const cardGross = Math.round(CARD_NET * VAT_RATE * 100) / 100;   // 17.84
 
-            // Obliczamy Brutto (249.99 * 1.19 = 297.49 | 12.60 * 1.19 = 14.99)
-            const courseGrossPrice = calculateGrossPrice(courseNetPrice);
-            const cardGrossPrice = 14.99;
-
-            // 2. WYCZYŚĆ I ZBUDUJ LISTĘ ITEMS OD NOWA
+            // Czyścimy items, żeby nie dublować ceny z frontendu
             items = [];
 
-            // Dodaj kurs jako pierwszą pozycję (Brutto, bo Stripe nie dolicza VAT poprawnie u Ciebie)
+            // 1. Dodajemy kurs
             items.push({
                 courseName: `Praktischer Staplerführerschein - ${data.practicalCourse.locationName}`,
-                price: courseGrossPrice,
+                price: courseGross, // 297.49
                 type: "practical",
             });
 
-            // 3. DODAJ KARTĘ TYLKO JEŚLI ZAZNACZONO
+            // 2. Dodajemy kartę (tylko jeśli wybrano)
             if (data.practicalCourse.wantsPlasticCard) {
                 items.push({
                     courseName: "Plastikkarte Staplerführerschein",
-                    price: cardGrossPrice,
+                    price: cardGross, // 17.84
                     type: "practical-addon",
                 });
-                totalAmount = courseGrossPrice + cardGrossPrice; // Suma: 312.48 €
+                totalAmount = Math.round((courseGross + cardGross) * 100) / 100; // 315.33
             } else {
-                totalAmount = courseGrossPrice; // Suma: 297.49 €
+                totalAmount = courseGross;
             }
 
             // 4. PRZYGOTUJ DANE DLA STRIPE I LEXWARE
@@ -156,7 +152,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 time: data.practicalCourse.time,
                 availableSpots: data.practicalCourse.availableSpots,
                 wantsPlasticCard: data.practicalCourse.wantsPlasticCard,
-                plasticCardPrice: data.practicalCourse.wantsPlasticCard ? cardGrossPrice : undefined,
+                plasticCardPrice: data.practicalCourse.wantsPlasticCard ? cardGross : undefined,
             };
         }
 
