@@ -114,40 +114,38 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 return res.status(400).json({ message: "Practical course details required" });
             }
 
-            // 1. USTAL CENY NETTO (Stripe doliczy VAT sam, jeśli wyślesz mu Netto)
-            // Zakładamy, że data.practicalCourse.price to suma netto (kurs + ewentualna karta)
-            const totalNetPriceFromFrontend = data.practicalCourse.price;
-            const cardNetPrice = 12.60; // 14.99 / 1.19
+            // 1. POBIERZ CENY Z KONFIGURACJI (Zamiast ufać temu, co przyszło z frontendu)
+            // Zakładamy: Kurs Netto = 249.99, Karta Netto = 12.60
+            const courseNetPrice = 249.99;
+            const cardNetPrice = 12.60;
 
-            let courseNetPrice = totalNetPriceFromFrontend;
-
-            // 2. JEŚLI KLIENT CHCE KARTĘ, ODEJMIJ JĄ OD CENY GŁÓWNEJ
-            if (data.practicalCourse.wantsPlasticCard) {
-                courseNetPrice = totalNetPriceFromFrontend - cardNetPrice;
-            }
-
-            // 3. OBLICZ BRUTTO DLA BAZY DANYCH I LEXWARE
+            // Obliczamy Brutto (249.99 * 1.19 = 297.49 | 12.60 * 1.19 = 14.99)
             const courseGrossPrice = calculateGrossPrice(courseNetPrice);
-            const cardGrossPrice = PRICING.getPlasticCardGross(); // 14.99
+            const cardGrossPrice = 14.99;
 
-            // 4. DODAJ DO ITEMS (Wysyłaj NETTO, bo Stripe dolicza VAT - widzieliśmy to po 17.84)
+            // 2. WYCZYŚĆ I ZBUDUJ LISTĘ ITEMS OD NOWA
+            items = [];
+
+            // Dodaj kurs jako pierwszą pozycję (Brutto, bo Stripe nie dolicza VAT poprawnie u Ciebie)
             items.push({
                 courseName: `Praktischer Staplerführerschein - ${data.practicalCourse.locationName}`,
-                price: courseNetPrice, // Wysyłamy czyste Netto kursu
+                price: courseGrossPrice,
                 type: "practical",
             });
 
+            // 3. DODAJ KARTĘ TYLKO JEŚLI ZAZNACZONO
             if (data.practicalCourse.wantsPlasticCard) {
                 items.push({
                     courseName: "Plastikkarte Staplerführerschein",
-                    price: cardNetPrice, // Wysyłamy czyste Netto karty
+                    price: cardGrossPrice,
                     type: "practical-addon",
                 });
-                totalAmount = courseGrossPrice + cardGrossPrice;
+                totalAmount = courseGrossPrice + cardGrossPrice; // Suma: 312.48 €
             } else {
-                totalAmount = courseGrossPrice;
+                totalAmount = courseGrossPrice; // Suma: 297.49 €
             }
 
+            // 4. PRZYGOTUJ DANE DLA STRIPE I LEXWARE
             practicalCourseDetails = {
                 locationId: data.practicalCourse.locationId,
                 locationName: data.practicalCourse.locationName,
