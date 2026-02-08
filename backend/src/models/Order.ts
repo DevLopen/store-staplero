@@ -4,7 +4,7 @@ export interface OrderItem {
     courseId?: string;
     courseName: string;
     price: number;
-    type: "online" | "practical";
+    type: "online" | "practical" | "practical-addon";
 }
 
 export interface PracticalCourseDetails {
@@ -53,7 +53,7 @@ const OrderItemSchema = new Schema<OrderItem>({
     courseId: String,
     courseName: { type: String, required: true },
     price: { type: Number, required: true },
-    type: { type: String, enum: ["online", "practical"], required: true },
+    type: { type: String, enum: ["online", "practical", "practical-addon"], required: true },
 });
 
 const PracticalCourseDetailsSchema = new Schema<PracticalCourseDetails>({
