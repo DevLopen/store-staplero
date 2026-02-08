@@ -110,49 +110,50 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
         }
 
         if (data.type === "practical") {
-            // CENY ZGODNE Z TWOIM WYPISEM (Karta 14.99 Netto)
+            // 1. Sprawdź czy obiekt istnieje i przypisz go do stałej
+            const pc = data.practicalCourse;
+
+            if (!pc) {
+                return res.status(400).json({ message: "Practical course details required" });
+            }
+
+            // Teraz używaj stałej 'pc' zamiast 'data.practicalCourse'
             const COURSE_NET = 249.99;
-            const CARD_NET = 14.99; // Zmienione z 12.60 na 14.99
+            const CARD_NET = 14.99;
             const VAT_RATE = 1.19;
 
-            // Obliczamy Brutto
-            const courseGross = Math.round(COURSE_NET * VAT_RATE * 100) / 100; // 297.49
-            const cardGross = Math.round(CARD_NET * VAT_RATE * 100) / 100;   // 17.84
+            const courseGross = Math.round(COURSE_NET * VAT_RATE * 100) / 100;
+            const cardGross = Math.round(CARD_NET * VAT_RATE * 100) / 100;
 
-            // Czyścimy items, żeby nie dublować ceny z frontendu
             items = [];
-
-            // 1. Dodajemy kurs
             items.push({
-                courseName: `Praktischer Staplerführerschein - ${data.practicalCourse.locationName}`,
-                price: courseGross, // 297.49
+                courseName: `Praktischer Staplerführerschein - ${pc.locationName}`,
+                price: courseGross,
                 type: "practical",
             });
 
-            // 2. Dodajemy kartę (tylko jeśli wybrano)
-            if (data.practicalCourse.wantsPlasticCard) {
+            if (pc.wantsPlasticCard) {
                 items.push({
                     courseName: "Plastikkarte Staplerführerschein",
-                    price: cardGross, // 17.84
+                    price: cardGross,
                     type: "practical-addon",
                 });
-                totalAmount = Math.round((courseGross + cardGross) * 100) / 100; // 315.33
+                totalAmount = Math.round((courseGross + cardGross) * 100) / 100;
             } else {
                 totalAmount = courseGross;
             }
 
-            // 4. PRZYGOTUJ DANE DLA STRIPE I LEXWARE
             practicalCourseDetails = {
-                locationId: data.practicalCourse.locationId,
-                locationName: data.practicalCourse.locationName,
-                locationAddress: data.practicalCourse.locationAddress,
-                dateId: data.practicalCourse.dateId,
-                startDate: data.practicalCourse.startDate,
-                endDate: data.practicalCourse.endDate,
-                time: data.practicalCourse.time,
-                availableSpots: data.practicalCourse.availableSpots,
-                wantsPlasticCard: data.practicalCourse.wantsPlasticCard,
-                plasticCardPrice: data.practicalCourse.wantsPlasticCard ? cardGross : undefined,
+                locationId: pc.locationId,
+                locationName: pc.locationName,
+                locationAddress: pc.locationAddress,
+                dateId: pc.dateId,
+                startDate: pc.startDate,
+                endDate: pc.endDate,
+                time: pc.time,
+                availableSpots: pc.availableSpots,
+                wantsPlasticCard: pc.wantsPlasticCard,
+                plasticCardPrice: pc.wantsPlasticCard ? cardGross : undefined,
             };
         }
 
