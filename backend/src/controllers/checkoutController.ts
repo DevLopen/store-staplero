@@ -34,6 +34,7 @@ interface CheckoutRequest {
         endDate: string;
         time: string;
         availableSpots: number;
+        basePrice: number;
         price: number;
         wantsPlasticCard: boolean;
     };
@@ -118,7 +119,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             }
 
             // Teraz używaj stałej 'pc' zamiast 'data.practicalCourse'
-            const COURSE_NET = 249.99;
+            const COURSE_NET = pc.basePrice;
             const CARD_NET = 14.99;
             const VAT_RATE = 1.19;
 
