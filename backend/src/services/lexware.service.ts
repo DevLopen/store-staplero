@@ -205,7 +205,7 @@ export const createInvoice = async (
             taxConditions: {
                 taxType: "net",
             },
-            title: `Rechnung ${invoiceData.orderNumber}`,
+            title: `${invoiceData.orderNumber}`,
             introduction: "Vielen Dank für Ihre Bestellung.",
             remark: `Bestellnummer: ${invoiceData.orderNumber}`,
         };
