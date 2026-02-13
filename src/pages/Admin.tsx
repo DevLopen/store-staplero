@@ -1421,6 +1421,11 @@ const Admin = () => {
                                       </p>
                                       <p className="text-sm text-muted-foreground">
                                         {date.time} • {date.availableSpots} Plätze verfügbar
+                                        {date.availableSpots === 0 && (
+                                            <span className="ml-2 text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded">
+              VOLL
+            </span>
+                                        )}
                                       </p>
                                     </div>
                                   </div>
@@ -1924,19 +1929,46 @@ const Admin = () => {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="date-start">Startdatum</Label>
-                <Input id="date-start" type="date" value={dateForm.startDate} onChange={(e) => setDateForm(prev => ({ ...prev, startDate: e.target.value }))} />
+                <Input
+                    id="date-start"
+                    type="date"
+                    value={dateForm.startDate}
+                    onChange={(e) => setDateForm(prev => ({ ...prev, startDate: e.target.value }))}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="date-end">Enddatum</Label>
-                <Input id="date-end" type="date" value={dateForm.endDate} onChange={(e) => setDateForm(prev => ({ ...prev, endDate: e.target.value }))} />
+                <Input
+                    id="date-end"
+                    type="date"
+                    value={dateForm.endDate}
+                    onChange={(e) => setDateForm(prev => ({ ...prev, endDate: e.target.value }))}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="date-time">Zeit</Label>
-                <Input id="date-time" value={dateForm.time} onChange={(e) => setDateForm(prev => ({ ...prev, time: e.target.value }))} placeholder="z.B. 08:00 - 16:00" />
+                <Input
+                    id="date-time"
+                    value={dateForm.time}
+                    onChange={(e) => setDateForm(prev => ({ ...prev, time: e.target.value }))}
+                    placeholder="z.B. 08:00 - 16:00"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="date-spots">Verfügbare Plätze</Label>
-                <Input id="date-spots" type="number" value={dateForm.availableSpots} onChange={(e) => setDateForm(prev => ({ ...prev, availableSpots: e.target.value }))} />
+                <Input
+                    id="date-spots"
+                    type="number"
+                    min="0"
+                    value={dateForm.availableSpots}
+                    onChange={(e) => setDateForm(prev => ({
+                      ...prev,
+                      availableSpots: e.target.value
+                    }))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  0 = Termin ist voll (für Benutzer nicht auswählbar)
+                </p>
               </div>
             </div>
             <div className="flex justify-end gap-2">
@@ -1955,15 +1987,30 @@ const Admin = () => {
                   const token = localStorage.getItem("token");
                   const location = locations.find(l => l.id === selectedLocationId);
 
+                  // ✅ POPRAWKA: Poprawnie parsuj availableSpots, zachowaj 0
+                  const spots = dateForm.availableSpots === "" ? 0 : parseInt(dateForm.availableSpots);
+
                   let updatedDates;
                   if (editingDate) {
                     updatedDates = location.dates.map(d =>
                         d.id === editingDate.id
-                            ? { ...d, startDate: dateForm.startDate, endDate: dateForm.endDate, time: dateForm.time, availableSpots: parseInt(dateForm.availableSpots) || 10 }
+                            ? {
+                              ...d,
+                              startDate: dateForm.startDate,
+                              endDate: dateForm.endDate,
+                              time: dateForm.time,
+                              availableSpots: spots
+                            }
                             : d
                     );
                   } else {
-                    const newDate = { id: `d${Date.now()}`, startDate: dateForm.startDate, endDate: dateForm.endDate, time: dateForm.time, availableSpots: parseInt(dateForm.availableSpots) || 10 };
+                    const newDate = {
+                      id: `d${Date.now()}`,
+                      startDate: dateForm.startDate,
+                      endDate: dateForm.endDate,
+                      time: dateForm.time,
+                      availableSpots: spots
+                    };
                     updatedDates = [...location.dates, newDate];
                   }
 
@@ -1976,14 +2023,26 @@ const Admin = () => {
                     body: JSON.stringify({ ...location, dates: updatedDates })
                   });
 
+                  if (!res.ok) {
+                    throw new Error("Failed to save date");
+                  }
+
                   const data = await res.json();
-                  setLocations(prev => prev.map(l => l.id === selectedLocationId ? { ...data, id: data._id } : l));
-                  toast({ title: "Erfolg", description: editingDate ? "Termin wurde aktualisiert." : "Termin wurde hinzugefügt." });
+                  setLocations(prev => prev.map(l =>
+                      l.id === selectedLocationId ? { ...data, id: data._id } : l
+                  ));
+
+                  toast({
+                    title: "Erfolg",
+                    description: editingDate ? "Termin wurde aktualisiert." : "Termin wurde hinzugefügt."
+                  });
                   setIsDateDialogOpen(false);
                 } catch (err) {
                   toast({ title: "Fehler", description: "Speichern fehlgeschlagen.", variant: "destructive" });
                 }
-              }}><Save className="w-4 h-4 mr-2" />Speichern</Button>
+              }}>
+                <Save className="w-4 h-4 mr-2" />Speichern
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

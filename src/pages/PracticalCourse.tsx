@@ -65,7 +65,15 @@ const PracticalCourse = () => {
   };
 
   const handleDateSelect = (date: CourseDate) => {
-    if (date.availableSpots === 0) return;
+    // ✅ POPRAWKA: Zablokuj wybór gdy availableSpots === 0
+    if (date.availableSpots === 0) {
+      toast({
+        title: "Nicht verfügbar",
+        description: "Dieser Termin ist leider ausgebucht.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedDate(date);
   };
 
@@ -286,9 +294,17 @@ const PracticalCourse = () => {
                                     <div className="text-right">
                                       <div className="flex items-center gap-1 text-sm">
                                         <Users className="w-4 h-4" />
-                                        <span className={date.availableSpots < 5 ? 'text-destructive' : 'text-muted-foreground'}>
-                                    {date.availableSpots} Plätze
-                                  </span>
+                                        <span className={date.availableSpots === 0
+                                            ? 'text-destructive font-semibold'
+                                            : date.availableSpots < 5
+                                                ? 'text-orange-500'
+                                                : 'text-muted-foreground'
+                                        }>
+  {date.availableSpots === 0
+      ? 'Ausgebucht'
+      : `${date.availableSpots} Plätze`
+  }
+</span>
                                       </div>
                                     </div>
                                   </div>
