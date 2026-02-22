@@ -1,67 +1,53 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import {
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle,
-  Lock,
-  BookOpen,
-  Menu,
-  X,
-  Home,
-  Video,
-  Clock,
-  FileText
+  ChevronLeft, ChevronRight, CheckCircle, Lock, Menu, X,
+  BookOpen, Home, Clock, Award, PlayCircle, Trophy, GraduationCap
 } from "lucide-react";
-
 import { useCourse } from "@/hooks/useCourse";
 import { useProgress } from "@/hooks/useProgress";
-import { Chapter, Topic } from "@/types/course.types";
-import { isTopicAccessible } from "@/utils/progressUtils";
+import { Chapter, ContentBlock } from "@/types/course.types";
+import { BlocksRenderer } from "@/components/course/BlockRenderer";
+import CourseAssistant from "@/components/course/CourseAssistant";
 
-// Enhanced Markdown to HTML converter with better styling
-function markdownToHTML(markdown: string): string {
-  let html = markdown;
+function getChapterStatus(
+    chapter: Chapter,
+    topics: Record<string, boolean>,
+    quizzes: Record<string, { passed: boolean }>
+) {
+  const allDone = chapter.topics.every(t => topics[t.id]);
+  const quizPassed = chapter.quiz ? quizzes[chapter.id]?.passed === true : true;
+  return chapter.status ?? (allDone && quizPassed ? "complete" : "pending");
+}
 
-  // Headers with proper styling
-  html = html.replace(/^# (.*$)/gim, '<h1 class="text-4xl font-bold text-foreground mb-6 mt-8 pb-3 border-b-2 border-primary/20">$1</h1>');
-  html = html.replace(/^## (.*$)/gim, '<h2 class="text-3xl font-bold text-foreground mb-4 mt-8">$1</h2>');
-  html = html.replace(/^### (.*$)/gim, '<h3 class="text-2xl font-semibold text-foreground mb-3 mt-6">$1</h3>');
+function totalTopicsCompleted(chapters: Chapter[], topics: Record<string, boolean>) {
+  return chapters.reduce((sum, ch) => sum + ch.topics.filter(t => topics[t.id]).length, 0);
+}
 
-  // Bold and Italic
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-foreground">$1</strong>');
-  html = html.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
+function totalTopics(chapters: Chapter[]) {
+  return chapters.reduce((sum, ch) => sum + ch.topics.length, 0);
+}
 
-  // Lists with better spacing
-  html = html.replace(/^\- (.*$)/gim, '<li class="ml-6 mb-2 text-lg leading-relaxed">$1</li>');
-  html = html.replace(/(<li.*?<\/li>(\n<li.*?<\/li>)*)/gm, '<ul class="list-disc space-y-2 my-6 ml-4">$1</ul>');
+function isChapterBlocked(chapter: Chapter, chapterIndex: number, chapters: Chapter[], topics: Record<string, boolean>, quizzes: Record<string, { passed: boolean }>) {
+  if (chapterIndex === 0) return false;
+  const prevChapter = chapters[chapterIndex - 1];
+  const prevAllDone = prevChapter.topics.every(t => topics[t.id]);
+  const prevQuizPassed = prevChapter.quiz ? quizzes[prevChapter.id]?.passed === true : true;
+  return !(prevAllDone && prevQuizPassed);
+}
 
-  // Numbered lists
-  html = html.replace(/^\d+\. (.*$)/gim, '<li class="ml-6 mb-2 text-lg leading-relaxed">$1</li>');
-
-  // Code blocks with syntax highlighting placeholder
-  html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre class="bg-muted/50 border border-border p-6 rounded-xl my-6 overflow-x-auto"><code class="text-sm font-mono">$2</code></pre>');
-
-  // Inline code
-  html = html.replace(/`(.*?)`/g, '<code class="bg-primary/10 text-primary px-2 py-1 rounded font-mono text-sm">$1</code>');
-
-  // Blockquotes - important notes
-  html = html.replace(/^&gt; (.*$)/gim, '<div class="border-l-4 border-primary bg-primary/5 pl-6 pr-4 py-4 my-6 rounded-r-lg"><p class="text-lg italic">$1</p></div>');
-
-  // Paragraphs with proper spacing
-  html = html.replace(/\n\n/g, '</p><p class="text-lg leading-relaxed mb-4 text-foreground/90">');
-  html = '<p class="text-lg leading-relaxed mb-4 text-foreground/90">' + html + '</p>';
-
-  // Images (if any)
-  html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="rounded-xl my-6 shadow-lg max-w-full" />');
-
-  // Links
-  html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-primary hover:underline font-medium">$1</a>');
-
-  return html;
+function extractTopicText(blocks: ContentBlock[]): string {
+  return blocks
+      .filter(b => b.type === 'richtext' || b.type === 'callout')
+      .map(b => {
+        if (b.type === 'richtext') return b.richtextData?.replace(/<[^>]+>/g, ' ') ?? '';
+        if (b.type === 'callout') return `${b.calloutTitle ?? ''}: ${b.calloutText ?? ''}`;
+        return '';
+      })
+      .join('\n')
+      .slice(0, 3000);
 }
 
 const TopicView = () => {
@@ -72,262 +58,382 @@ const TopicView = () => {
   }>();
   const navigate = useNavigate();
 
-  const { course, isLoading: courseLoading, error: courseError } = useCourse(courseId!);
-  const { progress, markTopicComplete, isLoading: progressLoading } = useProgress(courseId!);
+  const { course, isLoading: courseLoading } = useCourse(courseId!);
+  const { topics, quizzes, startTopic, markTopicComplete } = useProgress(courseId!);
 
-  const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
-  const [currentTopic, setCurrentTopic] = useState<Topic | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [completing, setCompleting] = useState(false);
+
+  const currentChapter = course?.chapters.find(ch => ch.id === chapterId) ?? null;
+  const currentTopic = currentChapter?.topics.find(t => t.id === topicId) ?? null;
 
   useEffect(() => {
-    if (!course || !chapterId || !topicId) return;
+    if (courseId && chapterId && topicId && currentChapter && currentTopic) {
+      startTopic(chapterId, topicId);
+    }
+  }, [courseId, chapterId, topicId, currentChapter, currentTopic]);
 
-    const ch = course.chapters.find(c => c.id === chapterId);
-    if (!ch) return;
-    setCurrentChapter(ch);
+  useEffect(() => {
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  }, [topicId]);
 
-    const topic = ch.topics.find(t => t.id === topicId);
-    if (!topic) return;
-    setCurrentTopic(topic);
-  }, [course, chapterId, topicId]);
-
-  if (courseLoading || progressLoading) {
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <span className="text-lg text-muted-foreground">Lade Thema...</span>
-          </div>
-        </div>
-    );
-  }
-
-  if (courseError || !currentChapter || !currentTopic) {
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <Card className="p-8 text-center max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Thema nicht gefunden</h2>
-            <Link to="/dashboard">
-              <Button>Zurück zum Dashboard</Button>
-            </Link>
-          </Card>
-        </div>
-    );
-  }
-
-  const allTopics = course.chapters.flatMap(chapter =>
-      chapter.topics.map(topic => ({ ...topic, chapterId: chapter.id }))
+  const findAdjacentTopic = useCallback(
+      (direction: "next" | "prev"): { chapterId: string; topicId: string } | null => {
+        if (!course) return null;
+        const allTopics: { chapterId: string; topicId: string }[] = [];
+        course.chapters.forEach(ch =>
+            ch.topics.forEach(t => allTopics.push({ chapterId: ch.id, topicId: t.id }))
+        );
+        const idx = allTopics.findIndex(
+            item => item.chapterId === chapterId && item.topicId === topicId
+        );
+        if (idx === -1) return null;
+        return direction === "next" ? allTopics[idx + 1] ?? null : allTopics[idx - 1] ?? null;
+      },
+      [course, chapterId, topicId]
   );
-  const currentTopicIndex = allTopics.findIndex(t => t.id === topicId);
-  const previousTopic = currentTopicIndex > 0 ? allTopics[currentTopicIndex - 1] : null;
-  const nextTopic = currentTopicIndex < allTopics.length - 1 ? allTopics[currentTopicIndex + 1] : null;
 
-  const goToNextTopic = async () => {
-    if (!currentTopic) return;
+  const goToTopic = (ch: string, t: string) =>
+      navigate(`/course/${courseId}/chapter/${ch}/topic/${t}`);
 
-    await markTopicComplete(currentChapter.id, currentTopic.id);
+  const handleComplete = async () => {
+    if (!chapterId || !topicId || !course) return;
+    setCompleting(true);
+    await markTopicComplete(chapterId, topicId);
+    setCompleting(false);
 
-    if (nextTopic) {
-      navigate(`/course/${courseId}/chapter/${nextTopic.chapterId}/topic/${nextTopic.id}`);
+    const next = findAdjacentTopic("next");
+
+    if (next && next.chapterId !== chapterId && currentChapter?.quiz && !quizzes[chapterId!]?.passed) {
+      navigate(`/course/${courseId}/chapter/${chapterId}/quiz`);
+    } else if (next) {
+      goToTopic(next.chapterId, next.topicId);
+    } else if (currentChapter?.quiz && !quizzes[chapterId!]?.passed) {
+      navigate(`/course/${courseId}/chapter/${chapterId}/quiz`);
+    } else if (course.finalQuiz) {
+      navigate(`/course/${courseId}/final-quiz`);
     } else {
-      navigate("/dashboard");
+      navigate(`/course/${courseId}`);
     }
   };
 
-  const courseProgress = course.chapters.reduce((acc, ch) => {
-    const total = ch.topics.length;
-    const done = ch.topics.filter(t => progress?.topics?.[t.id]).length;
-    return acc + (done / total) * (100 / course.chapters.length);
-  }, 0);
+  if (!courseLoading && course && (!currentChapter || !currentTopic)) {
+    // chapter or topic was deleted - redirect to first available
+    const firstChapter = course.chapters[0];
+    const firstTopic = firstChapter?.topics[0];
+    if (firstChapter && firstTopic) {
+      navigate(`/course/${courseId}/chapter/${firstChapter.id}/topic/${firstTopic.id}`, { replace: true });
+    } else {
+      navigate(`/dashboard`, { replace: true });
+    }
+    return null;
+  }
+
+  if (courseLoading) {
+    return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-gray-400">Ładowanie kursu…</p>
+          </div>
+        </div>
+    );
+  }
+
+  if (!course || !currentChapter || !currentTopic) {
+    return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <GraduationCap className="h-16 w-16 mx-auto text-gray-300" />
+            <p className="text-gray-500 text-lg">Nie znaleziono tematu.</p>
+            <Link to="/dashboard">
+              <Button className="bg-amber-500 hover:bg-amber-400 text-white font-semibold">Wróć do Dashboard</Button>
+            </Link>
+          </div>
+        </div>
+    );
+  }
+
+  const totalComplete = totalTopicsCompleted(course.chapters, topics);
+  const total = totalTopics(course.chapters);
+  const courseProgress = total > 0 ? Math.round((totalComplete / total) * 100) : 0;
+  const isCurrentTopicComplete = topics[topicId!] === true;
+  const prevTopic = findAdjacentTopic("prev");
+  const nextTopic = findAdjacentTopic("next");
+  const topicContent = extractTopicText(currentTopic.blocks ?? []);
 
   return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex">
-        {/* Desktop Sidebar */}
-        <aside className={`hidden lg:flex flex-col bg-card/80 backdrop-blur-sm border-r border-border transition-all duration-300 ${
-            sidebarOpen ? 'w-80' : 'w-0'
-        }`}>
-          {sidebarOpen && (
-              <div className="flex flex-col h-full">
-                <div className="p-6 border-b border-border bg-card/50">
-                  <Link to="/dashboard" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors mb-4 group">
-                    <Home className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                    <span className="text-sm font-medium">Zurück zum Dashboard</span>
-                  </Link>
-                  <h2 className="font-display font-bold text-lg text-foreground">{course.title}</h2>
-                  <div className="flex items-center gap-3 mt-3">
-                    <Progress value={courseProgress} className="flex-1 h-2" />
-                    <span className="text-sm font-semibold text-primary">{Math.floor(courseProgress)}%</span>
-                  </div>
+      <div className="min-h-screen flex flex-col bg-background">
+        {/* Top Bar */}
+        <header className="fixed top-0 left-0 right-0 z-50 border-b bg-white/95 backdrop-blur-md border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between px-4 h-14">
+            <div className="flex items-center gap-3 min-w-0">
+              <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-gray-500 hover:text-gray-900 hover:bg-gray-100 flex-shrink-0"
+                  onClick={() => setSidebarOpen(o => !o)}
+              >
+                {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </Button>
+              <Link to="/dashboard" className="flex items-center gap-1.5 text-gray-400 hover:text-amber-600 transition-colors flex-shrink-0">
+                <Home className="h-4 w-4" />
+                <span className="hidden sm:inline text-sm">Dashboard</span>
+              </Link>
+              <span className="text-gray-300 flex-shrink-0">/</span>
+              <span className="text-gray-700 text-sm font-medium truncate">{course.title}</span>
+            </div>
+
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="hidden sm:flex items-center gap-2.5">
+                <div className="w-28 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${courseProgress}%` }} />
                 </div>
+                <span className="text-gray-500 text-xs font-medium">{courseProgress}%</span>
+              </div>
+              {currentTopic.duration && (
+                  <Badge variant="outline" className="text-gray-500 border-gray-200 gap-1.5 text-xs">
+                    <Clock className="h-3 w-3" />
+                    {currentTopic.duration}
+                  </Badge>
+              )}
+            </div>
+          </div>
+        </header>
 
-                <div className="flex-1 overflow-y-auto p-4">
-                  {course.chapters.map((chapter) => (
-                      <div key={chapter.id} className="mb-6">
-                        <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                          <span className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground text-xs flex items-center justify-center font-bold shadow-sm">
-                            {chapter.order}
-                          </span>
-                          {chapter.title}
-                        </h3>
-                        <div className="space-y-1 ml-10">
-                          {chapter.topics.map((topic) => {
-                            const isCompleted = progress?.topics?.[topic.id];
-                            const accessible = isTopicAccessible(chapter.id, topic.id, course, progress);
-                            const isCurrent = topic.id === topicId;
+        <div className="flex flex-1 pt-14">
+          {/* Sidebar */}
+          <aside
+              className="fixed left-0 top-14 bottom-0 z-40 w-72 overflow-y-auto transition-transform duration-300 ease-in-out border-r border-gray-200 bg-white shadow-sm"
+              style={{
+                transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+              }}
+          >
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <p className="text-gray-400 text-xs uppercase tracking-widest mb-1.5 font-medium">Kurs</p>
+              <p className="text-gray-800 font-semibold text-sm leading-tight">{course.title}</p>
+              <div className="flex items-center gap-2 mt-3 sm:hidden">
+                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${courseProgress}%` }} />
+                </div>
+                <span className="text-gray-500 text-xs">{courseProgress}%</span>
+              </div>
+            </div>
 
-                            return (
-                                <button
-                                    key={topic.id}
-                                    onClick={() => accessible && navigate(`/course/${courseId}/chapter/${chapter.id}/topic/${topic.id}`)}
-                                    disabled={!accessible}
-                                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all flex items-center gap-3 ${
-                                        isCurrent
-                                            ? 'bg-primary text-primary-foreground shadow-md scale-105'
-                                            : isCompleted
-                                                ? 'text-success hover:bg-success/10'
-                                                : accessible
-                                                    ? 'text-foreground hover:bg-muted'
-                                                    : 'text-muted-foreground cursor-not-allowed opacity-50'
+            <nav className="p-3 pb-24">
+              {course.chapters.map((chapter, chIdx) => {
+                const chapterBlocked = isChapterBlocked(chapter, chIdx, course.chapters, topics, quizzes);
+                const status = chapterBlocked ? "blocked" : getChapterStatus(chapter, topics, quizzes);
+                const isActive = chapter.id === chapterId;
+
+                return (
+                    <div key={chapter.id} className="mb-1">
+                      <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl mb-0.5 ${isActive ? 'bg-amber-50' : ''}`}>
+                        {status === "complete"
+                            ? <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0"><CheckCircle className="h-3 w-3 text-white" /></div>
+                            : status === "blocked"
+                                ? <div className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0"><Lock className="h-3 w-3 text-gray-400" /></div>
+                                : <div className="w-5 h-5 rounded-full border-2 border-amber-500 flex items-center justify-center flex-shrink-0">
+                                  <span className="text-[9px] font-bold text-amber-600">{chIdx + 1}</span>
+                                </div>
+                        }
+                        <span className={`text-xs font-semibold uppercase tracking-wider truncate ${
+                            status === "blocked" ? "text-gray-300"
+                                : status === "complete" ? "text-green-600"
+                                    : "text-gray-600"
+                        }`}>
+                      {chapter.title}
+                    </span>
+                      </div>
+
+                      {!chapterBlocked && (
+                          <div className="ml-4 space-y-0.5">
+                            {chapter.topics.map((topic) => {
+                              const isDone = topics[topic.id];
+                              const isCurrent = topic.id === topicId;
+                              return (
+                                  <button
+                                      key={topic.id}
+                                      onClick={() => goToTopic(chapter.id, topic.id)}
+                                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all ${
+                                          isCurrent ? 'bg-amber-50 text-amber-700' : 'hover:bg-gray-50'
+                                      }`}
+                                  >
+                            <span className={`flex-shrink-0 ${isDone ? 'text-green-500' : isCurrent ? 'text-amber-500' : 'text-gray-300'}`}>
+                              {isDone
+                                  ? <CheckCircle className="h-3.5 w-3.5" />
+                                  : isCurrent
+                                      ? <PlayCircle className="h-3.5 w-3.5" />
+                                      : <span className="block w-3.5 h-3.5 rounded-full border border-current" />
+                              }
+                            </span>
+                                    <span className={`truncate text-xs font-medium ${
+                                        isCurrent ? 'text-amber-700' : isDone ? 'text-green-600' : 'text-gray-500'
+                                    }`}>{topic.title}</span>
+                                  </button>
+                              );
+                            })}
+
+                            {chapter.quiz && (
+                                <Link
+                                    to={`/course/${courseId}/chapter/${chapter.id}/quiz`}
+                                    className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all hover:bg-gray-50 ${
+                                        quizzes[chapter.id]?.passed ? 'text-green-600' : 'text-amber-600'
                                     }`}
                                 >
-                                  {isCompleted ? <CheckCircle className="w-4 h-4 shrink-0" />
-                                      : !accessible ? <Lock className="w-4 h-4 shrink-0" />
-                                          : <BookOpen className="w-4 h-4 shrink-0" />}
-                                  <span className="truncate font-medium">{topic.title}</span>
-                                </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                  ))}
-                </div>
-              </div>
-          )}
-        </aside>
+                                  <Award className="h-3.5 w-3.5 flex-shrink-0" />
+                                  <span className="truncate">Test: {chapter.quiz.title}</span>
+                                  {quizzes[chapter.id]?.passed && <CheckCircle className="h-3 w-3 flex-shrink-0" />}
+                                </Link>
+                            )}
+                          </div>
+                      )}
 
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col min-h-screen">
-          {/* Header */}
-          <header className="bg-card/80 backdrop-blur-sm border-b border-border px-6 py-4 flex items-center gap-4 sticky top-0 z-40 shadow-sm">
-            <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="hidden lg:block p-2 hover:bg-primary/10 rounded-lg transition-colors"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                <FileText className="w-4 h-4" />
-                <span>Kapitel {currentChapter.order}: {currentChapter.title}</span>
-              </div>
-              <h1 className="font-display font-bold text-xl text-foreground">{currentTopic.title}</h1>
-            </div>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground bg-muted/50 px-4 py-2 rounded-lg">
-              <Clock className="w-4 h-4" />
-              <span className="font-medium">{currentTopic.duration}</span>
-            </div>
-          </header>
+                      {chapterBlocked && (
+                          <div className="ml-9 px-2 py-1">
+                            <p className="text-gray-300 text-xs italic">Odblokuj zaliczając poprzedni rozdział</p>
+                          </div>
+                      )}
+                    </div>
+                );
+              })}
 
-          {/* Content Area */}
-          <div className="flex-1 overflow-y-auto bg-gradient-to-b from-background to-background">
-            <article className="max-w-4xl mx-auto px-6 py-12">
-              {/* Video if exists */}
-              {currentTopic.videoUrl && (
-                  <div className="mb-12 rounded-xl overflow-hidden shadow-2xl">
-                    <div className="bg-gradient-to-r from-primary to-accent p-4 flex items-center gap-3">
-                      <Video className="w-5 h-5 text-primary-foreground" />
-                      <span className="font-semibold text-primary-foreground">Video-Lektion</span>
-                    </div>
-                    <div className="aspect-video bg-black">
-                      <iframe
-                          src={currentTopic.videoUrl}
-                          className="w-full h-full"
-                          allowFullScreen
-                      />
-                    </div>
+              {course.finalQuiz && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <Link
+                        to={`/course/${courseId}/final-quiz`}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-amber-600 hover:bg-amber-50"
+                    >
+                      <Trophy className="h-4 w-4" />
+                      Egzamin końcowy
+                    </Link>
                   </div>
               )}
+            </nav>
+          </aside>
 
-              {/* Content */}
+          {/* Mobile overlay */}
+          {sidebarOpen && (
               <div
-                  className="prose prose-lg prose-slate max-w-none
-                  prose-headings:font-display
-                  prose-h1:text-4xl prose-h1:mb-6 prose-h1:mt-8
-                  prose-h2:text-3xl prose-h2:mb-4 prose-h2:mt-8
-                  prose-h3:text-2xl prose-h3:mb-3 prose-h3:mt-6
-                  prose-p:text-lg prose-p:leading-relaxed prose-p:mb-4
-                  prose-li:text-lg prose-li:leading-relaxed
-                  prose-strong:text-foreground prose-strong:font-bold
-                  prose-code:bg-primary/10 prose-code:text-primary prose-code:px-2 prose-code:py-1 prose-code:rounded
-                  prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border
-                  prose-img:rounded-xl prose-img:shadow-lg
-                  prose-a:text-primary prose-a:no-underline hover:prose-a:underline"
-                  dangerouslySetInnerHTML={{ __html: markdownToHTML(currentTopic.content) }}
+                  className="fixed inset-0 z-30 bg-black/40 md:hidden"
+                  onClick={() => setSidebarOpen(false)}
               />
+          )}
 
-              {/* Progress indicator */}
-              {progress?.topics?.[currentTopic.id] && (
-                  <div className="mt-12 p-6 bg-success/10 border border-success/20 rounded-xl flex items-center gap-4">
-                    <CheckCircle className="w-8 h-8 text-success" />
-                    <div>
-                      <h3 className="font-bold text-success text-lg">Thema abgeschlossen!</h3>
-                      <p className="text-sm text-success/80">Sie haben dieses Thema bereits durchgearbeitet.</p>
+          {/* Main content */}
+          <main
+              className="flex-1 min-w-0 transition-all duration-300 bg-white"
+              style={{ marginLeft: sidebarOpen ? 'clamp(0px, 18rem, 18rem)' : '0' }}
+          >
+            <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+              {/* Breadcrumb */}
+              <div className="flex items-center gap-2 text-xs mb-6 flex-wrap">
+                <span className="text-gray-400 uppercase tracking-wider font-medium">{currentChapter.title}</span>
+                <ChevronRight className="h-3 w-3 text-gray-300" />
+                <span className="text-amber-600">{currentTopic.title}</span>
+                {isCurrentTopicComplete && (
+                    <span className="flex items-center gap-1 text-green-600 ml-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Ukończono
+                </span>
+                )}
+              </div>
+
+              {/* Topic title */}
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8 leading-tight">
+                {currentTopic.title}
+              </h1>
+
+              {/* Blocks */}
+              {(currentTopic.blocks ?? []).length > 0 ? (
+                  <BlocksRenderer blocks={currentTopic.blocks ?? []} />
+              ) : (
+                  <div className="text-center py-20 text-gray-400">
+                    <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-40" />
+                    <p className="text-lg">Ten temat nie ma jeszcze treści.</p>
+                  </div>
+              )}
+
+              {/* Quiz reminder */}
+              {currentChapter.quiz && !quizzes[chapterId!]?.passed && (
+                  <div className="mt-10 p-5 rounded-2xl border border-amber-200 bg-amber-50">
+                    <div className="flex items-start gap-3">
+                      <Award className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-amber-700 font-semibold text-sm">Test rozdziału wymagany</p>
+                        <p className="text-amber-600/80 text-sm mt-0.5">Po ukończeniu wszystkich tematów musisz zdać test, aby odblokować następny rozdział.</p>
+                      </div>
                     </div>
                   </div>
               )}
-            </article>
-          </div>
 
-          {/* Footer Navigation */}
-          <footer className="bg-card/80 backdrop-blur-sm border-t border-border px-6 py-4 sticky bottom-0 shadow-lg">
-            <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-              {previousTopic ? (
-                  <Button
-                      variant="outline"
-                      onClick={() => navigate(`/course/${courseId}/chapter/${previousTopic.chapterId}/topic/${previousTopic.id}`)}
-                      className="group"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                    Vorheriges Thema
-                  </Button>
-              ) : <div />}
+              {/* Navigation */}
+              <div className="mt-12 pt-6 border-t border-gray-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <Button
+                    variant="outline"
+                    onClick={() => prevTopic && goToTopic(prevTopic.chapterId, prevTopic.topicId)}
+                    disabled={!prevTopic}
+                    className="border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Poprzedni temat
+                </Button>
 
-              <Button
-                  variant="default"
-                  size="lg"
-                  onClick={goToNextTopic}
-                  className="min-w-[240px] bg-gradient-to-r from-primary to-accent hover:shadow-lg transition-all group"
-              >
-                {progress?.topics?.[currentTopic.id] ? (
-                    nextTopic ? (
-                        <>
-                          Nächstes Thema
-                          <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                        </>
-                    ) : (
-                        <>
-                          Zum Dashboard
-                          <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                        </>
-                    )
+                {isCurrentTopicComplete ? (
+                    <Button
+                        onClick={() => {
+                          if (nextTopic) {
+                            goToTopic(nextTopic.chapterId, nextTopic.topicId);
+                          } else if (currentChapter?.quiz && !quizzes[chapterId!]?.passed) {
+                            navigate(`/course/${courseId}/chapter/${chapterId}/quiz`);
+                          } else if (course.finalQuiz) {
+                            navigate(`/course/${courseId}/final-quiz`);
+                          } else {
+                            navigate(`/course/${courseId}`);
+                          }
+                        }}
+                        className="font-semibold text-white bg-amber-500 hover:bg-amber-400"
+                    >
+                      {nextTopic
+                          ? "Następny temat"
+                          : currentChapter?.quiz && !quizzes[chapterId!]?.passed
+                              ? "Przejdź do testu"
+                              : "Zakończ kurs"
+                      }
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
                 ) : (
-                    nextTopic ? (
-                        <>
-                          Als erledigt markieren & weiter
-                          <ChevronRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                        </>
-                    ) : (
-                        <>
-                          Kurs abschließen
-                          <CheckCircle className="w-5 h-5 ml-2" />
-                        </>
-                    )
+                    <Button
+                        onClick={handleComplete}
+                        disabled={completing}
+                        className="font-semibold text-white bg-amber-500 hover:bg-amber-400"
+                    >
+                      {completing ? (
+                          <span className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Zapisuję…
+                    </span>
+                      ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Oznacz jako ukończony
+                          </>
+                      )}
+                    </Button>
                 )}
-              </Button>
+              </div>
             </div>
-          </footer>
-        </main>
+          </main>
+        </div>
+
+        {/* Course AI Assistant */}
+        <CourseAssistant
+            courseTitle={course.title}
+            chapterTitle={currentChapter.title}
+            topicTitle={currentTopic.title}
+            topicContent={topicContent}
+            chapterId={chapterId!}
+        />
       </div>
   );
 };

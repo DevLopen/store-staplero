@@ -1,11 +1,11 @@
 import express from "express";
 import { protect } from "../middleware/authMiddleware";
-import { getProgress, markTopicCompleted, submitQuizResult } from "../controllers/progressController";
+import { getProgress, startTopic, completeTopic } from "../controllers/progressController";
 
 const router = express.Router();
 
-router.get("/", getProgress);
-router.post("/topic", protect, markTopicCompleted);
-router.post("/quiz", submitQuizResult);
+router.get("/",       protect, getProgress);
+router.post("/start", protect, startTopic);
+router.post("/complete", protect, completeTopic);
 
 export default router;

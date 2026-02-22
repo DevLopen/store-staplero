@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import BlockEditor from "@/components/admin/BlockEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Upload, Wand2, Save, Eye, FileText, Timer } from "lucide-react";
@@ -16,6 +17,15 @@ interface EnhancedTopicDialogProps {
         content: string;
         duration: string;
         videoUrl: string;
+        blocks: [
+            { type: "richtext",  data: "<tiptap JSON>" },
+            { type: "video",     url: "youtube|vimeo|/uploads/..." },
+            { type: "image",     url: "...", caption: "..." },
+            { type: "model3d",   url: "/uploads/model.glb", label: "Budowa wózka" },
+            { type: "embed",     url: "https://sketchfab.com/...", height: 500 },
+            { type: "callout",   style: "info|warning|danger", text: "..." },
+            { type: "interactive", subtype: "stability-sim|360-tour|drag-order" }
+        ]
         minDurationSeconds: string;
         requireMinDuration: boolean;
     };
@@ -334,12 +344,9 @@ export default function EnhancedTopicDialog({
                                         Tabelle
                                     </Button>
                                 </div>
-                                <Textarea
-                                    value={topicForm.content}
-                                    onChange={(e) => setTopicForm(prev => ({ ...prev, content: e.target.value }))}
-                                    placeholder="# Überschrift&#10;&#10;Ihr Inhalt hier...&#10;&#10;## Unterüberschrift&#10;&#10;- Punkt 1&#10;- Punkt 2"
-                                    rows={20}
-                                    className="font-mono text-sm"
+                                <BlockEditor
+                                    blocks={topicForm.blocks ?? []}
+                                    onChange={(newBlocks: any) => setTopicForm((prev: any) => ({ ...prev, blocks: newBlocks }))}
                                 />
                             </>
                         ) : (

@@ -1,35 +1,38 @@
-/**
- * Pojedynczy temat (lekcja)
- */
-export interface DashboardTopic {
-    id: string;
-    title: string;
-    duration: string;
-    order: number;
-}
+import { Chapter, Quiz } from "./course.types";
 
-export interface DashboardQuiz {
-    id: string;
-    title: string;
-    description?: string;
-    passingScore: number;
-}
-
-export interface DashboardChapter {
-    id: string;
-    title: string;
-    description: string;
-    order: number;
-    topics: DashboardTopic[];
-    quiz?: DashboardQuiz;
-    status?: "blocked" | "pending" | "complete";
+export interface DashboardCertificate {
+  verificationCode: string;
+  issuedAt: string;
+  score: number;
 }
 
 export interface DashboardCourse {
-    id: string;
-    _id: string;
-    title: string;
-    description: string;
-    chapters: DashboardChapter[];
-    finalQuiz?: DashboardQuiz; // DODANE
+  _id: string;
+  id: string;
+  title: string;
+  description: string;
+  thumbnailUrl?: string;
+  certificateEnabled: boolean;
+  chapters: Chapter[];
+  finalQuiz?: Quiz;
+  progressPercent: number;
+  completedTopics: number;
+  totalTopics: number;
+  expiresAt?: string;
+  purchaseDate?: string;
+  daysRemaining: number | null;
+  lastPosition: { chapterId: string; topicId: string } | null;
+  certificate: DashboardCertificate | null;
+  finalQuizResult: { passed: boolean; score: number; attempts: number } | null;
+}
+
+export interface DashboardData {
+  user: { name: string; email: string; isAdmin: boolean };
+  courses: DashboardCourse[];
+  progress: {
+    topics: Record<string, boolean>;
+    quizzes: Record<string, { passed: boolean; score: number; attempts: number }>;
+    finalQuizzes: Record<string, { passed: boolean; score: number; attempts: number }>;
+  };
+  orders: any[];
 }

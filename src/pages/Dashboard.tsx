@@ -1,602 +1,569 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import { useToast } from "@/hooks/use-toast";
+import { getDashboard, downloadCertificateUrl } from "@/api/dashboard.api";
+import { DashboardCourse, DashboardData } from "@/types/dashboard";
 import {
-    BookOpen,
-    Clock,
-    CheckCircle,
-    Lock,
-    ChevronRight,
-    Play,
-    Award,
-    ClipboardCheck,
-    User,
-    ShoppingBag,
-    Library,
-    AlertTriangle,
-    ChevronDown,
-    ChevronUp,
-    Trophy,
-    MapPin,
-    Calendar
+  BookOpen, CheckCircle, Lock, Clock, Award, Play, ChevronRight,
+  Trophy, ShoppingBag, LogOut, Download, GraduationCap,
+  TrendingUp, Settings, LayoutDashboard, User, Bell, ChevronDown,
+  Zap, Target, Star, BarChart3, ArrowRight, Calendar, Shield
 } from "lucide-react";
-import { DashboardCourse, DashboardChapter } from "@/types/dashboard";
+import { useToast } from "@/hooks/use-toast";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-interface DashboardAPIResponse {
-    user: { name: string; email: string; isAdmin: boolean };
-    courses: DashboardCourse[];
-    progress: {
-        topics: Record<string, boolean>;
-        quizzes: Record<string, { passed: boolean; score: number }>;
-        finalQuizzes: Record<string, { passed: boolean; score: number }>;
-    };
-    expiresAt?: Date;
-    purchaseDate?: Date;
-    daysRemaining?: number;
-    orders: any[];
+function initials(name: string) {
+  return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 }
 
-const Dashboard = () => {
-    const navigate = useNavigate();
-    const { toast } = useToast();
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("pl-PL", { day: "numeric", month: "short", year: "numeric" });
+}
 
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [userName, setUserName] = useState("");
-    const [userEmail, setUserEmail] = useState("");
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 
-    const [userCourses, setUserCourses] = useState<DashboardCourse[]>([]);
-    const [userOrders, setUserOrders] = useState<any[]>([]);
-    const [progress, setProgress] = useState<Record<string, boolean>>({});
-    const [quizResults, setQuizResults] = useState<Record<string, { passed: boolean; score: number }>>({});
-    const [finalQuizResults, setFinalQuizResults] = useState<Record<string, { passed: boolean; score: number }>>({});
+function StatCard({ icon: Icon, label, value, sub, color }: {
+  icon: any; label: string; value: string | number; sub?: string; color: string;
+}) {
+  return (
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${color}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <p className="text-sm font-medium text-gray-500 mt-0.5">{label}</p>
+        {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+      </div>
+  );
+}
 
-    // Stan dla rozwijanych kursów (courseId -> expanded)
-    const [expandedCourses, setExpandedCourses] = useState<Record<string, boolean>>({});
+// ─── Progress Ring ────────────────────────────────────────────────────────────
 
-    const [profileForm, setProfileForm] = useState({
-        name: "",
-        email: "",
-        phone: "",
-        address: "",
-        city: "",
-        postalCode: ""
-    });
+function ProgressRing({ percent, size = 56 }: { percent: number; size?: number }) {
+  const r = (size - 8) / 2;
+  const circ = 2 * Math.PI * r;
+  const dash = (percent / 100) * circ;
+  return (
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f3f4f6" strokeWidth={6} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#f59e0b" strokeWidth={6}
+                strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="round"
+                style={{ transition: 'stroke-dasharray 0.6s ease' }} />
+      </svg>
+  );
+}
 
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (!token) {
-            navigate("/login");
-            return;
-        }
+// ─── Course Card ──────────────────────────────────────────────────────────────
 
-        const fetchDashboard = async () => {
-            try {
-                const res = await fetch(`${API_URL}/dashboard`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                    credentials: "include"
-                });
-                if (!res.ok) throw new Error("Fehler beim Laden der Dashboard-Daten");
+function CourseCard({ course, quizResults, isAdmin }: {
+  course: DashboardCourse;
+  quizResults: Record<string, { passed: boolean }>;
+  isAdmin: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
 
-                const data: DashboardAPIResponse = await res.json();
+  // Validate lastPosition still exists in course (chapter/topic may have been deleted)
+  const lastPosValid = course.lastPosition
+      ? course.chapters.some(ch =>
+          ch.id === course.lastPosition!.chapterId &&
+          ch.topics.some((t: any) => t.id === course.lastPosition!.topicId)
+      )
+      : false;
 
-                setIsLoggedIn(true);
-                setIsAdmin(data.user.isAdmin);
-                setUserName(data.user.name);
-                setUserEmail(data.user.email);
+  const firstAvailable = course.chapters[0]?.topics[0]
+      ? `/course/${course._id}/chapter/${course.chapters[0].id}/topic/${course.chapters[0].topics[0].id}`
+      : `/course/${course._id}`;
 
-                setProfileForm(prev => ({
-                    ...prev,
-                    name: data.user.name,
-                    email: data.user.email
-                }));
+  const resumeLink = lastPosValid
+      ? `/course/${course._id}/chapter/${course.lastPosition!.chapterId}/topic/${course.lastPosition!.topicId}`
+      : firstAvailable;
 
-                setUserCourses(data.courses || []);
-                setUserOrders(data.orders || []);
-                setProgress(data.progress.topics || {});
-                setQuizResults(data.progress.quizzes || {});
-                setFinalQuizResults(data.progress.finalQuizzes || {});
+  const isDone = course.finalQuizResult?.passed === true;
+  const canFinalQuiz = course.chapters.every(ch => ch.status === "complete");
+  const isExpired = !isAdmin && course.daysRemaining !== null && course.daysRemaining <= 0;
+  const daysLow = !isAdmin && course.daysRemaining !== null && course.daysRemaining > 0 && course.daysRemaining <= 7;
 
-            } catch (err: any) {
-                console.error(err);
-                toast({ title: "Fehler", description: err.message || "Dashboard konnte nicht geladen werden." });
-            }
-        };
+  return (
+      <div className={`bg-white rounded-2xl border shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group ${
+          isExpired ? "border-red-200 opacity-70" : isDone ? "border-amber-200" : "border-gray-100 hover:border-amber-300"
+      }`}>
+        {/* Thumbnail */}
+        <div className="relative h-40 overflow-hidden">
+          {course.thumbnailUrl ? (
+              <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          ) : (
+              <div className="w-full h-full bg-gradient-to-br from-amber-400 via-orange-400 to-amber-600 flex items-center justify-center">
+                <GraduationCap className="h-14 w-14 text-white/40" />
+              </div>
+          )}
 
-        fetchDashboard();
-    }, [navigate, toast]);
+          {/* Overlay badges */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          <div className="absolute top-3 left-3 flex gap-2">
+            {isAdmin && course.daysRemaining === null && (
+                <span className="bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Shield className="h-3 w-3" /> Admin
+            </span>
+            )}
+            {isDone && (
+                <span className="bg-green-500 text-white text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Trophy className="h-3 w-3" /> Ukończony
+            </span>
+            )}
+          </div>
 
-    const handleLogout = () => {
-        localStorage.clear();
-        navigate("/login");
-    };
+          {/* Progress ring */}
+          <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur rounded-full p-0.5">
+            <ProgressRing percent={course.progressPercent} size={44} />
+            <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-700">
+            {course.progressPercent}%
+          </span>
+          </div>
+        </div>
 
-    const handleProfileSave = () => {
-        localStorage.setItem("userName", profileForm.name);
-        localStorage.setItem("userEmail", profileForm.email);
-        setUserName(profileForm.name);
-        setUserEmail(profileForm.email);
-        toast({ title: "Erfolg", description: "Profil wurde gespeichert." });
-    };
+        <div className="p-4">
+          {/* Title */}
+          <h3 className="font-bold text-gray-900 text-sm leading-snug mb-2 line-clamp-2">{course.title}</h3>
 
-    const toggleCourseExpanded = (courseId: string) => {
-        setExpandedCourses(prev => ({
-            ...prev,
-            [courseId]: !prev[courseId]
-        }));
-    };
+          {/* Expiry */}
+          {!isAdmin && course.daysRemaining !== null && (
+              <div className={`flex items-center gap-1 text-xs mb-3 ${
+                  isExpired ? "text-red-500" : daysLow ? "text-amber-600" : "text-gray-400"
+              }`}>
+                <Clock className="h-3 w-3" />
+                {isExpired ? "Dostęp wygasł" : `${course.daysRemaining} dni dostępu`}
+              </div>
+          )}
 
-    // Helpers
-    const getChapterProgress = (chapter: DashboardChapter) => {
-        const completed = chapter.topics.filter(t => progress[t.id]).length;
-        return Math.round((completed / chapter.topics.length) * 100);
-    };
+          {/* Progress bar */}
+          <div className="mb-4">
+            <div className="flex justify-between text-xs text-gray-400 mb-1">
+              <span>{course.completedTopics} / {course.totalTopics} tematów</span>
+            </div>
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-700"
+                   style={{ width: `${course.progressPercent}%` }} />
+            </div>
+          </div>
 
-    const isChapterComplete = (chapter: DashboardChapter) =>
-        chapter.topics.every(t => progress[t.id]);
+          {/* Chapters toggle */}
+          <button
+              onClick={() => setExpanded(e => !e)}
+              className="w-full flex items-center justify-between text-xs text-gray-400 hover:text-amber-600 transition-colors mb-3 py-1"
+          >
+            <span className="flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5" /> {course.chapters.length} rozdziałów</span>
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          </button>
 
-    const isQuizPassed = (chapter: DashboardChapter) =>
-        quizResults[chapter.id]?.passed === true;
-
-    const needsQuiz = (chapter: DashboardChapter) =>
-        isChapterComplete(chapter) && chapter.quiz && !isQuizPassed(chapter);
-
-    const getFirstAccessibleTopic = (chapter: DashboardChapter) => {
-        if (chapter.status === "blocked") return null;
-        for (const topic of chapter.topics) {
-            if (!progress[topic.id]) return topic.id;
-        }
-        return chapter.topics[0]?.id || null;
-    };
-
-    const isFinalQuizAvailable = (course: DashboardCourse) => {
-        // Test końcowy dostępny tylko gdy wszystkie rozdziały ukończone (wszystkie quizy zdane)
-        return course.chapters.every(ch => {
-            const allTopicsDone = ch.topics.every(t => progress[t.id]);
-            const quizPassed = ch.quiz ? quizResults[ch.id]?.passed : true;
-            return allTopicsDone && quizPassed;
-        });
-    };
-
-    const isFinalQuizPassed = (courseId: string) =>
-        finalQuizResults[courseId]?.passed === true;
-
-    // Global stats
-    const courseProgress = userCourses.length
-        ? Math.round(userCourses.reduce((acc, c) =>
-                acc + c.chapters.reduce((a, ch) => a + getChapterProgress(ch), 0), 0)
-            / userCourses.reduce((acc, c) => acc + c.chapters.length, 0))
-        : 0;
-
-    const completedTopics = Object.values(progress).filter(Boolean).length;
-    const totalTopics = userCourses.reduce((acc, c) =>
-        acc + c.chapters.reduce((a, ch) => a + ch.topics.length, 0), 0);
-    const totalChapters = userCourses.reduce((acc, c) => acc + c.chapters.length, 0);
-
-    if (!isLoggedIn) return null;
-
-    return (
-        <div className="min-h-screen bg-background flex flex-col">
-            <Navbar isLoggedIn={isLoggedIn} isAdmin={isAdmin} onLogout={handleLogout} />
-
-            <main className="flex-1 pt-24 pb-12">
-                <div className="container mx-auto px-4">
-                    <div className="mb-8">
-                        <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-                            Willkommen zurück, {userName}!
-                        </h1>
-                        <p className="text-muted-foreground">Verwalten Sie Ihre Kurse, Daten und Bestellungen.</p>
-                    </div>
-
-                    <Tabs defaultValue="courses" className="space-y-6">
-                        <TabsList className="grid w-full max-w-md grid-cols-3">
-                            <TabsTrigger value="courses" className="flex items-center gap-2">
-                                <Library className="w-4 h-4" />
-                                <span className="hidden sm:inline">Meine Kurse</span>
-                            </TabsTrigger>
-                            <TabsTrigger value="profile" className="flex items-center gap-2">
-                                <User className="w-4 h-4" />
-                                <span className="hidden sm:inline">Meine Daten</span>
-                            </TabsTrigger>
-                            <TabsTrigger value="orders" className="flex items-center gap-2">
-                                <ShoppingBag className="w-4 h-4" />
-                                <span className="hidden sm:inline">Bestellungen</span>
-                            </TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="courses" className="space-y-6">
-                            {/* Progress Overview */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <Card className="bg-gradient-to-br from-primary to-accent text-primary-foreground">
-                                    <CardContent className="pt-6">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <Award className="w-10 h-10 opacity-80" />
-                                            <span className="text-4xl font-bold">{courseProgress}%</span>
-                                        </div>
-                                        <p className="font-medium">Gesamtfortschritt</p>
-                                        <Progress value={courseProgress} className="mt-2 bg-primary-foreground/20" />
-                                    </CardContent>
-                                </Card>
-
-                                <Card>
-                                    <CardContent className="pt-6">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <CheckCircle className="w-10 h-10 text-success" />
-                                            <span className="text-4xl font-bold text-foreground">{completedTopics}/{totalTopics}</span>
-                                        </div>
-                                        <p className="text-muted-foreground font-medium">Abgeschlossene Themen</p>
-                                    </CardContent>
-                                </Card>
-
-                                <Card>
-                                    <CardContent className="pt-6">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <Clock className="w-10 h-10 text-primary" />
-                                            <span className="text-4xl font-bold text-foreground">{totalChapters}</span>
-                                        </div>
-                                        <p className="text-muted-foreground font-medium">Kapitel insgesamt</p>
-                                    </CardContent>
-                                </Card>
-                            </div>
-
-                            {/* Course List */}
-                            {userCourses.map(course => {
-                                const isExpanded = expandedCourses[course.id] || false;
-                                const chaptersToShow = isExpanded ? course.chapters : course.chapters.slice(0, 3);
-                                const hasMoreChapters = course.chapters.length > 3;
-                                const finalQuizAvailable = isFinalQuizAvailable(course);
-                                const finalQuizPassed = isFinalQuizPassed(course._id);
-
-                                return (
-                                    <Card key={course.id} className="mb-6">
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2">
-                                                <BookOpen className="w-5 h-5 text-primary" />
-                                                {course.title}
-                                            </CardTitle>
-                                            <CardDescription className="flex items-center gap-4">
-                                                {course.description}
-                                                {course.expiresAt && (
-                                                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                                                        course.daysRemaining && course.daysRemaining <= 7
-                                                            ? 'bg-warning/20 text-warning'
-                                                            : 'bg-primary/10 text-primary'
-                                                    }`}>
-      <Clock className="w-3 h-3" />
-                                                        {course.daysRemaining} Tage
-    </span>
-                                                )}
-                                            </CardDescription>
-                                            <CardDescription>{course.description}</CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="space-y-4">
-                                                {chaptersToShow.map(chapter => {
-                                                    const chapProg = getChapterProgress(chapter);
-                                                    const complete = isChapterComplete(chapter);
-                                                    const quizPassed = isQuizPassed(chapter);
-                                                    const showQuizBtn = needsQuiz(chapter);
-                                                    const firstTopic = getFirstAccessibleTopic(chapter);
-
-                                                    return (
-                                                        <div key={chapter.id} className="p-4 rounded-lg border bg-card">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                                                                    complete && quizPassed ? "bg-success text-success-foreground" :
-                                                                        chapter.status === "blocked" ? "bg-muted text-muted-foreground" :
-                                                                            "bg-gradient-to-br from-primary to-accent text-primary-foreground"
-                                                                }`}>
-                                                                    {complete && quizPassed ? <CheckCircle className="w-6 h-6"/> :
-                                                                        chapter.status === "blocked" ? <Lock className="w-6 h-6"/> :
-                                                                            <span className="text-xl font-bold">{chapter.order}</span>}
-                                                                </div>
-
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center gap-2 mb-1">
-                                                                        <h3 className="font-semibold text-foreground truncate">{chapter.title}</h3>
-                                                                        {complete && quizPassed &&
-                                                                            <span className="text-xs bg-success/10 text-success px-2 py-0.5 rounded-full font-medium">Abgeschlossen</span>
-                                                                        }
-                                                                        {chapter.status === "blocked" &&
-                                                                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full font-medium">Gesperrt</span>
-                                                                        }
-                                                                    </div>
-                                                                    <p className="text-sm text-muted-foreground mb-2">{chapter.description}</p>
-
-                                                                    {chapter.quiz && !quizPassed && (
-                                                                        <div className="flex items-center gap-2 text-sm text-warning bg-warning/10 px-3 py-1.5 rounded-lg w-fit mb-2">
-                                                                            <AlertTriangle className="w-4 h-4"/>
-                                                                            <span>Test muss bestanden werden, um fortzufahren</span>
-                                                                        </div>
-                                                                    )}
-
-                                                                    <div className="flex items-center gap-4 mt-2">
-                                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                                            <BookOpen className="w-4 h-4"/>
-                                                                            <span>{chapter.topics.length} Themen</span>
-                                                                        </div>
-                                                                        {chapter.quiz && (
-                                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                                                                <ClipboardCheck className="w-4 h-4"/>
-                                                                                <span className={quizPassed ? "text-success" : ""}>{quizPassed ? "Test bestanden" : "Test vorhanden"}</span>
-                                                                            </div>
-                                                                        )}
-                                                                        <Progress value={chapProg} className="flex-1 max-w-[150px]" />
-                                                                        <span className="text-sm font-medium text-foreground">{chapProg}%</span>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="shrink-0">
-                                                                    {chapter.status === "blocked" ? (
-                                                                        <Button size="sm" disabled className="opacity-50 cursor-not-allowed">
-                                                                            Blockiert <Lock className="w-4 h-4 ml-1"/>
-                                                                        </Button>
-                                                                    ) : showQuizBtn ? (
-                                                                        <Link to={`/course/${course._id}/chapter/${chapter.id}/quiz`}>
-                                                                            <Button variant="hero" size="sm">
-                                                                                <ClipboardCheck className="w-4 h-4 mr-2" /> Test starten
-                                                                            </Button>
-                                                                        </Link>
-                                                                    ) : firstTopic ? (
-                                                                        <Link to={`/course/${course._id}/chapter/${chapter.id}/topic/${firstTopic}`}>
-                                                                            <Button size="sm">
-                                                                                {complete && quizPassed ? (
-                                                                                    <>Wiederholen <ChevronRight className="w-4 h-4 ml-1"/></>
-                                                                                ) : chapProg > 0 ? (
-                                                                                    <>Fortsetzen <Play className="w-4 h-4 ml-1"/></>
-                                                                                ) : (
-                                                                                    <>Starten <Play className="w-4 h-4 ml-1"/></>
-                                                                                )}
-                                                                            </Button>
-                                                                        </Link>
-                                                                    ) : null}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-
-                                                {/* Show More/Less Button */}
-                                                {hasMoreChapters && (
-                                                    <Button
-                                                        variant="outline"
-                                                        className="w-full"
-                                                        onClick={() => toggleCourseExpanded(course.id)}
-                                                    >
-                                                        {isExpanded ? (
-                                                            <>Weniger anzeigen <ChevronUp className="w-4 h-4 ml-2"/></>
-                                                        ) : (
-                                                            <>Mehr anzeigen ({course.chapters.length - 3} weitere) <ChevronDown className="w-4 h-4 ml-2"/></>
-                                                        )}
-                                                    </Button>
-                                                )}
-
-                                                {/* Final Quiz Section */}
-                                                {course.finalQuiz && (
-                                                    <div className="p-4 rounded-lg border-2 border-primary/20 bg-primary/5 mt-4">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                                                                finalQuizPassed ? "bg-success text-success-foreground" :
-                                                                    !finalQuizAvailable ? "bg-muted text-muted-foreground" :
-                                                                        "bg-gradient-to-br from-primary to-accent text-primary-foreground"
-                                                            }`}>
-                                                                {finalQuizPassed ? <CheckCircle className="w-6 h-6"/> :
-                                                                    !finalQuizAvailable ? <Lock className="w-6 h-6"/> :
-                                                                        <Trophy className="w-6 h-6"/>}
-                                                            </div>
-
-                                                            <div className="flex-1">
-                                                                <div className="flex items-center gap-2 mb-1">
-                                                                    <h3 className="font-semibold text-foreground">Abschlusstest</h3>
-                                                                    {finalQuizPassed &&
-                                                                        <span className="text-xs bg-success/10 text-success px-2 py-0.5 rounded-full font-medium">Bestanden</span>
-                                                                    }
-                                                                </div>
-                                                                <p className="text-sm text-muted-foreground">
-                                                                    {finalQuizPassed
-                                                                        ? "Sie haben den Kurs erfolgreich abgeschlossen!"
-                                                                        : finalQuizAvailable
-                                                                            ? "Schließen Sie alle Kapitel ab, um den Abschlusstest zu absolvieren"
-                                                                            : "Verfügbar nach Abschluss aller Kapitel"
-                                                                    }
-                                                                </p>
-                                                            </div>
-
-                                                            <div className="shrink-0">
-                                                                {finalQuizPassed ? (
-                                                                    <Link to={`/course/${course._id}/final-quiz`}>
-                                                                        <Button size="sm" variant="outline">
-                                                                            Ergebnisse ansehen
-                                                                        </Button>
-                                                                    </Link>
-                                                                ) : finalQuizAvailable ? (
-                                                                    <Link to={`/course/${course._id}/final-quiz`}>
-                                                                        <Button size="sm" variant="hero">
-                                                                            <Trophy className="w-4 h-4 mr-2" />
-                                                                            Test starten
-                                                                        </Button>
-                                                                    </Link>
-                                                                ) : (
-                                                                    <Button size="sm" disabled className="opacity-50">
-                                                                        <Lock className="w-4 h-4 mr-2" />
-                                                                        Gesperrt
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
-                        </TabsContent>
-
-                        {/* Profile Tab */}
-                        <TabsContent value="profile" className="space-y-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <User className="w-5 h-5 text-primary"/> Persönliche Daten
-                                    </CardTitle>
-                                    <CardDescription>Verwalten Sie Ihre Kontodaten</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {Object.keys(profileForm).map(key => (
-                                            <div key={key} className="space-y-1">
-                                                <Label htmlFor={key}>{key}</Label>
-                                                <Input
-                                                    id={key}
-                                                    value={(profileForm as any)[key]}
-                                                    onChange={e => setProfileForm(prev => ({...prev, [key]: e.target.value}))}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <Button className="mt-4" onClick={handleProfileSave}>Speichern</Button>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        {/* Orders Tab */}
-                        {/* Orders Tab */}
-                        <TabsContent value="orders" className="space-y-4">
-                            {userOrders.length === 0 ? (
-                                <Card>
-                                    <CardContent className="py-12 text-center">
-                                        <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50"/>
-                                        <p className="text-muted-foreground mb-2">Keine Bestellungen vorhanden</p>
-                                        <Button asChild>
-                                            <Link to="/courses">
-                                                <ShoppingBag className="w-4 h-4 mr-2" />
-                                                Kurse kaufen
-                                            </Link>
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                <div className="space-y-4">
-                                    {userOrders.map(order => (
-                                        <Card key={order._id || order.id} className="mb-4">
-                                            <CardHeader>
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <CardTitle className="text-lg flex items-center gap-2">
-                                                            <ShoppingBag className="w-5 h-5 text-primary" />
-                                                            Bestellung #{order.orderNumber}
-                                                        </CardTitle>
-                                                        <CardDescription className="flex items-center gap-2 mt-1">
-                                                            <Calendar className="w-4 h-4" />
-                                                            {new Date(order.createdAt).toLocaleDateString('de-DE', {
-                                                                year: 'numeric',
-                                                                month: 'long',
-                                                                day: 'numeric'
-                                                            })}
-                                                        </CardDescription>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <p className="text-2xl font-bold text-primary">{order.totalAmount?.toFixed(2) || order.total?.toFixed(2)} €</p>
-                                                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium mt-2 ${
-                                                            order.status === 'paid' || order.status === 'completed'
-                                                                ? 'bg-success/10 text-success'
-                                                                : order.status === 'pending'
-                                                                    ? 'bg-warning/10 text-warning'
-                                                                    : 'bg-destructive/10 text-destructive'
-                                                        }`}>
-                  {order.status === 'paid' && 'Bezahlt'}
-                                                            {order.status === 'completed' && 'Abgeschlossen'}
-                                                            {order.status === 'pending' && 'Ausstehend'}
-                                                            {order.status === 'cancelled' && 'Storniert'}
-                                                            {order.status === 'expired' && 'Abgelaufen'}
+          {expanded && (
+              <div className="border-t border-gray-100 pt-2 mb-3 space-y-1">
+                {course.chapters.map((ch, idx) => (
+                    <div key={ch.id} className="flex items-center gap-2 py-1">
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${
+                          ch.status === "complete" ? "bg-green-100 text-green-600" :
+                              ch.status === "blocked" ? "bg-gray-100 text-gray-300" :
+                                  "bg-amber-100 text-amber-600"
+                      }`}>
+                        {ch.status === "complete" ? <CheckCircle className="h-3 w-3" /> :
+                            ch.status === "blocked" ? <Lock className="h-2.5 w-2.5" /> :
+                                idx + 1}
+                      </div>
+                      <span className={`text-xs truncate ${ch.status === "blocked" ? "text-gray-300" : "text-gray-600"}`}>
+                  {ch.title}
                 </span>
-                                                    </div>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <div className="space-y-3">
-                                                    <div>
-                                                        <h4 className="font-semibold mb-2 text-sm text-muted-foreground">Artikel</h4>
-                                                        <div className="space-y-2">
-                                                            {order.items.map((item: any, idx: number) => (
-                                                                <div key={idx} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                                                                    <div className="flex items-center gap-3">
-                                                                        {item.type === 'online' || item.type === 'online_course' ? (
-                                                                            <BookOpen className="w-4 h-4 text-primary" />
-                                                                        ) : (
-                                                                            <MapPin className="w-4 h-4 text-accent" />
-                                                                        )}
-                                                                        <span className="text-sm font-medium">{item.courseName || item.name}</span>
-                                                                    </div>
-                                                                    <span className="font-semibold">{item.price.toFixed(2)} €</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
+                    </div>
+                ))}
+              </div>
+          )}
 
-                                                    {order.practicalCourseDetails && (
-                                                        <div className="mt-4 p-3 bg-accent/10 rounded-lg">
-                                                            <h4 className="font-semibold mb-2 text-sm flex items-center gap-2">
-                                                                <MapPin className="w-4 h-4 text-accent" />
-                                                                Praktischer Kurs
-                                                            </h4>
-                                                            <div className="space-y-1 text-sm text-muted-foreground">
-                                                                <p className="font-medium text-foreground">{order.practicalCourseDetails.locationName}</p>
-                                                                <p>{order.practicalCourseDetails.locationAddress}</p>
-                                                                <p className="flex items-center gap-2">
-                                                                    <Calendar className="w-3 h-3" />
-                                                                    {order.practicalCourseDetails.startDate === order.practicalCourseDetails.endDate
-                                                                        ? new Date(order.practicalCourseDetails.startDate).toLocaleDateString('de-DE')
-                                                                        : `${new Date(order.practicalCourseDetails.startDate).toLocaleDateString('de-DE')} - ${new Date(order.practicalCourseDetails.endDate).toLocaleDateString('de-DE')}`
-                                                                    }
-                                                                </p>
-                                                                <p className="flex items-center gap-2">
-                                                                    <Clock className="w-3 h-3" />
-                                                                    {order.practicalCourseDetails.time}
-                                                                </p>
-                                                                {order.practicalCourseDetails.wantsPlasticCard && (
-                                                                    <p className="flex items-center gap-2 text-warning">
-                                                                        <Award className="w-3 h-3" />
-                                                                        Plastikkarte bestellt
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
+          {/* Actions */}
+          <div className="space-y-2">
+            {!isExpired && (
+                <Link to={resumeLink}>
+                  <button className="w-full bg-amber-500 hover:bg-amber-400 text-white text-sm font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2">
+                    <Play className="h-4 w-4" />
+                    {lastPosValid ? "Kontynuuj naukę" : "Rozpocznij kurs"}
+                  </button>
+                </Link>
+            )}
 
-                                                    {order.expiresAt && order.status === 'paid' && (
-                                                        <div className="mt-4 p-3 bg-primary/10 rounded-lg">
-                                                            <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                                                <Clock className="w-4 h-4 text-primary" />
-                                                                Läuft ab: {new Date(order.expiresAt).toLocaleDateString('de-DE')}
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
-                                </div>
-                            )}
-                        </TabsContent>
-                    </Tabs>
-                </div>
-            </main>
+            {canFinalQuiz && !isDone && !isExpired && (
+                <Link to={`/course/${course._id}/final-quiz`}>
+                  <button className="w-full border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2">
+                    <Award className="h-4 w-4" /> Egzamin końcowy
+                  </button>
+                </Link>
+            )}
 
-            <Footer />
+            {isDone && course.certificateEnabled && (
+                <a href={downloadCertificateUrl(course._id)} target="_blank" rel="noreferrer">
+                  <button className="w-full border border-green-300 text-green-700 hover:bg-green-50 text-sm font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2">
+                    <Download className="h-4 w-4" /> Certyfikat
+                  </button>
+                </a>
+            )}
+          </div>
+        </div>
+      </div>
+  );
+}
+
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
+
+type Tab = "courses" | "orders" | "profile";
+
+const Dashboard = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<Tab>("courses");
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) { navigate("/login"); return; }
+
+    getDashboard()
+        .then((result) => {
+          console.log("[Dashboard] API result:", result);
+          console.log("[Dashboard] courses:", result.courses?.length, "isAdmin:", result.user?.isAdmin);
+          setData(result);
+        })
+        .catch((err) => {
+          console.error("[Dashboard] FETCH ERROR:", err);
+          toast({ title: "Błąd", description: "Nie można załadować dashboardu.", variant: "destructive" });
+        })
+        .finally(() => setLoading(false));
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/login");
+  };
+
+  if (loading) {
+    return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-gray-400 text-sm mt-4">Ładowanie panelu…</p>
+          </div>
         </div>
     );
+  }
+
+  if (!data) return null;
+
+  const { user, courses, orders } = data;
+  const quizResults = data.progress.quizzes;
+  const isAdmin = user.isAdmin;
+  const completedCourses = courses.filter(c => c.finalQuizResult?.passed).length;
+  const avgProgress = courses.length
+      ? Math.round(courses.reduce((s, c) => s + c.progressPercent, 0) / courses.length)
+      : 0;
+
+  const navItems: { id: Tab; label: string; icon: any }[] = [
+    { id: "courses", label: "Moje kursy", icon: BookOpen },
+    { id: "orders", label: "Zamówienia", icon: ShoppingBag },
+    { id: "profile", label: "Profil", icon: User },
+  ];
+
+  return (
+      <div className="min-h-screen bg-gray-50 flex">
+        {/* ── Sidebar ── */}
+        <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 fixed top-0 left-0 bottom-0 z-40">
+          {/* Logo */}
+          <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+            <Link to="/" className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+                <span className="text-white font-black text-base">S</span>
+              </div>
+              <span className="font-black text-lg tracking-tight text-gray-900">STAPLER<span className="text-amber-500">O</span></span>
+            </Link>
+          </div>
+
+          {/* User info */}
+          <div className="px-4 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                {initials(user.name)}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 px-3 py-4 space-y-1">
+            {navItems.map(item => (
+                <button key={item.id} onClick={() => setActiveTab(item.id)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                            activeTab === item.id
+                                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+                        }`}>
+                  <item.icon className="h-4 w-4 flex-shrink-0" />
+                  {item.label}
+                </button>
+            ))}
+
+            <div className="pt-3 mt-3 border-t border-gray-100">
+              <Link to="/">
+                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all">
+                  <LayoutDashboard className="h-4 w-4" /> Strona główna
+                </button>
+              </Link>
+              {isAdmin && (
+                  <Link to="/admin">
+                    <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-amber-600 hover:bg-amber-50 transition-all mt-1">
+                      <Settings className="h-4 w-4" /> Panel admina
+                    </button>
+                  </Link>
+              )}
+            </div>
+          </nav>
+
+          {/* Logout */}
+          <div className="px-3 py-4 border-t border-gray-100">
+            <button onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all">
+              <LogOut className="h-4 w-4" /> Wyloguj się
+            </button>
+          </div>
+        </aside>
+
+        {/* ── Main Content ── */}
+        <div className="flex-1 lg:ml-64 min-w-0">
+          {/* Top bar */}
+          <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-100 px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              {/* Mobile logo */}
+              <Link to="/" className="flex items-center gap-2 lg:hidden">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                  <span className="text-white font-black text-sm">S</span>
+                </div>
+                <span className="font-black text-base tracking-tight text-gray-900">STAPLER<span className="text-amber-500">O</span></span>
+              </Link>
+
+              {/* Page title - desktop */}
+              <div className="hidden lg:block">
+                <h1 className="text-xl font-bold text-gray-900">
+                  {activeTab === "courses" ? "Moje kursy" :
+                      activeTab === "orders" ? "Zamówienia" : "Profil"}
+                </h1>
+              </div>
+
+              {/* Right actions */}
+              <div className="flex items-center gap-3">
+                {isAdmin && (
+                    <Link to="/admin" className="hidden sm:flex">
+                      <button className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
+                        <Settings className="h-4 w-4" />
+                        Panel admina
+                      </button>
+                    </Link>
+                )}
+                {/* Mobile user avatar */}
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-sm font-bold lg:hidden flex-shrink-0">
+                  {initials(user.name)}
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile tab bar */}
+            <div className="flex gap-1 mt-3 lg:hidden">
+              {navItems.map(item => (
+                  <button key={item.id} onClick={() => setActiveTab(item.id)}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                              activeTab === item.id ? "bg-amber-50 text-amber-700" : "text-gray-400 hover:text-gray-700"
+                          }`}>
+                    <item.icon className="h-3.5 w-3.5" />
+                    {item.label}
+                  </button>
+              ))}
+            </div>
+          </header>
+
+          <main className="px-4 sm:px-6 lg:px-8 py-8">
+
+            {/* ── COURSES TAB ── */}
+            {activeTab === "courses" && (
+                <div className="space-y-8">
+                  {/* Welcome + stats */}
+                  <div>
+                    <div className="mb-6">
+                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                        Witaj, {user.name.split(" ")[0]}! 👋
+                      </h2>
+                      <p className="text-gray-500 mt-1">
+                        {courses.length === 0
+                            ? "Nie masz jeszcze żadnych kursów."
+                            : `Masz dostęp do ${courses.length} ${courses.length === 1 ? "kursu" : "kursów"}`}
+                      </p>
+                    </div>
+
+                    {courses.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                          <StatCard icon={BookOpen} label="Kursy" value={courses.length} color="bg-blue-50 text-blue-600" />
+                          <StatCard icon={Trophy} label="Ukończone" value={completedCourses} color="bg-amber-50 text-amber-600" />
+                          <StatCard icon={TrendingUp} label="Śr. postęp" value={`${avgProgress}%`} color="bg-green-50 text-green-600" />
+                          <StatCard icon={ShoppingBag} label="Zamówienia" value={orders.length} color="bg-purple-50 text-purple-600" />
+                        </div>
+                    )}
+                  </div>
+
+                  {/* Courses grid */}
+                  {courses.length === 0 ? (
+                      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
+                        <div className="w-20 h-20 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                          <GraduationCap className="h-10 w-10 text-amber-400" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Brak kursów</h3>
+                        <p className="text-gray-400 mb-6">
+                          {isAdmin
+                              ? "Nie ma jeszcze żadnych kursów w systemie. Dodaj pierwszy kurs w panelu admina."
+                              : "Kup kurs aby rozpocząć naukę."}
+                        </p>
+                        <div className="flex gap-3 justify-center flex-wrap">
+                          {isAdmin ? (
+                              <Link to="/admin">
+                                <button className="bg-amber-500 hover:bg-amber-400 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors">
+                                  <Settings className="h-4 w-4" /> Panel admina
+                                </button>
+                              </Link>
+                          ) : (
+                              <Link to="/">
+                                <button className="bg-amber-500 hover:bg-amber-400 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors">
+                                  Zobacz kursy <ArrowRight className="h-4 w-4" />
+                                </button>
+                              </Link>
+                          )}
+                        </div>
+                      </div>
+                  ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                        {courses.map(course => (
+                            <CourseCard key={course._id} course={course} quizResults={quizResults} isAdmin={isAdmin} />
+                        ))}
+                      </div>
+                  )}
+                </div>
+            )}
+
+            {/* ── ORDERS TAB ── */}
+            {activeTab === "orders" && (
+                <div className="max-w-3xl space-y-4">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Zamówienia</h2>
+                    <p className="text-gray-500 mt-1">Historia Twoich zakupów</p>
+                  </div>
+
+                  {orders.length === 0 ? (
+                      <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
+                        <ShoppingBag className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500 font-medium">Brak zamówień</p>
+                        <p className="text-gray-400 text-sm mt-1">Twoje przyszłe zakupy pojawią się tutaj.</p>
+                      </div>
+                  ) : (
+                      <div className="space-y-3">
+                        {orders.map((order: any) => (
+                            <div key={order._id} className="bg-white border border-gray-100 rounded-2xl p-5 flex items-center justify-between gap-4 shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+                                  <ShoppingBag className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <p className="text-gray-900 font-semibold text-sm">{order.orderNumber}</p>
+                                  <p className="text-gray-400 text-xs mt-0.5 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {formatDate(order.createdAt)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-gray-900 font-bold">{order.totalAmount?.toFixed(2)} €</p>
+                                <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full mt-1 ${
+                                    order.status === "paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                                }`}>
+                          {order.status === "paid" ? "Opłacone" : order.status}
+                        </span>
+                              </div>
+                            </div>
+                        ))}
+                      </div>
+                  )}
+                </div>
+            )}
+
+            {/* ── PROFILE TAB ── */}
+            {activeTab === "profile" && (
+                <div className="max-w-xl space-y-6">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Profil</h2>
+                    <p className="text-gray-500 mt-1">Twoje informacje konta</p>
+                  </div>
+
+                  {/* Profile card */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    {/* Header banner */}
+                    <div className="h-20 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500" />
+                    <div className="px-6 pb-6 -mt-10">
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-2xl font-black border-4 border-white shadow-md mb-4">
+                        {initials(user.name)}
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900">{user.name}</h3>
+                      <p className="text-gray-500 text-sm">{user.email}</p>
+                      {isAdmin && (
+                          <span className="inline-flex items-center gap-1 mt-2 bg-amber-100 text-amber-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                      <Shield className="h-3 w-3" /> Administrator
+                    </span>
+                      )}
+
+                      <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-100">
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-gray-900">{courses.length}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">Kursy</p>
+                        </div>
+                        <div className="text-center border-x border-gray-100">
+                          <p className="text-2xl font-bold text-green-600">{completedCourses}</p>
+                          <p className="text-xs text-gray-400 mt-0.5">Ukończone</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-amber-600">{avgProgress}%</p>
+                          <p className="text-xs text-gray-400 mt-0.5">Śr. postęp</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Admin quick access */}
+                  {isAdmin && (
+                      <Link to="/admin">
+                        <div className="bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-5 text-white flex items-center justify-between hover:shadow-lg transition-shadow cursor-pointer">
+                          <div>
+                            <p className="font-bold">Panel Administratora</p>
+                            <p className="text-white/80 text-sm mt-0.5">Zarządzaj kursami i użytkownikami</p>
+                          </div>
+                          <ArrowRight className="h-6 w-6 text-white/80" />
+                        </div>
+                      </Link>
+                  )}
+
+                  {/* Logout */}
+                  <button onClick={handleLogout}
+                          className="w-full flex items-center justify-center gap-2 border border-red-200 text-red-500 hover:bg-red-50 font-medium py-3 rounded-xl transition-colors">
+                    <LogOut className="h-4 w-4" /> Wyloguj się
+                  </button>
+                </div>
+            )}
+          </main>
+        </div>
+      </div>
+  );
 };
 
 export default Dashboard;

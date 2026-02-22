@@ -3,15 +3,11 @@ import { getCourse } from "@/api/course.api";
 import { Course } from "@/types/course.types";
 
 export const useCourse = (courseId?: string) => {
-    const { data, isLoading, error } = useQuery<Course, Error>({
-        queryKey: ["course", courseId],
-        queryFn: () => getCourse(courseId!),
-        enabled: !!courseId,
-    });
-
-    return {
-        course: data,
-        isLoading,
-        error,
-    };
+  const { data, isLoading, error } = useQuery<Course, Error>({
+    queryKey: ["course", courseId],
+    queryFn: () => getCourse(courseId!),
+    enabled: !!courseId,
+    staleTime: 5 * 60 * 1000, // 5 min
+  });
+  return { course: data, isLoading, error };
 };

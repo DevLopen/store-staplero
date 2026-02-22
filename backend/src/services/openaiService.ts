@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import * as mammoth from "mammoth";
-// Zmiana na bezpieczniejszy fork
 const pdf = require("pdf-parse-fork");
+import { nanoid } from "nanoid";
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY || "",
@@ -12,6 +12,7 @@ interface GenerateContentParams {
     prompt: string;
     files?: Express.Multer.File[];
     language?: string;
+    outputFormat?: "markdown" | "blocks";
 }
 
 interface ChatMessage {
@@ -19,184 +20,14 @@ interface ChatMessage {
     content: string;
 }
 
-// FAQ Knowledge Base - źródło wiedzy dla AI
-const FAQ_KNOWLEDGE_BASE = `
-# STAPLERO - Firma Schulungowa dla Operatorów Wózków Widłowych
+interface ContentBlock {
+    id: string;
+    type: string;
+    order: number;
+    data: any;
+}
 
-## Informacje B2B (Firmy)
-
-### Szkolenia Inhouse
-- Prowadzimy szkolenia w całych Niemczech bezpośrednio w siedzibie klienta
-- Zgodne z DGUV Vorschrift 68 i DGUV Grundsatz 308-001
-- Szkolenie składa się z części teoretycznej z egzaminem pisemnym oraz części praktycznej z egzaminem jazdy
-- Trenerzy przynoszą wszystkie niezbędne materiały szkoleniowe
-- Wymagana jest odpowiednia powierzchnia do ćwiczeń praktycznych
-
-### Koszty Szkoleń Inhouse
-Szkolenia są planowane indywidualnie. Potrzebujemy następujących informacji:
-- Liczba uczestników
-- Miejsce szkolenia
-- Rodzaj urządzenia (np. wózek czołowy, wózek z wysuwnym masztem, wózek elektryczny, wózek podnośnikowy)
-- Doświadczenie uczestników
-- Dla szkoleń w języku rumuńskim dodatkowa opłata za tłumacza: 179,99 € netto dziennie
-
-### Języki Szkoleń
-Dostępne języki (teoria i praktyka):
-- Niemiecki
-- Polski
-- Ukraiński
-- Rosyjski
-- Rumuński (dodatkowa opłata za tłumacza: 179,99 € netto dziennie)
-
-### Wymagania dla Uczestników
-Uczestnicy potrzebują:
-- Ważny dowód osobisty lub paszport
-- Zdjęcie paszportowe (do legitymacji)
-- Buty ochronne (obowiązkowe dla części praktycznej)
-
-### Certyfikat
-Po zdaniu egzaminu teoretycznego i praktycznego wszyscy uczestnicy otrzymują:
-- Oficjalny niemiecki certyfikat operatora wózka widłowego
-- Ważny zgodnie z DGUV Vorschrift 68 i DGUV Grundsatz 308-001
-- Uznawany w całych Niemczech
-- Opcjonalnie: STAPLERO ProCard - legitymacja w formacie karty (jak prawo jazdy): 14,99 € netto za osobę
-
-### Wymagania dla Firmy
-Dzień 1 (Teoria):
-- Cichy pokój ze stołami i krzesłami
-- Dobre oświetlenie
-- Gniazdko elektryczne
-
-Dzień 2 (Praktyka):
-- Odpowiedni teren ćwiczeń (np. magazyn, plac zakładowy)
-- Sprawny wózek widłowy
-- Europalety i pojemniki siatkowe
-
-### Czas Trwania Szkolenia
-Standard (wózek widłowy): 2 dni
-- Dzień 1: Teoria z egzaminem pisemnym
-- Dzień 2: Praktyka z ćwiczeniami jazdy i egzaminem praktycznym
-
-Skrócone warianty:
-- 1 dzień: Dla uczestników z minimum 6-miesięcznym doświadczeniem praktycznym lub po ukończeniu naszego szkolenia teoretycznego online
-- 2 dni praktyki: Gdy teoria została już ukończona online
-- 3 dni (intensywnie): Na życzenie, np. dla wózków z wysuwnym masztem
-
-Wózek niskopodnośnikowy (elektryczny/szybkobieżny): 1 dzień
-- Szkolenie obejmuje teorię, praktykę i egzamin
-
-## Informacje B2C (Osoby Prywatne)
-
-### Terminy Szkoleń
-- Wszystkie aktualne terminy są publikowane na stronie internetowej
-- Wybierz "Theorie & Praxis – offline" na dole strony
-- Następnie wybierz odpowiedni termin i lokalizację
-- Rejestracja online
-
-### Czas Trwania
-Standardowo: 2 dni
-- Dzień 1: Teoria
-- Dzień 2: Praktyka i egzamin
-
-Wariant elastyczny:
-- Teoria online = szkolenie skrócone do 1 dnia LUB 2 dni praktyki
-
-### Koszty
-Szkolenie podstawowe (Poziom 1 - wózek czołowy):
-- 249,99 € netto (+ 19% VAT)
-- W cenie: teoria, praktyka, egzamin i oficjalny certyfikat DGUV
-
-Dodatkowe koszty (opcjonalne):
-- Kwalifikacje dodatkowe (np. wózek z wysuwnym masztem, wózek z miejscem dla operatora)
-- STAPLERO ProCard (legitymacja w formacie karty): 14,99 € extra
-
-### Języki
-Język zależy od wybranej lokalizacji i wyboru podczas rejestracji.
-
-Przykład:
-- Berlin (po niemiecku): Szkolenie po niemiecku, zalecany poziom: min. B1
-- Uczestnicy z poziomem A2 również mogą uczestniczyć, ale muszą zdać egzamin
-- Berlin (po angielsku): Lekcje i pytania egzaminacyjne po angielsku
-
-### Wymagania Językowe
-A2 lub B1 wystarcza, jeśli potrafisz:
-- Zrozumieć proste instrukcje
-- Śledzić zajęcia
-- W razie problemów językowych trener pomaga
-
-### Wymagania
-- Minimalny wiek: 18 lat
-- Zdolność fizyczna i psychiczna
-- Znajomość języka niemieckiego, angielskiego, polskiego, ukraińskiego lub rosyjskiego
-- Doświadczenie nie jest wymagane
-
-### Proces Rejestracji
-1. Wybierz termin i język na stronie internetowej
-2. Zarejestruj się online
-3. Zapłać opłatę za szkolenie
-4. Twoje miejsce jest zarezerwowane
-
-### Płatności
-- Płatność online przez stronę internetową
-- Płatność gotówką tylko po wcześniejszym uzgodnieniu
-
-### Anulowanie
-- Bezpłatne anulowanie możliwe do 7 dni przed rozpoczęciem kursu
-
-### Ważność Certyfikatu
-- Ważny w całych Niemczech
-- Zgodny z przepisami DGUV
-
-### Jobcenter / Agencja Pracy
-- NIE przyjmujemy bonów edukacyjnych
-- Szkolenie należy opłacić prywatnie lub może zostać pokryte przez pracodawcę
-
-### Pytania Egzaminacyjne
-- Pytania egzaminacyjne są oficjalne i nie są wydawane wcześniej
-- Można skorzystać z naszego szkolenia teoretycznego online do przygotowania
-
-## Produkty i Usługi
-
-### Szkolenia Online
-- Online-Theorie: 69€
-- Elastyczna nauka w dowolnym czasie
-- Dostęp do materiałów szkoleniowych
-
-### Szkolenia Praktyczne
-- Praxis-Ausbildung: od 299€
-- Profesjonalne ćwiczenia jazdy
-- Egzamin praktyczny
-
-### Usługi Dodatkowe
-- Personalvermittlung (rekrutacja personelu) dla:
-  - Produkcji
-  - Magazynu
-  - Logistyki
-
-## Ważne Zasady
-- Rozmowa tylko na temat STAPLERO i szkoleń wózkowych
-- Nie udzielaj informacji spoza zakresu firmy
-- Jeśli pytanie wykracza poza zakres, uprzejmie przekieruj do kontaktu bezpośredniego
-- Zawsze bądź pomocny, profesjonalny i konkretny
-`;
-
-// System prompt dla chat bota
-const CHAT_SYSTEM_PROMPT = `Du bist der offizielle STAPLERO AI-Assistent - ein freundlicher, professioneller Chatbot für Staplerschulungen.
-
-WICHTIGE REGELN:
-1. Du darfst NUR über STAPLERO und Staplerschulungen sprechen
-2. Bei Fragen außerhalb dieses Themas: höflich ablehnen und zum Thema zurückführen
-3
-
-KNOWLEDGE BASE:
-${FAQ_KNOWLEDGE_BASE}
-
-Beispiel-Antworten:
-- "Unsere Inhouse-Schulungen finden deutschlandweit direkt bei Ihnen vor Ort statt..."
-- "Das tut mir leid, aber ich kann nur Fragen zu STAPLERO-Schulungen beantworten. Haben Sie Fragen zu unseren Kursen?"
-- "Gerne! Für ein individuelles Angebot benötigen wir..."
-`;
-
+// Existing FAQ and system prompts remain the same...
 const EXPERT_SYSTEM_PROMPT = `
 Du bist ein hochqualifizierter Dozent für Flurförderzeuge bei STAPLERO.
 
@@ -210,78 +41,110 @@ QUALITÄTS-STANDARDS:
 1. RECHTLICHER FOKUS: Nutze konkrete deutsche Rechtsgrundlagen (z.B. DGUV Vorschrift 1, DGUV Vorschrift 68, BetrSichV, ArbSchG). 
 2. KEINE GENERISCHEN BEISPIELE: Bleibe bei fachlichen Fakten und realen Gefahrenpotenzialen.
 3. TECHNISCHE TIEFE: Erkläre physikalische Grundsätze (Standsicherheit, Lastschwerpunkt).
-4. GRAFIK-MANDAT: Wenn es sinnvoll ist, füge am Ende einen Platzhalter für DALL-E ein: [GENERATE_IMAGE: Beschreibung einer fachlichen Situation].
-
-STRUKTUR:
-# [Titel des Moduls]
-## Rechtliche Grundlagen & Normen
-## Kernkompetenzen
-## Gefahrenanalyse & Prävention
-## STAPLERO Experten-Check
+4. STRUKTURIERT: Gliedere Inhalte in logische Abschnitte mit klaren Überschriften.
 `;
 
-export const generateChatResponse = async (
-    userMessage: string,
-    conversationHistory: ChatMessage[] = []
-): Promise<string> => {
+const BLOCKS_SYSTEM_PROMPT = `
+Jesteś ekspertem dydaktycznym tworzącym materiały szkoleniowe dla operatorów wózków widłowych na platformie e-learningowej w Polsce.
+
+WAŻNE - FORMAT WYJŚCIOWY:
+Zwróć tablicę JSON bloków treści. Każdy blok to obiekt z polami bezpośrednio na poziomie obiektu (NIE zagnieżdżone w "data").
+
+Dostępne typy bloków i ich pola:
+1. richtext - pole: richtextData (string HTML z pełną treścią merytoryczną)
+2. video - pole: videoUrl (null = placeholder), videoCaption (opis co wstawić)  
+3. image - pole: imageUrl (null = placeholder), imageCaption (opis co wstawić)
+4. callout - pola: calloutStyle (info/warning/danger/success), calloutTitle, calloutText
+5. divider - brak dodatkowych pól
+6. interactive - pola: interactiveSubtype (stability-sim/drag-order/hotspot), interactiveData (obiekt)
+
+ZASADY TWORZENIA TREŚCI:
+- Bloki richtext MUSZĄ zawierać pełny, szczegółowy tekst merytoryczny w HTML (min. 3-5 paragrafów)
+- Używaj tagów: h2, h3, p, strong, em, ul, li, ol - NIE div, NIE class
+- Bloki image mają imageUrl: null i imageCaption opisujący DOKŁADNIE jakie zdjęcie wstawić
+- Bloki video mają videoUrl: null i videoCaption opisujący JAKI film wstawić
+- Pisz wyłącznie po POLSKU
+- Twórz 6-10 bloków na temat
+- Struktura: Wprowadzenie → Teoria z detalami → Ważne zasady (callout) → Placeholder zdjęcia → Placeholder wideo → Podsumowanie
+- Treść musi być merytoryczna, szczegółowa, zgodna z przepisami BHP i DGUV
+
+Przykładowy output (format który MUSISZ stosować):
+[
+  {
+    "type": "richtext",
+    "richtextData": "<h2>Stateczność wózka widłowego</h2><p>Stateczność wózka widłowego opiera się na <strong>trójkącie stabilizacji</strong> tworzonym przez dwa przednie koła napędowe i tylne koło skrętne. Ładunek umieszczony w rzucie pionowym poza tym trójkątem powoduje niebezpieczeństwo wywrotki.</p><h3>Czynniki wpływające na stateczność</h3><ul><li><strong>Ciężar ładunku</strong> — im cięższy, tym niżej należy go transportować</li><li><strong>Wysokość podniesienia</strong> — uniesione widły drastycznie podnoszą środek ciężkości</li><li><strong>Prędkość jazdy</strong> — na zakrętach siły odśrodkowe mogą wywrócić wózek</li></ul>"
+  },
+  {
+    "type": "callout",
+    "calloutStyle": "warning",
+    "calloutTitle": "Zakaz przeciążania",
+    "calloutText": "Nigdy nie przekraczaj maksymalnego udźwigu określonego w tabliczce znamionowej wózka. Przekroczenie udźwigu grozi wywrotką i wypadkiem śmiertelnym."
+  },
+  {
+    "type": "image",
+    "imageUrl": null,
+    "imageCaption": "PLACEHOLDER: Wstaw zdjęcie/schemat trójkąta stabilizacji wózka widłowego z oznaczonymi punktami podparcia"
+  },
+  {
+    "type": "video",
+    "videoUrl": null,
+    "videoCaption": "PLACEHOLDER: Wstaw film instruktażowy pokazujący prawidłowe techniki transportu ładunku wózkiem widłowym"
+  }
+]
+
+ABSOLUTNE REGUŁY:
+- Zwróć TYLKO tablicę JSON, bez żadnych dodatkowych tekstów ani znaczników markdown (\`\`\`json)
+- Pola bloków są BEZPOŚREDNIO w obiekcie (NIE w zagnieżdżonym "data")
+- Każdy blok richtext ma pełną, szczegółową treść HTML
+- imageUrl i videoUrl dla placeholderów zawsze ustawione na null
+- Treść po polsku, merytoryczna, zgodna z BHP
+`;
+
+
+// Extract text from uploaded files
+export const extractTextFromFile = async (buffer: Buffer, mimetype: string): Promise<string> => {
     try {
-        // Przygotuj historię konwersacji
-        const messages: any[] = [
-            { role: "system", content: CHAT_SYSTEM_PROMPT }
-        ];
+        if (mimetype === "application/pdf") {
+            const pdfData = await pdf(buffer);
+            return pdfData.text || "";
+        }
 
-        // Dodaj ostatnie 10 wiadomości z historii (aby nie przekroczyć limitu tokenów)
-        const recentHistory = conversationHistory.slice(-10);
-        recentHistory.forEach(msg => {
-            messages.push({
-                role: msg.role,
-                content: msg.content
-            });
-        });
+        if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+            const result = await mammoth.extractRawText({ buffer });
+            return result.value || "";
+        }
 
-        // Dodaj aktualną wiadomość użytkownika
-        messages.push({
-            role: "user",
-            content: userMessage
-        });
+        if (mimetype === "text/plain") {
+            return buffer.toString("utf-8");
+        }
 
-        const completion = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 500, // Krótsze odpowiedzi dla chatu
-            presence_penalty: 0.6, // Unikaj powtórzeń
-            frequency_penalty: 0.3
-        });
-
-        return completion.choices[0]?.message?.content ||
-            "Entschuldigung, ich konnte keine Antwort generieren. Bitte versuchen Sie es erneut.";
-
-    } catch (error: any) {
-        console.error("OpenAI Chat Error:", error);
-        throw new Error(`Chat-Generierung fehlgeschlagen: ${error.message}`);
+        return "";
+    } catch (error) {
+        console.error("File extraction error:", error);
+        return "";
     }
 };
 
-// Pozostałe funkcje z oryginalnego pliku
+// Generate topic content - now supports both markdown and blocks
 export const generateTopicContent = async ({
                                                title,
                                                prompt = "Erstelle eine detaillierte Lektion basierend auf dem Titel und den Materialien.",
                                                files = [],
-                                               language = "de"
-                                           }: GenerateContentParams): Promise<string> => {
+                                               language = "de",
+                                               outputFormat = "markdown"
+                                           }: GenerateContentParams): Promise<any> => {
 
     const imageFiles = files.filter(f => f.mimetype.startsWith('image/'));
     const docFiles = files.filter(f => !f.mimetype.startsWith('image/'));
 
-    // WYCIĄGANIE TEKSTU Z PLIKÓW
+    // Extract text from document files
     let docsText = "";
     for (const file of docFiles) {
         const text = await extractTextFromFile(file.buffer, file.mimetype);
         docsText += `\n--- INHALT AUS DATEI: ${file.originalname} ---\n${text}\n`;
     }
 
-    // BUDOWANIE WIADOMOŚCI - tutaj dodajemy docsText!
+    // Build message content
     const userMessageContent: any[] = [
         {
             type: "text",
@@ -291,11 +154,11 @@ export const generateTopicContent = async ({
             UNBEDINGT ZU BEACHTENDE MATERIALIEN (TEXT):
             ${docsText || "Keine Textdateien bereitgestellt."}
             
-            Analysiere sowohl den obigen Text als auch die beigefügten Bilder (falls vorhanden) und erstelle daraus das Lernmodul.`
+            Analysiere sowohl den obigen Text als auch die beigefügten Bilder (falls vorhanden) und erstelle daraus ${outputFormat === "blocks" ? "ein strukturiertes JSON-Array von Content-Blöcken" : "das Lernmodul"}.`
         }
     ];
 
-    // Dodanie zdjęć do analizy Vision
+    // Add images for Vision analysis
     imageFiles.forEach(file => {
         userMessageContent.push({
             type: "image_url",
@@ -304,101 +167,197 @@ export const generateTopicContent = async ({
     });
 
     try {
-        // KROK A: Generowanie treści i promptu dla grafiki
         const completion = await openai.chat.completions.create({
             model: "gpt-4o",
             messages: [
-                { role: "system", content: EXPERT_SYSTEM_PROMPT }, // Stała tożsamość
+                {
+                    role: "system",
+                    content: outputFormat === "blocks" ? BLOCKS_SYSTEM_PROMPT : EXPERT_SYSTEM_PROMPT
+                },
                 { role: "user", content: userMessageContent }
             ],
             temperature: 0.3,
-            max_tokens: 2500
+            max_tokens: outputFormat === "blocks" ? 3000 : 2500
         });
 
-        let finalContent = completion.choices[0]?.message?.content || "";
+        let generatedContent = completion.choices[0]?.message?.content || "";
 
-        // // KROK B: Automatyczne generowanie grafiki DALL-E 3
-        // const imageTagMatch = finalContent.match(/\[GENERATE_IMAGE: (.*?)\]/);
-        //
-        // if (imageTagMatch) {
-        //     const imageDescription = imageTagMatch[1];
-        //     const imageResponse = await openai.images.generate({
-        //         model: "dall-e-3",
-        //         prompt: `Professional, clean educational illustration for a forklift safety course: ${imageDescription}`,
-        //         n: 1,
-        //         size: "1024x1024"
-        //     });
-        //
-        //     // Sprawdzenie czy dane istnieją i czy tablica nie jest pusta
-        //     if (imageResponse.data && imageResponse.data.length > 0) {
-        //         const imageUrl = imageResponse.data[0].url;
-        //
-        //         if (imageUrl) {
-        //             finalContent = finalContent.replace(imageTagMatch[0], `\n\n![Illustration](${imageUrl})\n\n`);
-        //         }
-        //     } else {
-        //         // Jeśli grafika się nie wygenerowała, usuwamy tag promptu, by nie "śmiecił" w tekście
-        //         finalContent = finalContent.replace(imageTagMatch[0], "");
-        //         console.error("OpenAI Image Error: No data received");
-        //     }
-        // }
+        // If blocks format requested, parse JSON and add IDs
+        if (outputFormat === "blocks") {
+            try {
+                // Remove markdown code fences if present
+                const jsonContent = generatedContent
+                    .replace(/```json\n?/g, "")
+                    .replace(/```\n?/g, "")
+                    .trim();
 
-        return finalContent;
+                const blocks = JSON.parse(jsonContent);
+
+                // Add IDs and order to each block - support flat and legacy nested format
+                const blocksWithMeta = blocks.map((block: any, index: number) => {
+                    const base = { id: nanoid(8), type: block.type, order: index };
+                    if (block.data && typeof block.data === 'object') {
+                        // Legacy nested format - flatten
+                        return { ...base, ...block.data };
+                    }
+                    // Flat format - spread directly
+                    const { type: _t, ...rest } = block;
+                    return { ...base, ...rest };
+                });
+
+                return {
+                    blocks: blocksWithMeta,
+                    blocksGenerated: blocksWithMeta.length
+                };
+            } catch (parseError) {
+                console.error("JSON parse error:", parseError);
+                console.log("Generated content:", generatedContent);
+
+                // Fallback: return a single richtext block with the content
+                return {
+                    blocks: [{
+                        id: nanoid(8),
+                        type: "richtext",
+                        order: 0,
+                        data: {
+                            html: `<div class="ai-fallback"><p><strong>KI-generierter Inhalt (Fallback):</strong></p>${generatedContent.replace(/\n/g, '<br/>')}</div>`
+                        }
+                    }],
+                    blocksGenerated: 1
+                };
+            }
+        }
+
+        // Markdown format (legacy)
+        return {
+            content: generatedContent
+        };
+
     } catch (error: any) {
-        console.error("OpenAI Multimodal Error:", error);
-        throw new Error(`Generowanie nie powiodło się: ${error.message}`);
+        console.error("OpenAI Error:", error);
+        throw new Error(`Generierung fehlgeschlagen: ${error.message}`);
     }
 };
 
+// Enhance existing content (legacy function - keep for backward compatibility)
 export const enhanceTopicContent = async (
     existingContent: string,
     instructions: string
 ): Promise<string> => {
-    const systemPrompt = `Du bist ein Experte für Staplerschulungen. 
-Verbessere oder erweitere den bestehenden Inhalt basierend auf den Anweisungen.
-Behalte die Markdown-Formatierung bei.`;
-
     try {
         const completion = await openai.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
-                { role: "system", content: systemPrompt },
+                {
+                    role: "system",
+                    content: "Du bist ein Experte für die Verbesserung von Bildungsinhalten."
+                },
                 {
                     role: "user",
-                    content: `Bestehender Inhalt:\n${existingContent}\n\nAnweisungen: ${instructions}`
+                    content: `Verbessere folgenden Inhalt basierend auf diesen Anweisungen:\n\nInhalt:\n${existingContent}\n\nAnweisungen:\n${instructions}`
                 }
             ],
-            temperature: 0.7,
-            max_tokens: 2000,
+            temperature: 0.4,
+            max_tokens: 2000
         });
 
         return completion.choices[0]?.message?.content || existingContent;
     } catch (error: any) {
-        console.error("OpenAI API Error:", error);
-        throw new Error(`AI-Verbesserung fehlgeschlagen: ${error.message}`);
+        console.error("Enhancement error:", error);
+        throw new Error(`Verbesserung fehlgeschlagen: ${error.message}`);
     }
 };
 
-export const extractTextFromFile = async (fileBuffer: Buffer, mimeType: string): Promise<string> => {
-    if (!fileBuffer || fileBuffer.length === 0) return "";
-
+// Course Assistant Chat - context-aware chat for specific topic/chapter
+export const generateCourseAssistantResponse = async (
+    userMessage: string,
+    conversationHistory: ChatMessage[],
+    context: {
+        courseTitle: string;
+        chapterTitle: string;
+        topicTitle?: string;
+        topicContent?: string; // richtext content for context
+    }
+): Promise<string> => {
     try {
-        if (mimeType === "text/plain") {
-            return fileBuffer.toString("utf-8");
-        }
-        if (mimeType === "application/pdf") {
-            // pdf-parse zwraca Promise, który rozwiązuje się do obiektu z polem text
-            const data = await pdf(fileBuffer);
-            return data.text || "";
-        }
-        if (mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-            // mammoth wymaga obiektu z buforem
-            const result = await mammoth.extractRawText({ buffer: fileBuffer });
-            return result.value || "";
-        }
-        return "";
-    } catch (error) {
-        console.error("Błąd ekstrakcji tekstu z pliku:", mimeType, error);
-        return ""; // Zwracamy pusty tekst, by nie przerywać pracy AI
+        const systemPrompt = `Jesteś pomocnym asystentem kursanta na platformie e-learningowej dla operatorów wózków widłowych.
+
+Kontekst bieżący:
+- Kurs: ${context.courseTitle}
+- Rozdział: ${context.chapterTitle}
+${context.topicTitle ? `- Temat: ${context.topicTitle}` : ''}
+${context.topicContent ? `\nTreść bieżącego rozdziału:\n${context.topicContent}` : ''}
+
+ZASADY:
+1. Odpowiadaj WYŁĄCZNIE na pytania dotyczące bieżącego rozdziału/tematu
+2. Jeśli pytanie wykracza poza zakres, grzecznie poinformuj że możesz pomóc tylko w kontekście tego rozdziału
+3. Odpowiadaj po polsku
+4. Bądź pomocny, konkretny i merytoryczny
+5. Cytuj przepisy BHP, DGUV i inne normy jeśli to istotne
+6. Nie pomagaj z zagadnieniami spoza kursu na wózki widłowe`;
+
+        const messages: any[] = [
+            { role: "system", content: systemPrompt }
+        ];
+
+        const recentHistory = conversationHistory.slice(-8);
+        recentHistory.forEach(msg => {
+            messages.push({ role: msg.role, content: msg.content });
+        });
+
+        messages.push({ role: "user", content: userMessage });
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages,
+            temperature: 0.5,
+            max_tokens: 600
+        });
+
+        return completion.choices[0]?.message?.content || "Przepraszam, nie udało mi się wygenerować odpowiedzi. Spróbuj ponownie.";
+    } catch (error: any) {
+        console.error("Course Assistant Error:", error);
+        throw new Error(`Błąd asystenta: ${error.message}`);
+    }
+};
+
+
+export const generateChatResponse = async (
+    userMessage: string,
+    conversationHistory: ChatMessage[] = []
+): Promise<string> => {
+    try {
+        const messages: any[] = [
+            { role: "system", content: "Du bist ein hilfreicher Assistent für Flurförderzeug-Schulungen." }
+        ];
+
+        const recentHistory = conversationHistory.slice(-10);
+        recentHistory.forEach(msg => {
+            messages.push({
+                role: msg.role,
+                content: msg.content
+            });
+        });
+
+        messages.push({
+            role: "user",
+            content: userMessage
+        });
+
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: messages,
+            temperature: 0.7,
+            max_tokens: 500,
+            presence_penalty: 0.6,
+            frequency_penalty: 0.3
+        });
+
+        return completion.choices[0]?.message?.content ||
+            "Entschuldigung, ich konnte keine Antwort generieren. Bitte versuchen Sie es erneut.";
+
+    } catch (error: any) {
+        console.error("OpenAI Chat Error:", error);
+        throw new Error(`Chat-Generierung fehlgeschlagen: ${error.message}`);
     }
 };

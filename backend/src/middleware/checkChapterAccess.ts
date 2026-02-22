@@ -10,6 +10,9 @@ export const checkChapterAccess = async (req: AuthRequest, res: Response, next: 
 
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
+    // Admin ma dostęp do wszystkich rozdziałów
+    if (req.user?.isAdmin) return next();
+
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: "Kurs nie znaleziony" });
 
@@ -65,6 +68,9 @@ export const checkFinalQuizAccess = async (req: AuthRequest, res: Response, next
     const { courseId } = req.params;
 
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    // Admin ma dostęp do egzaminu końcowego
+    if (req.user?.isAdmin) return next();
 
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: "Kurs nie znaleziony" });

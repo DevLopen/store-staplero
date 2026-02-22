@@ -1,42 +1,48 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getProgress, startTopic, completeTopic } from "@/api/progress.api";
+import { getProgress, startTopic as apiStartTopic, completeTopic as apiCompleteTopic } from "@/api/progress.api";
 import { ProgressData } from "@/types/progress.types";
 
 export const useProgress = (courseId?: string) => {
-    const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
+  const queryKey = ["progress", courseId];
 
-    const { data, isLoading } = useQuery<ProgressData>({
-        queryKey: ["progress", courseId],
-        queryFn: () => getProgress(courseId!),
-        enabled: !!courseId,
-    });
+  const { data, isLoading } = useQuery<ProgressData>({
+    queryKey,
+    queryFn: () => getProgress(courseId!),
+    enabled: !!courseId,
+    staleTime: 0, // always fresh
+  });
 
-    const startTopicMutation = useMutation({
-        mutationFn: startTopic,
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ["progress", courseId],
-            });
-        },
-    });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey });
 
-    const completeTopicMutation = useMutation({
-        mutationFn: completeTopic,
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: ["progress", courseId],
-            });
-        },
-    });
+  const startMutation = useMutation({
+    mutationFn: apiStartTopic,
+    onSuccess: invalidate,
+  });
 
-    const markTopicComplete = async (_chapterId: string, topicId: string) => {
-        await completeTopicMutation.mutateAsync({ topicId });
-    };
+  const completeMutation = useMutation({
+    mutationFn: apiCompleteTopic,
+    onSuccess: invalidate,
+  });
 
-    return {
-        progress: data,
-        isLoading,
-        startTopic: startTopicMutation.mutateAsync,
-        markTopicComplete,
-    };
+  const startTopic = (chapterId: string, topicId: string) => {
+    if (!courseId) return;
+    startMutation.mutate({ courseId, chapterId, topicId });
+  };
+
+  const markTopicComplete = async (chapterId: string, topicId: string) => {
+    if (!courseId) return;
+    await completeMutation.mutateAsync({ courseId, chapterId, topicId });
+  };
+
+  return {
+    progress: data,
+    isLoading,
+    startTopic,
+    markTopicComplete,
+    topics: data?.topics ?? {},
+    quizzes: data?.quizzes ?? {},
+    finalQuizzes: data?.finalQuizzes ?? {},
+    lastPosition: data?.lastPosition ?? null,
+  };
 };

@@ -82,20 +82,17 @@ const Admin = () => {
   const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
 
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
-  const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<QuizQuestion | null>(null);
 
   const [isChapterDialogOpen, setIsChapterDialogOpen] = useState(false);
-  const [isTopicDialogOpen, setIsTopicDialogOpen] = useState(false);
   const [isCourseDialogOpen, setIsCourseDialogOpen] = useState(false);
   const [isQuizDialogOpen, setIsQuizDialogOpen] = useState(false);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
 
   // Form states
   const [chapterForm, setChapterForm] = useState({ title: "", description: "" });
-  const [topicForm, setTopicForm] = useState({ title: "", content: "", duration: "", videoUrl: "", minDurationSeconds: "", requireMinDuration: false });
   const [courseForm, setCourseForm] = useState({ title: "", description: "" });
   const [quizForm, setQuizForm] = useState({ title: "", description: "", passingScore: "70", chapterId: "" });
   const [questionForm, setQuestionForm] = useState({
@@ -382,99 +379,15 @@ const Admin = () => {
       toast({ title: "Fehler", description: err.message, variant: "destructive" });
     }
   };
+  const openTopicEditor = (chapterId: string, topicId?: string) => {
+    if (!selectedCourse) return;
 
-  // Topic handlers
-  const openTopicDialog = (chapterId: string, topic?: Topic) => {
-    setSelectedChapterId(chapterId);
-    if (topic) {
-      setEditingTopic(topic);
-      setTopicForm({
-        title: topic.title,
-        content: topic.content,
-        duration: topic.duration,
-        videoUrl: topic.videoUrl || "",
-        minDurationSeconds: topic.minDurationSeconds?.toString() || "",
-        requireMinDuration: topic.requireMinDuration || false
-      });
+    if (topicId) {
+      navigate(`/admin/topic-editor/${selectedCourse._id}/${chapterId}/${topicId}`);
     } else {
-      setEditingTopic(null);
-      setTopicForm({ title: "", content: "", duration: "15 min", videoUrl: "", minDurationSeconds: "", requireMinDuration: false });
-    }
-    setIsTopicDialogOpen(true);
-  };
-
-  const saveTopic = async () => {
-    if (!topicForm.title.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte geben Sie einen Titel ein.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem("token");
-
-      const payload = {
-        title: topicForm.title,
-        content: topicForm.content,
-        duration: topicForm.duration,
-        videoUrl: topicForm.videoUrl || null,
-        minDurationSeconds: topicForm.minDurationSeconds
-            ? parseInt(topicForm.minDurationSeconds)
-            : null,
-        requireMinDuration: topicForm.requireMinDuration,
-      };
-
-      const url = editingTopic
-          ? `${API_URL}/courses/admin/${selectedCourse._id}/chapters/${selectedChapterId}/topics/${editingTopic._id}`
-          : `${API_URL}/courses/admin/${selectedCourse._id}/chapters/${selectedChapterId}/topics`;
-
-      const method = editingTopic ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message);
-      }
-
-      const updatedCourse = await res.json();
-
-      // 🔥 BACKEND JEST JEDYNYM ŹRÓDŁEM PRAWDY
-      setSelectedCourse(updatedCourse);
-      setCourses(prev =>
-          prev.map(c => c._id === updatedCourse._id ? updatedCourse : c)
-      );
-
-      toast({
-        title: "Erfolg",
-        description: editingTopic
-            ? "Thema wurde aktualisiert."
-            : "Neues Thema wurde hinzugefügt.",
-      });
-
-      setIsTopicDialogOpen(false);
-      setEditingTopic(null);
-
-    } catch (err: any) {
-      toast({
-        title: "Fehler",
-        description: err.message || "Serverfehler",
-        variant: "destructive",
-      });
+      navigate(`/admin/topic-editor/${selectedCourse._id}/${chapterId}`);
     }
   };
-
-
 
   // Topic sorting
   const moveTopicUp = (chapterId: string, topicId: string) => {
@@ -1017,7 +930,7 @@ const Admin = () => {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="icon" onClick={() => openTopicDialog(chapter.id, topic)}>
+                                    <Button variant="ghost" size="icon" onClick={() => openTopicEditor(chapter.id, topic._id)}>
                                       <Edit className="w-4 h-4" />
                                     </Button>
                                     <Button
@@ -1034,7 +947,7 @@ const Admin = () => {
                             <Button
                                 variant="outline"
                                 className="w-full mt-2"
-                                onClick={() => openTopicDialog(chapter.id)}
+                                onClick={() => openTopicEditor(chapter.id)}
                             >
                               <Plus className="w-4 h-4 mr-2" />
                               Thema hinzufügen
@@ -1833,15 +1746,6 @@ const Admin = () => {
             </div>
           </DialogContent>
         </Dialog>
-
-        <EnhancedTopicDialog
-            open={isTopicDialogOpen}
-            onOpenChange={setIsTopicDialogOpen}
-            topicForm={topicForm}
-            setTopicForm={setTopicForm}
-            onSave={saveTopic}
-            editingTopic={editingTopic}
-        />
 
         {/* Location Dialog */}
         <Dialog open={isLocationDialogOpen} onOpenChange={setIsLocationDialogOpen}>

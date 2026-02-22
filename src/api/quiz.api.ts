@@ -1,15 +1,23 @@
-export const fetchQuiz = async (chapterId: string) => {
-    const res = await fetch(`/api/quiz/${chapterId}`);
-    if (!res.ok) throw new Error("Fehler beim Laden des Quiz");
-    return res.json();
-};
+import apiFetch from "./http";
 
-export const submitQuizAPI = async (chapterId: string, answers: Record<string, string>) => {
-    const res = await fetch(`/api/quiz/${chapterId}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers }),
-    });
-    if (!res.ok) throw new Error("Fehler beim Abschicken des Quiz");
-    return res.json();
-};
+export const getChapterQuiz = (courseId: string, chapterId: string) =>
+  apiFetch(`/courses/${courseId}/chapters/${chapterId}/quiz`);
+
+export const submitChapterQuiz = (
+  courseId: string,
+  chapterId: string,
+  answers: Record<string, unknown>
+) =>
+  apiFetch(`/courses/${courseId}/chapters/${chapterId}/quiz`, {
+    method: "POST",
+    body: JSON.stringify({ answers }),
+  });
+
+export const getFinalQuiz = (courseId: string) =>
+  apiFetch(`/courses/${courseId}/final-quiz`);
+
+export const submitFinalQuiz = (courseId: string, answers: Record<string, unknown>) =>
+  apiFetch(`/courses/${courseId}/final-quiz`, {
+    method: "POST",
+    body: JSON.stringify({ answers }),
+  });
