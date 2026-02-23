@@ -67,6 +67,28 @@ const generateDateId = (startDate: string, endDate: string): string => {
 /**
  * Zmniejsz liczbę dostępnych miejsc dla danego terminu
  */
+
+/**
+ * POPRAWKA: Znajdź indeks terminu w lokalizacji obsługując oba formaty dateId:
+ * - Format timestamp: 'd1770293875752' (id z Location.dates[].id)
+ * - Format dat: '20260302_20260303' (generowany ze startDate_endDate)
+ */
+const findDateIndex = (location: any, dateId: string): number => {
+    // 1. Szukaj bezpośrednio po id
+    let idx = location.dates.findIndex((d: any) => d.id === dateId);
+    if (idx !== -1) return idx;
+
+    // 2. Jeśli format dat YYYYMMDD_YYYYMMDD, wyciągnij startDate i szukaj po nim
+    const m = dateId.match(/^(\d{4})(\d{2})(\d{2})_(\d{4})(\d{2})(\d{2})$/);
+    if (m) {
+        const startDate = `${m[1]}-${m[2]}-${m[3]}`;
+        idx = location.dates.findIndex((d: any) => d.startDate === startDate);
+        if (idx !== -1) return idx;
+    }
+
+    return -1;
+};
+
 export const decreaseAvailableSpots = async (
     locationId: string,
     dateId: string
@@ -79,10 +101,10 @@ export const decreaseAvailableSpots = async (
             return;
         }
 
-        const dateIndex = location.dates.findIndex(d => d.id === dateId);
+        const dateIndex = findDateIndex(location, dateId);
 
         if (dateIndex === -1) {
-            console.error(`❌ Date not found: ${dateId} in location ${locationId}`);
+            console.error(`❌ Date not found: ${dateId} in location ${locationId} (tried both id and startDate)`);
             return;
         }
 
@@ -223,7 +245,7 @@ export const increaseAvailableSpots = async (
 
         if (!location) return;
 
-        const dateIndex = location.dates.findIndex(d => d.id === dateId);
+        const dateIndex = findDateIndex(location, dateId);
 
         if (dateIndex !== -1) {
             location.dates[dateIndex].availableSpots += 1;
