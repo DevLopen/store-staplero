@@ -63,6 +63,7 @@ const PracticalCourseDetailsSchema = new Schema<PracticalCourseDetails>({
     startDate: { type: String, required: true },
     endDate: { type: String, required: true },
     time: { type: String, required: true },
+    dateId: { type: String },   // ← POPRAWKA: pole dateId musi być w schemie
     availableSpots: { type: Number, required: true },
     wantsPlasticCard: { type: Boolean, default: false },
     plasticCardPrice: Number,

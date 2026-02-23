@@ -48,6 +48,7 @@ const Checkout = () => {
 
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [existingAccountError, setExistingAccountError] = useState(false);
 
     useEffect(() => {
         if (!checkoutData) {
@@ -97,8 +98,26 @@ const Checkout = () => {
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.message || "Checkout fehlgeschlagen");
+                // POPRAWKA: Wykryj istniejące konto
+                if (response.status === 401 && data.existingAccount) {
+                    setExistingAccountError(true);
+                    toast({
+                        title: "Konto bereits vorhanden",
+                        description: "Ein Konto mit dieser E-Mail existiert bereits. Bitte geben Sie Ihr Passwort ein.",
+                        variant: "destructive",
+                    });
+                } else {
+                    toast({
+                        title: "Fehler",
+                        description: data.message || "Checkout fehlgeschlagen",
+                        variant: "destructive",
+                    });
+                }
+                setIsProcessing(false);
+                return;
             }
+
+            setExistingAccountError(false);
 
             // Save token for auto-login after payment
             localStorage.setItem("token", data.token);
@@ -189,9 +208,15 @@ const Checkout = () => {
                                                     placeholder="Mindestens 6 Zeichen"
                                                     minLength={6}
                                                 />
-                                                <p className="text-xs text-muted-foreground">
-                                                    Ein Konto wird automatisch für Sie erstellt
-                                                </p>
+                                                {existingAccountError ? (
+                                                    <p className="text-xs text-destructive font-medium">
+                                                        ⚠️ Ein Konto mit dieser E-Mail existiert bereits. Bitte geben Sie Ihr Passwort ein.
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Ein Konto wird automatisch für Sie erstellt
+                                                    </p>
+                                                )}
                                             </div>
 
                                             <div className="space-y-2">

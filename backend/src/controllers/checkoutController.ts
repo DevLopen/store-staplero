@@ -74,6 +74,14 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             // Send welcome email
             await emailService.sendWelcomeEmail(user.email, user.name);
         } else {
+            // POPRAWKA: Sprawdź hasło dla istniejącego konta
+            const isPasswordCorrect = await bcrypt.compare(data.password, user.password);
+            if (!isPasswordCorrect) {
+                return res.status(401).json({
+                    message: "Ein Konto mit dieser E-Mail-Adresse existiert bereits. Bitte geben Sie das richtige Passwort ein.",
+                    existingAccount: true,
+                });
+            }
             // Update user details if they changed
             user.name = data.name;
             user.phone = data.phone;

@@ -81,6 +81,10 @@ const Admin = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
 
+  // Users state
+  const [users, setUsers] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
@@ -204,6 +208,20 @@ const Admin = () => {
         .then(res => res.json())
         .then(data => setOrders(data.orders || []))
         .catch(err => console.error(err));
+  }, []);
+
+  // POPRAWKA: Pobierz listę użytkowników
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setUsersLoading(true);
+    fetch(`${API_URL}/auth/users`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+        .then(res => res.json())
+        .then(data => { setUsers(data.users || []); setUsersLoading(false); })
+        .catch(err => { console.error(err); setUsersLoading(false); });
   }, []);
 
   // Course handlers
@@ -837,342 +855,229 @@ const Admin = () => {
               {/* Course Content Tab */}
               <TabsContent value="content" className="space-y-6">
                 {selectedCourse ? (
-                        <>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h2 className="font-display text-xl font-semibold text-foreground">
-                              Kapitel & Themen
-                            </h2>
-                            <p className="text-sm text-muted-foreground">Kurs: {selectedCourse.title}</p>
-                          </div>
-                          <Button onClick={() => openChapterDialog()}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Neues Kapitel
-                          </Button>
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h2 className="font-display text-xl font-semibold text-foreground">
+                            Kapitel & Themen
+                          </h2>
+                          <p className="text-sm text-muted-foreground">Kurs: {selectedCourse.title}</p>
                         </div>
+                        <Button onClick={() => openChapterDialog()}>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Neues Kapitel
+                        </Button>
+                      </div>
 
-                <div className="space-y-4">
-                  {selectedCourse.chapters.map((chapter) => (
-                      <Card key={chapter.id}>
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                                {chapter.order}
-                              </div>
-                              <div>
-                                <CardTitle className="text-lg">{chapter.title}</CardTitle>
-                                <CardDescription>{chapter.description}</CardDescription>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button variant="ghost" size="icon" onClick={() => openChapterDialog(chapter)}>
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => deleteChapter(chapter.id)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            {chapter.topics.map((topic, topicIndex) => (
-                                <div
-                                    key={topic.id}
-                                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                                >
+                      <div className="space-y-4">
+                        {selectedCourse.chapters.map((chapter) => (
+                            <Card key={chapter.id}>
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-3">
-                                    <div className="flex flex-col">
-                                      <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-5 w-5"
-                                          disabled={topicIndex === 0}
-                                          onClick={() => moveTopicUp(chapter.id, topic.id)}
-                                      >
-                                        <ChevronUp className="w-3 h-3" />
-                                      </Button>
-                                      <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-5 w-5"
-                                          disabled={topicIndex === chapter.topics.length - 1}
-                                          onClick={() => moveTopicDown(chapter.id, topic.id)}
-                                      >
-                                        <ChevronDown className="w-3 h-3" />
-                                      </Button>
+                                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                                      {chapter.order}
                                     </div>
-                                    <FileText className="w-4 h-4 text-muted-foreground" />
                                     <div>
-                                      <div className="flex items-center gap-2">
-                                        <p className="font-medium text-foreground">{topic.title}</p>
-                                        {topic.videoUrl && (
-                                            <Video className="w-4 h-4 text-primary" />
-                                        )}
-                                        {topic.minDurationSeconds && (
-                                            <Timer className="w-4 h-4 text-orange-500" />
-                                        )}
-                                      </div>
-                                      <p className="text-sm text-muted-foreground">
-                                        {topic.duration}
-                                        {topic.minDurationSeconds && (
-                                            <span className="ml-2 text-orange-500">
-                                      (Min. {Math.floor(topic.minDurationSeconds / 60)} min)
-                                    </span>
-                                        )}
-                                      </p>
+                                      <CardTitle className="text-lg">{chapter.title}</CardTitle>
+                                      <CardDescription>{chapter.description}</CardDescription>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="icon" onClick={() => openTopicEditor(chapter.id, topic._id)}>
+                                    <Button variant="ghost" size="icon" onClick={() => openChapterDialog(chapter)}>
                                       <Edit className="w-4 h-4" />
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         size="icon"
                                         className="text-destructive hover:text-destructive"
-                                        onClick={() => deleteTopic(chapter.id, topic.id)}
+                                        onClick={() => deleteChapter(chapter.id)}
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </Button>
                                   </div>
                                 </div>
-                            ))}
-                            <Button
-                                variant="outline"
-                                className="w-full mt-2"
-                                onClick={() => openTopicEditor(chapter.id)}
-                            >
-                              <Plus className="w-4 h-4 mr-2" />
-                              Thema hinzufügen
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                  ))}
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-2">
+                                  {chapter.topics.map((topic, topicIndex) => (
+                                      <div
+                                          key={topic.id}
+                                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <div className="flex flex-col">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-5 w-5"
+                                                disabled={topicIndex === 0}
+                                                onClick={() => moveTopicUp(chapter.id, topic.id)}
+                                            >
+                                              <ChevronUp className="w-3 h-3" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-5 w-5"
+                                                disabled={topicIndex === chapter.topics.length - 1}
+                                                onClick={() => moveTopicDown(chapter.id, topic.id)}
+                                            >
+                                              <ChevronDown className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                          <FileText className="w-4 h-4 text-muted-foreground" />
+                                          <div>
+                                            <div className="flex items-center gap-2">
+                                              <p className="font-medium text-foreground">{topic.title}</p>
+                                              {topic.videoUrl && (
+                                                  <Video className="w-4 h-4 text-primary" />
+                                              )}
+                                              {topic.minDurationSeconds && (
+                                                  <Timer className="w-4 h-4 text-orange-500" />
+                                              )}
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">
+                                              {topic.duration}
+                                              {topic.minDurationSeconds && (
+                                                  <span className="ml-2 text-orange-500">
+                                      (Min. {Math.floor(topic.minDurationSeconds / 60)} min)
+                                    </span>
+                                              )}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <Button variant="ghost" size="icon" onClick={() => openTopicEditor(chapter.id, topic._id)}>
+                                            <Edit className="w-4 h-4" />
+                                          </Button>
+                                          <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="text-destructive hover:text-destructive"
+                                              onClick={() => deleteTopic(chapter.id, topic.id)}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                  ))}
+                                  <Button
+                                      variant="outline"
+                                      className="w-full mt-2"
+                                      onClick={() => openTopicEditor(chapter.id)}
+                                  >
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    Thema hinzufügen
+                                  </Button>
+                                </div>
+                              </CardContent>
+                            </Card>
+                        ))}
 
-                  {selectedCourse.chapters.length === 0 && (
-                      <Card>
-                        <CardContent className="py-12 text-center">
-                          <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                          <p className="text-muted-foreground">Noch keine Kapitel vorhanden.</p>
-                          <Button className="mt-4" onClick={() => openChapterDialog()}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Erstes Kapitel erstellen
-                          </Button>
-                        </CardContent>
-                      </Card>
-                  )}
-                </div>
-                        </>
-                        ) : (
-                        <Card>
-                          <CardContent className="py-12 text-center">
-                            <ClipboardCheck className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                            <p className="text-muted-foreground">Bitte wählen Sie zuerst einen Kurs aus.</p>
-                          </CardContent>
-                        </Card>
+                        {selectedCourse.chapters.length === 0 && (
+                            <Card>
+                              <CardContent className="py-12 text-center">
+                                <BookOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                                <p className="text-muted-foreground">Noch keine Kapitel vorhanden.</p>
+                                <Button className="mt-4" onClick={() => openChapterDialog()}>
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Erstes Kapitel erstellen
+                                </Button>
+                              </CardContent>
+                            </Card>
                         )}
+                      </div>
+                    </>
+                ) : (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <ClipboardCheck className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                        <p className="text-muted-foreground">Bitte wählen Sie zuerst einen Kurs aus.</p>
+                      </CardContent>
+                    </Card>
+                )}
               </TabsContent>
 
               {/* Tests Tab */}
               <TabsContent value="tests" className="space-y-6">
                 {selectedCourse ? (
-                        <>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h2 className="font-display text-xl font-semibold text-foreground">
-                              Kapitel-Tests & Abschlusstest
-                            </h2>
-                            <p className="text-sm text-muted-foreground">Kurs: {selectedCourse.title}</p>
-                          </div>
-                        </div>
-
-                {/* Final Quiz Section */}
-                <Card className="border-2 border-primary/20">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
-                          <Award className="w-5 h-5" />
-                        </div>
+                    <>
+                      <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle className="text-lg">Abschlusstest (Zertifizierung)</CardTitle>
-                          <CardDescription>
-                            {selectedCourse.finalQuiz
-                                ? `Test: ${selectedCourse.finalQuiz.title} (${selectedCourse.finalQuiz.questions.length} Fragen)`
-                                : 'Kein Abschlusstest vorhanden'}
-                          </CardDescription>
+                          <h2 className="font-display text-xl font-semibold text-foreground">
+                            Kapitel-Tests & Abschlusstest
+                          </h2>
+                          <p className="text-sm text-muted-foreground">Kurs: {selectedCourse.title}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {selectedCourse.finalQuiz ? (
-                            <>
-                              <Button variant="ghost" size="icon" onClick={() => {
-                                setEditingQuiz(selectedCourse.finalQuiz!);
-                                setQuizForm({
-                                  title: selectedCourse.finalQuiz!.title,
-                                  description: selectedCourse.finalQuiz!.description,
-                                  passingScore: selectedCourse.finalQuiz!.passingScore.toString(),
-                                  chapterId: "final"
-                                });
-                                setSelectedQuizChapterId("final");
-                                setIsQuizDialogOpen(true);
-                              }}>
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => {
-                                    setSelectedCourse(prev => ({ ...prev, finalQuiz: undefined }));
-                                    toast({ title: "Erfolg", description: "Abschlusstest wurde gelöscht." });
-                                  }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </>
-                        ) : (
-                            <Button variant="outline" onClick={() => {
-                              setEditingQuiz(null);
-                              setQuizForm({ title: "", description: "", passingScore: "80", chapterId: "final" });
-                              setSelectedQuizChapterId("final");
-                              setIsQuizDialogOpen(true);
-                            }}>
-                              <Plus className="w-4 h-4 mr-2" />
-                              Abschlusstest erstellen
-                            </Button>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  {selectedCourse.finalQuiz && (
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                            <span>Bestehensgrenze: {selectedCourse.finalQuiz.passingScore}%</span>
-                          </div>
-                          {selectedCourse.finalQuiz.questions.map((question, idx) => (
-                              <div
-                                  key={question.id}
-                                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <HelpCircle className="w-4 h-4 text-muted-foreground" />
-                                  <div>
-                                    <p className="font-medium text-foreground">{idx + 1}. {question.question}</p>
-                                    <p className="text-sm text-muted-foreground">{question.options.length} Antworten</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button variant="ghost" size="icon" onClick={() => {
-                                    setSelectedQuizChapterId("final");
-                                    setEditingQuestion(question);
-                                    setQuestionForm({
-                                      question: question.question,
-                                      option1: question.options[0] || "",
-                                      option2: question.options[1] || "",
-                                      option3: question.options[2] || "",
-                                      option4: question.options[3] || "",
-                                      correctAnswer: question.correctAnswer.toString()
-                                    });
-                                    setIsQuestionDialogOpen(true);
-                                  }}>
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-destructive hover:text-destructive"
-                                      onClick={() => {
-                                        setSelectedCourse(prev => ({
-                                          ...prev,
-                                          finalQuiz: prev.finalQuiz ? {
-                                            ...prev.finalQuiz,
-                                            questions: prev.finalQuiz.questions.filter(q => q.id !== question.id)
-                                          } : undefined
-                                        }));
-                                        toast({ title: "Erfolg", description: "Frage wurde gelöscht." });
-                                      }}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                          ))}
-                          <Button
-                              variant="outline"
-                              className="w-full mt-2"
-                              onClick={() => {
-                                setSelectedQuizChapterId("final");
-                                setEditingQuestion(null);
-                                setQuestionForm({ question: "", option1: "", option2: "", option3: "", option4: "", correctAnswer: "0" });
-                                setIsQuestionDialogOpen(true);
-                              }}
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Frage hinzufügen
-                          </Button>
-                        </div>
-                      </CardContent>
-                  )}
-                </Card>
 
-                {/* Chapter Quizzes */}
-                <div className="space-y-4">
-                  {selectedCourse.chapters.map((chapter) => (
-                      <Card key={chapter.id}>
+                      {/* Final Quiz Section */}
+                      <Card className="border-2 border-primary/20">
                         <CardHeader className="pb-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                                {chapter.order}
+                              <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
+                                <Award className="w-5 h-5" />
                               </div>
                               <div>
-                                <CardTitle className="text-lg">{chapter.title}</CardTitle>
+                                <CardTitle className="text-lg">Abschlusstest (Zertifizierung)</CardTitle>
                                 <CardDescription>
-                                  {chapter.quiz ? `Test: ${chapter.quiz.title} (${chapter.quiz.questions.length} Fragen)` : 'Kein Test vorhanden'}
+                                  {selectedCourse.finalQuiz
+                                      ? `Test: ${selectedCourse.finalQuiz.title} (${selectedCourse.finalQuiz.questions.length} Fragen)`
+                                      : 'Kein Abschlusstest vorhanden'}
                                 </CardDescription>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              {chapter.quiz ? (
+                              {selectedCourse.finalQuiz ? (
                                   <>
-                                    <Button variant="ghost" size="icon" onClick={() => openQuizDialog(chapter.id, chapter.quiz)}>
+                                    <Button variant="ghost" size="icon" onClick={() => {
+                                      setEditingQuiz(selectedCourse.finalQuiz!);
+                                      setQuizForm({
+                                        title: selectedCourse.finalQuiz!.title,
+                                        description: selectedCourse.finalQuiz!.description,
+                                        passingScore: selectedCourse.finalQuiz!.passingScore.toString(),
+                                        chapterId: "final"
+                                      });
+                                      setSelectedQuizChapterId("final");
+                                      setIsQuizDialogOpen(true);
+                                    }}>
                                       <Edit className="w-4 h-4" />
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         size="icon"
                                         className="text-destructive hover:text-destructive"
-                                        onClick={() => deleteQuiz(chapter.id)}
+                                        onClick={() => {
+                                          setSelectedCourse(prev => ({ ...prev, finalQuiz: undefined }));
+                                          toast({ title: "Erfolg", description: "Abschlusstest wurde gelöscht." });
+                                        }}
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </Button>
                                   </>
                               ) : (
-                                  <Button variant="outline" onClick={() => openQuizDialog(chapter.id)}>
+                                  <Button variant="outline" onClick={() => {
+                                    setEditingQuiz(null);
+                                    setQuizForm({ title: "", description: "", passingScore: "80", chapterId: "final" });
+                                    setSelectedQuizChapterId("final");
+                                    setIsQuizDialogOpen(true);
+                                  }}>
                                     <Plus className="w-4 h-4 mr-2" />
-                                    Test erstellen
+                                    Abschlusstest erstellen
                                   </Button>
                               )}
                             </div>
                           </div>
                         </CardHeader>
-                        {chapter.quiz && (
+                        {selectedCourse.finalQuiz && (
                             <CardContent>
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                                  <span>Bestehensgrenze: {chapter.quiz.passingScore}%</span>
+                                  <span>Bestehensgrenze: {selectedCourse.finalQuiz.passingScore}%</span>
                                 </div>
-                                {chapter.quiz.questions.map((question, idx) => (
+                                {selectedCourse.finalQuiz.questions.map((question, idx) => (
                                     <div
                                         key={question.id}
                                         className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
@@ -1185,14 +1090,35 @@ const Admin = () => {
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-2">
-                                        <Button variant="ghost" size="icon" onClick={() => openQuestionDialog(chapter.id, question)}>
+                                        <Button variant="ghost" size="icon" onClick={() => {
+                                          setSelectedQuizChapterId("final");
+                                          setEditingQuestion(question);
+                                          setQuestionForm({
+                                            question: question.question,
+                                            option1: question.options[0] || "",
+                                            option2: question.options[1] || "",
+                                            option3: question.options[2] || "",
+                                            option4: question.options[3] || "",
+                                            correctAnswer: question.correctAnswer.toString()
+                                          });
+                                          setIsQuestionDialogOpen(true);
+                                        }}>
                                           <Edit className="w-4 h-4" />
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             className="text-destructive hover:text-destructive"
-                                            onClick={() => deleteQuestion(chapter.id, question.id)}
+                                            onClick={() => {
+                                              setSelectedCourse(prev => ({
+                                                ...prev,
+                                                finalQuiz: prev.finalQuiz ? {
+                                                  ...prev.finalQuiz,
+                                                  questions: prev.finalQuiz.questions.filter(q => q.id !== question.id)
+                                                } : undefined
+                                              }));
+                                              toast({ title: "Erfolg", description: "Frage wurde gelöscht." });
+                                            }}
                                         >
                                           <Trash2 className="w-4 h-4" />
                                         </Button>
@@ -1202,7 +1128,12 @@ const Admin = () => {
                                 <Button
                                     variant="outline"
                                     className="w-full mt-2"
-                                    onClick={() => openQuestionDialog(chapter.id)}
+                                    onClick={() => {
+                                      setSelectedQuizChapterId("final");
+                                      setEditingQuestion(null);
+                                      setQuestionForm({ question: "", option1: "", option2: "", option3: "", option4: "", correctAnswer: "0" });
+                                      setIsQuestionDialogOpen(true);
+                                    }}
                                 >
                                   <Plus className="w-4 h-4 mr-2" />
                                   Frage hinzufügen
@@ -1211,9 +1142,96 @@ const Admin = () => {
                             </CardContent>
                         )}
                       </Card>
-                  ))}
-                </div>
-                        </>
+
+                      {/* Chapter Quizzes */}
+                      <div className="space-y-4">
+                        {selectedCourse.chapters.map((chapter) => (
+                            <Card key={chapter.id}>
+                              <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                                      {chapter.order}
+                                    </div>
+                                    <div>
+                                      <CardTitle className="text-lg">{chapter.title}</CardTitle>
+                                      <CardDescription>
+                                        {chapter.quiz ? `Test: ${chapter.quiz.title} (${chapter.quiz.questions.length} Fragen)` : 'Kein Test vorhanden'}
+                                      </CardDescription>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {chapter.quiz ? (
+                                        <>
+                                          <Button variant="ghost" size="icon" onClick={() => openQuizDialog(chapter.id, chapter.quiz)}>
+                                            <Edit className="w-4 h-4" />
+                                          </Button>
+                                          <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="text-destructive hover:text-destructive"
+                                              onClick={() => deleteQuiz(chapter.id)}
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </Button>
+                                        </>
+                                    ) : (
+                                        <Button variant="outline" onClick={() => openQuizDialog(chapter.id)}>
+                                          <Plus className="w-4 h-4 mr-2" />
+                                          Test erstellen
+                                        </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              {chapter.quiz && (
+                                  <CardContent>
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+                                        <span>Bestehensgrenze: {chapter.quiz.passingScore}%</span>
+                                      </div>
+                                      {chapter.quiz.questions.map((question, idx) => (
+                                          <div
+                                              key={question.id}
+                                              className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                                              <div>
+                                                <p className="font-medium text-foreground">{idx + 1}. {question.question}</p>
+                                                <p className="text-sm text-muted-foreground">{question.options.length} Antworten</p>
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <Button variant="ghost" size="icon" onClick={() => openQuestionDialog(chapter.id, question)}>
+                                                <Edit className="w-4 h-4" />
+                                              </Button>
+                                              <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="text-destructive hover:text-destructive"
+                                                  onClick={() => deleteQuestion(chapter.id, question.id)}
+                                              >
+                                                <Trash2 className="w-4 h-4" />
+                                              </Button>
+                                            </div>
+                                          </div>
+                                      ))}
+                                      <Button
+                                          variant="outline"
+                                          className="w-full mt-2"
+                                          onClick={() => openQuestionDialog(chapter.id)}
+                                      >
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Frage hinzufügen
+                                      </Button>
+                                    </div>
+                                  </CardContent>
+                              )}
+                            </Card>
+                        ))}
+                      </div>
+                    </>
                 ) : (
                     <Card>
                       <CardContent className="py-12 text-center">
@@ -1543,21 +1561,75 @@ const Admin = () => {
               </TabsContent>
 
               {/* Users Tab */}
-              <TabsContent value="users">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Benutzerverwaltung</CardTitle>
-                    <CardDescription>
-                      Verwalten Sie registrierte Benutzer und deren Zugänge.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>Benutzerverwaltung wird nach der Datenbankintegration verfügbar sein.</p>
+              <TabsContent value="users" className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="font-display text-xl font-semibold text-foreground">Benutzer</h2>
+                    <p className="text-sm text-muted-foreground">{users.length} registrierte Benutzer</p>
+                  </div>
+                </div>
+                {usersLoading ? (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent mb-4"></div>
+                        <p className="text-muted-foreground">Lade Benutzer...</p>
+                      </CardContent>
+                    </Card>
+                ) : users.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                        <p className="text-muted-foreground">Keine Benutzer gefunden.</p>
+                      </CardContent>
+                    </Card>
+                ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Name</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">E-Mail</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Telefon</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Kurse</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Registriert</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Rolle</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {users.map((user) => (
+                            <tr key={user.id} className="border-b border-border hover:bg-muted/30">
+                              <td className="py-3 px-4">
+                                <p className="font-medium text-foreground">{user.name}</p>
+                              </td>
+                              <td className="py-3 px-4">
+                                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                  <Mail className="w-3 h-3" />{user.email}
+                                </p>
+                              </td>
+                              <td className="py-3 px-4">
+                                <p className="text-sm text-muted-foreground">{user.phone || "-"}</p>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="text-sm">{user.activeCourses} aktiv / {user.purchasedCoursesCount} gesamt</span>
+                              </td>
+                              <td className="py-3 px-4">
+                              <span className="text-sm text-muted-foreground">
+                                {new Date(user.createdAt).toLocaleDateString("de-DE")}
+                              </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                {user.isAdmin ? (
+                                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-primary/10 text-primary">Admin</span>
+                                ) : (
+                                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-muted text-muted-foreground">Benutzer</span>
+                                )}
+                              </td>
+                            </tr>
+                        ))}
+                        </tbody>
+                      </table>
                     </div>
-                  </CardContent>
-                </Card>
+                )}
               </TabsContent>
 
               {/* Stats Tab */}
@@ -2028,15 +2100,17 @@ const Admin = () => {
             )}
           </DialogContent>
 
-          <ParticipantsListDialog
-              open={participantsDialog.open}
-              onClose={() => setParticipantsDialog({ ...participantsDialog, open: false })}
-              locationId={participantsDialog.locationId}
-              dateId={participantsDialog.dateId}
-              locationName={participantsDialog.locationName}
-              dateInfo={participantsDialog.dateInfo}
-          />
         </Dialog>
+
+        {/* POPRAWKA: ParticipantsListDialog poza Dialogiem zamówień */}
+        <ParticipantsListDialog
+            open={participantsDialog.open}
+            onClose={() => setParticipantsDialog({ ...participantsDialog, open: false })}
+            locationId={participantsDialog.locationId}
+            dateId={participantsDialog.dateId}
+            locationName={participantsDialog.locationName}
+            dateInfo={participantsDialog.dateInfo}
+        />
       </div>
   );
 };
