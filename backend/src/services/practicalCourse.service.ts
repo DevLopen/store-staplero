@@ -104,15 +104,49 @@ export const decreaseAvailableSpots = async (
 /**
  * Pobierz listę uczestników dla danego terminu
  */
+/**
+ * Pobierz startDate dla danego dateId z lokalizacji.
+ * Potrzebne bo dateId może być w formacie timestamp ('d1770293875752')
+ * a uczestnicy mają dateId w formacie '20260302_20260303'.
+ */
+const getStartDateFromLocation = async (locationId: string, dateId: string): Promise<string | null> => {
+    const location = await Location.findById(locationId).lean();
+    if (!location) return null;
+    const date = (location as any).dates?.find((d: any) => d.id === dateId);
+    return date?.startDate || null;
+};
+
 export const getParticipantsByDate = async (
     locationId: string,
     dateId: string
 ): Promise<PracticalCourseParticipantDoc[]> => {
-    return await PracticalCourseParticipant.find({
-        locationId,
-        dateId,
-        status: { $ne: "cancelled" }
-    }).sort({ createdAt: 1 });
+    // POPRAWKA: obsłuż oba formaty dateId
+    // Format timestamp 'd...' vs format dat '20260302_20260303'
+    const isTimestampFormat = /^d\d+$/.test(dateId);
+
+    let query: any = { locationId, status: { $ne: "cancelled" } };
+
+    if (isTimestampFormat) {
+        // Pobierz startDate z lokalizacji i szukaj po startDate
+        const startDate = await getStartDateFromLocation(locationId, dateId);
+        if (startDate) {
+            query.startDate = startDate;
+        } else {
+            query.dateId = dateId;
+        }
+    } else {
+        // Format dat - szukaj po dateId lub startDate (z dateId wyciągnij startDate)
+        const m = dateId.match(/^(\d{4})(\d{2})(\d{2})_(\d{4})(\d{2})(\d{2})$/);
+        const startDate = m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+        query.$or = [
+            { dateId },
+            ...(startDate ? [{ startDate }] : []),
+        ];
+        query.locationId = locationId;
+        delete query.dateId;
+    }
+
+    return await PracticalCourseParticipant.find(query).sort({ createdAt: 1 });
 };
 
 /**
@@ -153,11 +187,9 @@ export const getParticipantsCount = async (
     locationId: string,
     dateId: string
 ): Promise<number> => {
-    return await PracticalCourseParticipant.countDocuments({
-        locationId,
-        dateId,
-        status: { $ne: "cancelled" }
-    });
+    // POPRAWKA: użyj tej samej logiki co getParticipantsByDate
+    const participants = await getParticipantsByDate(locationId, dateId);
+    return participants.length;
 };
 
 /**
