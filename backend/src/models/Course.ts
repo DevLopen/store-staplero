@@ -19,6 +19,7 @@ export interface ContentBlock {
   id: string;
   type: BlockType;
   order: number;
+  width?: "full" | "half";
   // richtext
   richtextData?: string; // TipTap JSON string
   // video
@@ -131,6 +132,11 @@ const ContentBlockSchema = new Schema<ContentBlock>({
     required: true,
   },
   order: { type: Number, required: true },
+  width: {
+    type: String,
+    enum: ["full", "half"],
+    default: "full"
+  },
   richtextData: String,
   videoUrl: String,
   imageUrl: String,
@@ -152,7 +158,16 @@ const ContentBlockSchema = new Schema<ContentBlock>({
   calloutTitle: String,
   interactiveSubtype: {
     type: String,
-    enum: ["stability-sim", "drag-order", "hotspot", "360-tour"],
+    enum: [
+      "stability-sim",
+      "drag-order",
+      "hotspot",
+      "360-tour",
+      "truefalse",
+      "multichoice",
+      "matching",
+      "fill-blanks"
+    ]
   },
   interactiveData: { type: Schema.Types.Mixed },
 });
@@ -201,12 +216,15 @@ const QuizSchema = new Schema<Quiz>({
   questions: [QuestionSchema],
 });
 
-const TopicSchema = new Schema<Topic>({
-  id: { type: String, required: true },
+const TopicSchema = new Schema({
   title: { type: String, required: true },
-  blocks: [ContentBlockSchema],
   duration: String,
-  order: { type: Number, required: true },
+  videoUrl: String,
+  minDurationSeconds: Number,
+  requireMinDuration: { type: Boolean, default: false },
+  content: String,
+  blocks: [ContentBlockSchema],
+  order: { type: Number, required: true }
 });
 
 const ChapterSchema = new Schema<Chapter>({

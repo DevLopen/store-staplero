@@ -210,35 +210,64 @@ export const addTopic = async (req: Request, res: Response) => {
   }
 };
 
-export const updateTopic = async (req: Request, res: Response) => {
+export const updateTopic = async (req: AuthRequest, res: Response) => {
   try {
     const { courseId, chapterId, topicId } = req.params;
-    const { title, duration, blocks, order } = req.body;
+    const { title, duration, videoUrl, blocks, content, minDurationSeconds, requireMinDuration } = req.body;
+
+    console.log("=== UPDATE TOPIC ===");
+    console.log("Blocks:", blocks?.length || 0, "blocks");
 
     const course = await Course.findById(courseId);
-    if (!course) return res.status(404).json({ message: "Kurs nie znaleziony" });
-
-    const chapter = course.chapters.find(ch => ch.id === chapterId);
-    if (!chapter) return res.status(404).json({ message: "Rozdział nie znaleziony" });
-
-    const topic = chapter.topics.find(t => t.id === topicId);
-    if (!topic) return res.status(404).json({ message: "Temat nie znaleziony" });
-
-    if (title !== undefined) topic.title = title.trim();
-    if (duration !== undefined) topic.duration = duration;
-    if (order !== undefined) topic.order = order;
-    if (blocks !== undefined) {
-      topic.blocks = blocks.map((b: ContentBlock, idx: number) => ({
-        ...b,
-        id: b.id || generateId("b_"),
-        order: b.order ?? idx,
-      }));
+    if (!course) {
+      return res.status(404).json({ message: "Kurs nicht gefunden" });
     }
 
+    const chapter = course.chapters.find((ch: any) =>
+        ch._id?.toString() === chapterId ||
+        ch.id === chapterId ||
+        ch.id?.toString() === chapterId
+    );
+
+    if (!chapter) {
+      return res.status(404).json({ message: "Kapitel nicht gefunden" });
+    }
+
+    const topicIndex = chapter.topics.findIndex((t: any) =>
+        t._id.toString() === topicId
+    );
+
+    if (topicIndex === -1) {
+      return res.status(404).json({ message: "Thema nicht gefunden" });
+    }
+    const existingTopic = chapter.topics[topicIndex] as any;
+
+    chapter.topics[topicIndex] = {
+      _id: existingTopic._id,
+      id: existingTopic.id,  // ← DODAJ to
+      order: existingTopic.order,
+      title,
+      duration: duration || "15 min",
+      videoUrl: videoUrl || null,
+      minDurationSeconds: minDurationSeconds || null,
+      requireMinDuration: requireMinDuration || false,
+      blocks: blocks || [],
+      content: content || ""
+    } as any;
+
+    console.log("=== SAVED TOPIC ===");
+    console.log("Blocks with width:", chapter.topics[topicIndex].blocks.map((b: any) => ({
+      type: b.type,
+      width: b.width
+    })));
+
     await course.save();
-    res.json(course);
-  } catch (err) {
-    res.status(500).json({ message: "Server error", error: err });
+
+    const updated = await Course.findById(courseId);
+    res.json(updated);
+  } catch (error: any) {
+    console.error("UPDATE TOPIC ERROR:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
@@ -250,7 +279,11 @@ export const reorderTopics = async (req: Request, res: Response) => {
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: "Kurs nie znaleziony" });
 
-    const chapter = course.chapters.find(ch => ch.id === chapterId);
+    const chapter = course.chapters.find((ch: any) =>
+        ch._id?.toString() === chapterId ||
+        ch.id === chapterId ||
+        ch.id?.toString() === chapterId
+    );
     if (!chapter) return res.status(404).json({ message: "Rozdział nie znaleziony" });
 
     const reordered = order

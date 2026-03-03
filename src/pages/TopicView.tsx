@@ -9,7 +9,7 @@ import {
 import { useCourse } from "@/hooks/useCourse";
 import { useProgress } from "@/hooks/useProgress";
 import { Chapter, ContentBlock } from "@/types/course.types";
-import { BlocksRenderer } from "@/components/course/BlockRenderer";
+import  BlocksRenderer  from "@/components/course/BlockRenderer";
 import CourseAssistant from "@/components/course/CourseAssistant";
 
 function getChapterStatus(
@@ -64,8 +64,13 @@ const TopicView = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [completing, setCompleting] = useState(false);
 
-  const currentChapter = course?.chapters.find(ch => ch.id === chapterId) ?? null;
-  const currentTopic = currentChapter?.topics.find(t => t.id === topicId) ?? null;
+  const currentChapter = course?.chapters.find(ch =>
+      ch.id === chapterId || ch._id === chapterId || ch._id?.toString() === chapterId
+  ) ?? null;
+
+  const currentTopic = currentChapter?.topics.find(t =>
+      t.id === topicId || t._id === topicId || t._id?.toString() === topicId
+  ) ?? null;
 
   useEffect(() => {
     if (courseId && chapterId && topicId && currentChapter && currentTopic) {
@@ -82,7 +87,10 @@ const TopicView = () => {
         if (!course) return null;
         const allTopics: { chapterId: string; topicId: string }[] = [];
         course.chapters.forEach(ch =>
-            ch.topics.forEach(t => allTopics.push({ chapterId: ch.id, topicId: t.id }))
+            ch.topics.forEach(t => allTopics.push({
+              chapterId: ch.id || ch._id?.toString(),
+              topicId: t.id || t._id?.toString()
+            }))
         );
         const idx = allTopics.findIndex(
             item => item.chapterId === chapterId && item.topicId === topicId
@@ -117,17 +125,19 @@ const TopicView = () => {
     }
   };
 
-  if (!courseLoading && course && (!currentChapter || !currentTopic)) {
-    // chapter or topic was deleted - redirect to first available
-    const firstChapter = course.chapters[0];
-    const firstTopic = firstChapter?.topics[0];
-    if (firstChapter && firstTopic) {
-      navigate(`/course/${courseId}/chapter/${firstChapter.id}/topic/${firstTopic.id}`, { replace: true });
-    } else {
-      navigate(`/dashboard`, { replace: true });
+  useEffect(() => {
+    if (!courseLoading && course && (!currentChapter || !currentTopic)) {
+      const firstChapter = course.chapters[0];
+      const firstTopic = firstChapter?.topics[0];
+      if (firstChapter && firstTopic) {
+        const chId = firstChapter.id || firstChapter._id?.toString();
+        const tId = firstTopic.id || firstTopic._id?.toString();
+        navigate(`/course/${courseId}/chapter/${chId}/topic/${tId}`, { replace: true });
+      } else {
+        navigate(`/dashboard`, { replace: true });
+      }
     }
-    return null;
-  }
+  }, [courseLoading, course, currentChapter, currentTopic, courseId, navigate]);
 
   if (courseLoading) {
     return (

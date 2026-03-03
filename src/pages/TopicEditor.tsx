@@ -28,7 +28,6 @@ import {
 import { ContentBlock } from "@/types/course.types";
 import BlockEditor from "@/components/admin/BlockEditor";
 import BlockRenderer from "@/components/course/BlockRenderer";
-import { BlocksRenderer } from "@/components/course/BlockRenderer";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -65,11 +64,64 @@ export default function TopicEditor() {
     }
 
     const token = localStorage.getItem("token");
-    fetch(`${API_URL}/courses/admin/${courseId}/chapters/${chapterId}/topics/${topicId}`, {
+
+    console.log("=== LOADING TOPIC ===");
+    console.log("IDs:", { courseId, chapterId, topicId });
+
+    fetch(`${API_URL}/courses/admin/${courseId}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
         .then(res => res.json())
-        .then(topic => {
+        .then(course => {
+          console.log("Course loaded:", course.title);
+          console.log("Chapters count:", course.chapters?.length);
+
+          console.log("=== SEARCHING FOR CHAPTER ===");
+          console.log("Looking for chapterId:", chapterId);
+          console.log("Type of chapterId:", typeof chapterId);
+          console.log("Available chapters:", course.chapters?.map((ch: any) => ({
+            _id: ch._id,
+            id: ch.id,
+            title: ch.title
+          })));
+
+          const chapter = course.chapters?.find((ch: any) => {
+            const match1 = ch._id === chapterId;
+            const match2 = ch._id?.toString() === chapterId;
+            const match3 = ch.id === chapterId;
+            const match4 = ch.id?.toString() === chapterId;
+
+            console.log(`Checking chapter "${ch.title}":`, {
+              ch_id: ch._id,
+              ch_id_string: ch._id?.toString(),
+              match1, match2, match3, match4
+            });
+
+            return match1 || match2 || match3 || match4;
+          });
+
+          if (!chapter) {
+            console.error("Chapter not found!");
+            console.log("Available chapter IDs:", course.chapters?.map((ch: any) => ch._id));
+            throw new Error("Kapitel nicht gefunden");
+          }
+
+          console.log("Chapter found:", chapter.title);
+          console.log("Topics count:", chapter.topics?.length);
+
+          const topic = chapter.topics?.find((t: any) =>
+              t._id === topicId || t._id.toString() === topicId
+          );
+
+          if (!topic) {
+            console.error("Topic not found!");
+            console.log("Available topic IDs:", chapter.topics?.map((t: any) => t._id));
+            throw new Error("Thema nicht gefunden");
+          }
+
+          console.log("Topic found:", topic.title);
+          console.log("Blocks:", topic.blocks?.length || 0);
+
           setForm({
             title: topic.title || "",
             duration: topic.duration || "15 min",
@@ -79,13 +131,14 @@ export default function TopicEditor() {
             blocks: topic.blocks || [],
             content: topic.content || ""
           });
+
           setLoading(false);
         })
         .catch(err => {
-          console.error(err);
+          console.error("LOAD ERROR:", err);
           toast({
             title: "Fehler",
-            description: "Thema konnte nicht geladen werden",
+            description: err.message,
             variant: "destructive"
           });
           setLoading(false);
@@ -114,8 +167,16 @@ export default function TopicEditor() {
         minDurationSeconds: form.minDurationSeconds ? parseInt(form.minDurationSeconds) : null,
         requireMinDuration: form.requireMinDuration,
         blocks: form.blocks,
-        content: form.content // Backward compatibility
+        content: form.content
       };
+
+      console.log("=== SAVING TOPIC ===");
+      console.log("Blocks with width:", form.blocks.map(b => ({
+        type: b.type,
+        width: b.width
+      })));
+      console.log("Full payload:", JSON.stringify(payload, null, 2));
+
 
       const url = topicId
           ? `${API_URL}/courses/admin/${courseId}/chapters/${chapterId}/topics/${topicId}`
@@ -544,7 +605,7 @@ export default function TopicEditor() {
                           <p className="text-sm">Dodaj bloki lub użyj AI</p>
                         </div>
                     ) : (
-                        <BlocksRenderer blocks={form.blocks} />
+                        <BlockRenderer blocks={form.blocks} />
                     )}
                   </div>
                 </CardContent>
