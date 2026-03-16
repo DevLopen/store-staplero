@@ -323,7 +323,7 @@ const PracticalCourse = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <CreditCard className="w-5 h-5 text-primary" />
-                      Zusammenfassung
+                      {t('practical.summary')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -352,45 +352,47 @@ const PracticalCourse = () => {
                                 {t('practical.plasticCard')}
                               </Label>
                               <p className="text-sm font-medium text-primary">
-                                {calculatePriceWithVAT(PLASTIC_CARD_PRICE).toFixed(2)} € (inkl. MwSt.)
+                                {calculatePriceWithVAT(PLASTIC_CARD_PRICE).toFixed(2)} € ({t('practical.inclVatShort')})
                               </p>
                             </div>
                           </div>
 
                           <div className="border-t border-border pt-4">
                             <div className="flex justify-between text-sm mb-2">
-                              <span className="text-muted-foreground">Kurs (netto)</span>
+                              <span className="text-muted-foreground">{t('practical.courseNet')}</span>
                               <span>{selectedLocation.price.toFixed(2)} €</span>
                             </div>
                             <div className="flex justify-between text-sm mb-2">
-                              <span className="text-muted-foreground">MwSt. (19%)</span>
+                              <span className="text-muted-foreground">{t('practical.vat')}</span>
                               <span>{(selectedLocation.price * VAT_RATE).toFixed(2)} €</span>
                             </div>
                             <div className="flex justify-between text-sm mb-2">
-                              <span className="text-muted-foreground">Kurs (brutto)</span>
+                              <span className="text-muted-foreground">{t('practical.courseGross')}</span>
                               <span>{calculatePriceWithVAT(selectedLocation.price).toFixed(2)} €</span>
                             </div>
+
                             {wantsPlasticCard && (
                                 <>
-                                  <div className="flex justify-between text-sm mb-2">
-                                    <span className="text-muted-foreground">Plastikkarte (netto)</span>
+                                  <div className="flex justify-between text-sm mb-2 mt-4 pt-2 border-t border-dashed">
+                                    <span className="text-muted-foreground">{t('practical.cardNet')}</span>
                                     <span>{PLASTIC_CARD_PRICE.toFixed(2)} €</span>
                                   </div>
                                   <div className="flex justify-between text-sm mb-2">
-                                    <span className="text-muted-foreground">MwSt. (19%)</span>
+                                    <span className="text-muted-foreground">{t('practical.vat')}</span>
                                     <span>{(PLASTIC_CARD_PRICE * VAT_RATE).toFixed(2)} €</span>
                                   </div>
                                   <div className="flex justify-between text-sm mb-2">
-                                    <span className="text-muted-foreground">Plastikkarte (brutto)</span>
+                                    <span className="text-muted-foreground">{t('practical.cardGross')}</span>
                                     <span>{calculatePriceWithVAT(PLASTIC_CARD_PRICE).toFixed(2)} €</span>
                                   </div>
                                 </>
                             )}
+
                             <div className="flex justify-between font-bold text-lg mt-3 pt-3 border-t">
-                              <span>Gesamt (inkl. MwSt.)</span>
+                              <span>{t('practical.totalInclVat')}</span>
                               <span className="text-primary">
-                            {calculateTotal().toFixed(2)} €
-                          </span>
+                {calculateTotal().toFixed(2)} €
+              </span>
                             </div>
                           </div>
 
@@ -406,14 +408,14 @@ const PracticalCourse = () => {
                           {!selectedDate && (
                               <p className="text-sm text-muted-foreground flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4" />
-                                Bitte wählen Sie einen Termin
+                                {t('practical.selectDateWarn')}
                               </p>
                           )}
                         </>
                     ) : (
                         <div className="text-center py-8 text-muted-foreground">
                           <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                          <p>Bitte wählen Sie einen Standort</p>
+                          <p>{t('practical.selectLocWarn')}</p>
                         </div>
                     )}
                   </CardContent>

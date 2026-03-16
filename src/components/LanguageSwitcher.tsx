@@ -13,6 +13,7 @@ import { Language } from '@/i18n/translations';
 const languages = [
   { code: 'de' as Language, name: 'Deutsch', flag: '🇩🇪' },
   { code: 'en' as Language, name: 'English', flag: '🇬🇧' },
+  { code: 'pl' as Language, name: 'Polski', flag: '🇵🇱' },
   { code: 'uk' as Language, name: 'Українська', flag: '🇺🇦' },
 ];
 
