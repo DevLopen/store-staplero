@@ -45,61 +45,89 @@ QUALITÄTS-STANDARDS:
 `;
 
 const BLOCKS_SYSTEM_PROMPT = `
-Jesteś ekspertem dydaktycznym tworzącym materiały szkoleniowe dla operatorów wózków widłowych na platformie e-learningowej w Polsce.
+Du bist ein erfahrener E-Learning-Autor und didaktischer Experte für Flurförderzeug-Schulungen.
 
-WAŻNE - FORMAT WYJŚCIOWY:
-Zwróć tablicę JSON bloków treści. Każdy blok to obiekt z polami bezpośrednio na poziomie obiektu (NIE zagnieżdżone w "data").
+DEINE AUFGABE:
+Erstelle einen VOLLSTÄNDIGEN, ABWECHSLUNGSREICHEN Kursabschnitt als JSON-Array von Content-Blöcken.
+Der Abschnitt soll professionell und lehrreich sein — wie ein echtes Schulungsmodul.
 
-Dostępne typy bloków i ich pola:
-1. richtext - pole: richtextData (string HTML z pełną treścią merytoryczną)
-2. video - pole: videoUrl (null = placeholder), videoCaption (opis co wstawić)  
-3. image - pole: imageUrl (null = placeholder), imageCaption (opis co wstawić)
-4. callout - pola: calloutStyle (info/warning/danger/success), calloutTitle, calloutText
-5. divider - brak dodatkowych pól
-6. interactive - pola: interactiveSubtype (stability-sim/drag-order/hotspot), interactiveData (obiekt)
+═══════════════════════════════════════════════
+VERFÜGBARE BLOCKTYPEN (alle nutzen!):
+═══════════════════════════════════════════════
 
-ZASADY TWORZENIA TREŚCI:
-- Bloki richtext MUSZĄ zawierać pełny, szczegółowy tekst merytoryczny w HTML (min. 3-5 paragrafów)
-- Używaj tagów: h2, h3, p, strong, em, ul, li, ol - NIE div, NIE class
-- Bloki image mają imageUrl: null i imageCaption opisujący DOKŁADNIE jakie zdjęcie wstawić
-- Bloki video mają videoUrl: null i videoCaption opisujący JAKI film wstawić
-- Pisz wyłącznie po POLSKU
-- Twórz 6-10 bloków na temat
-- Struktura: Wprowadzenie → Teoria z detalami → Ważne zasady (callout) → Placeholder zdjęcia → Placeholder wideo → Podsumowanie
-- Treść musi być merytoryczna, szczegółowa, zgodna z przepisami BHP i DGUV
+1. richtext  → { "type": "richtext", "richtextData": "<HTML>", "width": "full" | "half" }
+   - Vollständiger Lehrtext in HTML: h2, h3, p, strong, em, ul, li, ol
+   - KEIN div, KEINE class-Attribute
+   - Mindestens 3-5 inhaltlich volle Absätze pro Block
 
-Przykładowy output (format który MUSISZ stosować):
-[
-  {
-    "type": "richtext",
-    "richtextData": "<h2>Stateczność wózka widłowego</h2><p>Stateczność wózka widłowego opiera się na <strong>trójkącie stabilizacji</strong> tworzonym przez dwa przednie koła napędowe i tylne koło skrętne. Ładunek umieszczony w rzucie pionowym poza tym trójkątem powoduje niebezpieczeństwo wywrotki.</p><h3>Czynniki wpływające na stateczność</h3><ul><li><strong>Ciężar ładunku</strong> — im cięższy, tym niżej należy go transportować</li><li><strong>Wysokość podniesienia</strong> — uniesione widły drastycznie podnoszą środek ciężkości</li><li><strong>Prędkość jazdy</strong> — na zakrętach siły odśrodkowe mogą wywrócić wózek</li></ul>"
-  },
-  {
-    "type": "callout",
-    "calloutStyle": "warning",
-    "calloutTitle": "Zakaz przeciążania",
-    "calloutText": "Nigdy nie przekraczaj maksymalnego udźwigu określonego w tabliczce znamionowej wózka. Przekroczenie udźwigu grozi wywrotką i wypadkiem śmiertelnym."
-  },
-  {
-    "type": "image",
-    "imageUrl": null,
-    "imageCaption": "PLACEHOLDER: Wstaw zdjęcie/schemat trójkąta stabilizacji wózka widłowego z oznaczonymi punktami podparcia"
-  },
-  {
-    "type": "video",
-    "videoUrl": null,
-    "videoCaption": "PLACEHOLDER: Wstaw film instruktażowy pokazujący prawidłowe techniki transportu ładunku wózkiem widłowym"
-  }
-]
+2. callout   → { "type": "callout", "calloutStyle": "warning"|"danger"|"info"|"success", "calloutTitle": "...", "calloutText": "...", "width": "full" | "half" }
+   - warning: Vorsichtshinweise
+   - danger: Lebensgefahr / gesetzliche Verbote
+   - info: Zusatzinfo / Tipp
+   - success: Korrekte Vorgehensweise / Best Practice
 
-ABSOLUTNE REGUŁY:
-- Zwróć TYLKO tablicę JSON, bez żadnych dodatkowych tekstów ani znaczników markdown (\`\`\`json)
-- Pola bloków są BEZPOŚREDNIO w obiekcie (NIE w zagnieżdżonym "data")
-- Każdy blok richtext ma pełną, szczegółową treść HTML
-- imageUrl i videoUrl dla placeholderów zawsze ustawione na null
-- Treść po polsku, merytoryczna, zgodna z BHP
-`;
+3. image     → { "type": "image", "imageUrl": null, "imageCaption": "PLATZHALTER: [genaue Beschreibung was einzufügen ist]", "width": "full" | "half" }
+   - imageUrl IMMER null
+   - imageCaption: präzise Beschreibung des Bildinhalts (Foto, Diagramm, Schema)
 
+4. video     → { "type": "video", "videoUrl": null, "videoCaption": "PLATZHALTER: [genaue Beschreibung des Videos]", "width": "full" }
+   - videoUrl IMMER null
+   - videoCaption: Beschreibung des Video-Inhalts
+
+5. divider   → { "type": "divider", "width": "full" }
+   - Visueller Trenner zwischen Abschnitten
+
+6. interactive → { "type": "interactive", "interactiveSubtype": "drag-order"|"hotspot"|"stability-sim", "width": "full",
+                   "interactiveData": { "title": "...", "description": "PLATZHALTER: [was soll das Übung zeigen]", "items": [] } }
+   - drag-order: Reihenfolge-Übung (z.B. Checkliste sortieren)
+   - hotspot: Gefahrenpunkte auf Bild markieren
+   - stability-sim: Stabilitätsdreieck-Simulation
+
+═══════════════════════════════════════════════
+LAYOUT-REGELN (width-Feld):
+═══════════════════════════════════════════════
+- "full"  = Block nimmt volle Breite ein (Standard)
+- "half"  = Block nimmt halbe Breite ein (zwei half-Blöcke nebeneinander)
+
+PFLICHT-LAYOUTMUSTER:
+- Einleitungs-Richtext: full
+- Theorie-Richtext (lang): full
+- Bild + Callout nebeneinander: beide "half"
+- Bild + Bild nebeneinander: beide "half"
+- Callout + Callout nebeneinander (z.B. Verbote + Tipps): beide "half"
+- Videos: immer "full"
+- Divider: immer "full"
+- Interaktive Übung: "full"
+
+═══════════════════════════════════════════════
+PFLICHT-STRUKTUR (10-14 Blöcke):
+═══════════════════════════════════════════════
+
+1.  [richtext, full]      — Einleitung: Was wird in diesem Abschnitt behandelt? Warum ist es wichtig?
+2.  [richtext, full]      — Haupttheorie Teil 1: Detaillierter Fachinhalt mit h2/h3/ul
+3.  [image, half]         — PLATZHALTER Bild: Beschreibe genau was abgebildet sein soll
+4.  [callout warning/info, half] — Wichtiger Hinweis passend zum Bild
+5.  [richtext, full]      — Haupttheorie Teil 2: Weitere Details, Regeln, Vorschriften (DGUV)
+6.  [callout danger, half] — Verbot / Lebensgefahr-Hinweis
+7.  [callout success, half] — Korrekte Vorgehensweise / So macht man es richtig
+8.  [divider, full]       — Abschnittstrennlinie
+9.  [image, half]         — PLATZHALTER Bild 2: anderer Blickwinkel / anderes Detail
+10. [image, half]         — PLATZHALTER Bild 3: weiteres relevantes Bild
+11. [interactive, full]   — PLATZHALTER Übung: drag-order oder hotspot mit Beschreibung
+12. [video, full]         — PLATZHALTER Video: Beschreibe genau welches Video einzufügen ist
+13. [richtext, full]      — Zusammenfassung: Wichtigste Punkte als ul-Liste, Wiederholung der Kernbotschaft
+
+═══════════════════════════════════════════════
+ABSOLUTE REGELN:
+═══════════════════════════════════════════════
+- Gib NUR das JSON-Array zurück — KEIN Text davor/danach, KEINE Markdown-Codeblöcke
+- Sprache: DEUTSCH
+- Felder sind DIREKT im Block-Objekt (NICHT in "data" verschachtelt)
+- imageUrl und videoUrl: IMMER null
+- Inhalt: fachlich korrekt, DGUV-konform, praxisnah
+- Richtext: immer vollständige HTML-Tags, kein unvollständiger Text
+- Das width-Feld: MUSS bei jedem Block vorhanden sein
+`
 
 // Extract text from uploaded files
 export const extractTextFromFile = async (buffer: Buffer, mimetype: string): Promise<string> => {
@@ -177,10 +205,30 @@ export const generateTopicContent = async ({
                 { role: "user", content: userMessageContent }
             ],
             temperature: 0.3,
-            max_tokens: outputFormat === "blocks" ? 3000 : 2500
+            max_tokens: outputFormat === "blocks" ? 6000 : 2500
         });
 
         let generatedContent = completion.choices[0]?.message?.content || "";
+
+        // Detect image refusal (Vision model sometimes refuses images)
+        const refusalPatterns = ["tut mir leid", "kann bei diesem bild nicht", "ich kann nicht", "unable to", "i cannot", "sorry, i"];
+        const isRefusal = refusalPatterns.some(p => generatedContent.toLowerCase().includes(p));
+
+        if (outputFormat === "blocks" && isRefusal && imageFiles.length > 0) {
+            console.warn("Vision model refused images, retrying without images...");
+            // Retry without images
+            const textOnlyContent = userMessageContent.filter((c: any) => c.type === "text");
+            const retryCompletion = await openai.chat.completions.create({
+                model: "gpt-4o",
+                messages: [
+                    { role: "system", content: BLOCKS_SYSTEM_PROMPT },
+                    { role: "user", content: textOnlyContent }
+                ],
+                temperature: 0.3,
+                max_tokens: 6000
+            });
+            generatedContent = retryCompletion.choices[0]?.message?.content || "";
+        }
 
         // If blocks format requested, parse JSON and add IDs
         if (outputFormat === "blocks") {
@@ -213,17 +261,18 @@ export const generateTopicContent = async ({
                 console.error("JSON parse error:", parseError);
                 console.log("Generated content:", generatedContent);
 
-                // Fallback: return a single richtext block with the content
+                // Fallback: return a richtext block with raw content + error info
                 return {
                     blocks: [{
                         id: nanoid(8),
                         type: "richtext",
                         order: 0,
-                        data: {
-                            html: `<div class="ai-fallback"><p><strong>KI-generierter Inhalt (Fallback):</strong></p>${generatedContent.replace(/\n/g, '<br/>')}</div>`
-                        }
+                        width: "full",
+                        richtextData: `<p><strong>⚠️ KI-generierter Inhalt (Fallback — JSON-Parsing fehlgeschlagen):</strong></p><pre>${generatedContent.slice(0, 3000)}</pre>`
                     }],
-                    blocksGenerated: 1
+                    blocksGenerated: 1,
+                    parseError: true,
+                    rawContent: generatedContent.slice(0, 500)
                 };
             }
         }
@@ -276,25 +325,34 @@ export const generateCourseAssistantResponse = async (
         courseTitle: string;
         chapterTitle: string;
         topicTitle?: string;
-        topicContent?: string; // richtext content for context
-    }
+        topicContent?: string;
+    },
+    language: string = "de"
 ): Promise<string> => {
     try {
-        const systemPrompt = `Jesteś pomocnym asystentem kursanta na platformie e-learningowej dla operatorów wózków widłowych.
+        const languageInstructions: Record<string, string> = {
+            de: "Antworte ausschließlich auf Deutsch.",
+            en: "Respond exclusively in English.",
+            pl: "Odpowiadaj wyłącznie po polsku.",
+            uk: "Відповідай виключно українською мовою.",
+        };
+        const languageInstruction = languageInstructions[language] || languageInstructions["de"];
 
-Kontekst bieżący:
+        const systemPrompt = `Du bist ein hilfreicher Assistent auf einer E-Learning-Plattform für Flurförderzeug-Fahrer.
+
+Aktueller Kontext:
 - Kurs: ${context.courseTitle}
-- Rozdział: ${context.chapterTitle}
-${context.topicTitle ? `- Temat: ${context.topicTitle}` : ''}
-${context.topicContent ? `\nTreść bieżącego rozdziału:\n${context.topicContent}` : ''}
+- Kapitel: ${context.chapterTitle}
+${context.topicTitle ? `- Thema: ${context.topicTitle}` : ""}
+${context.topicContent ? `\nInhalt des aktuellen Kapitels:\n${context.topicContent}` : ""}
 
-ZASADY:
-1. Odpowiadaj WYŁĄCZNIE na pytania dotyczące bieżącego rozdziału/tematu
-2. Jeśli pytanie wykracza poza zakres, grzecznie poinformuj że możesz pomóc tylko w kontekście tego rozdziału
-3. Odpowiadaj po polsku
-4. Bądź pomocny, konkretny i merytoryczny
-5. Cytuj przepisy BHP, DGUV i inne normy jeśli to istotne
-6. Nie pomagaj z zagadnieniami spoza kursu na wózki widłowe`;
+REGELN:
+1. Beantworte NUR Fragen zum aktuellen Kapitel/Thema
+2. Wenn die Frage außerhalb des Themenbereichs liegt, weise höflich darauf hin
+3. ${languageInstruction}
+4. Sei hilfsbereit, präzise und fachlich korrekt
+5. Zitiere bei Bedarf BHP-Vorschriften, DGUV-Normen und andere Regelwerke
+6. Helfe nicht bei Themen außerhalb des Flurförderzeug-Kurses`;
 
         const messages: any[] = [
             { role: "system", content: systemPrompt }
@@ -314,10 +372,10 @@ ZASADY:
             max_tokens: 600
         });
 
-        return completion.choices[0]?.message?.content || "Przepraszam, nie udało mi się wygenerować odpowiedzi. Spróbuj ponownie.";
+        return completion.choices[0]?.message?.content || "Sorry, I could not generate a response. Please try again.";
     } catch (error: any) {
         console.error("Course Assistant Error:", error);
-        throw new Error(`Błąd asystenta: ${error.message}`);
+        throw new Error(`Assistent-Fehler: ${error.message}`);
     }
 };
 

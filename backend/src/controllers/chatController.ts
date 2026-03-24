@@ -32,7 +32,7 @@ export const handleChatMessage = async (req: Request, res: Response) => {
 
 export const handleCourseAssistant = async (req: Request, res: Response) => {
     try {
-        const { message, conversationHistory, context } = req.body;
+        const { message, conversationHistory, context, language } = req.body;
 
         if (!message || typeof message !== "string") {
             return res.status(400).json({ error: "Wiadomość jest wymagana" });
@@ -45,7 +45,8 @@ export const handleCourseAssistant = async (req: Request, res: Response) => {
         const aiResponse = await generateCourseAssistantResponse(
             message,
             conversationHistory || [],
-            context
+            context,
+            language || "de"
         );
 
         return res.status(200).json({

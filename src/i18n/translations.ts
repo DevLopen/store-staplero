@@ -12,6 +12,10 @@ export const translations = {
     benefits:       { de: 'Vorteile',        en: 'Benefits',        uk: 'Переваги',           pl: 'Zalety' },
     pricing:        { de: 'Preise',          en: 'Pricing',         uk: 'Ціни',               pl: 'Cennik' },
     practicalCourse:{ de: 'Praxiskurs',      en: 'Practical Course',uk: 'Практичний курс',    pl: 'Kurs praktyczny' },
+    noCoursesUser:  { de: 'Sie haben noch keine Kurse.', en: 'You have no courses yet.', uk: 'У вас ще немає курсів.', pl: 'Nie masz jeszcze żadnych kursów.' },
+    noCoursesAdmin: { de: 'Noch keine Kurse im System. Fügen Sie den ersten Kurs im Admin-Panel hinzu.', en: 'No courses in the system yet. Add the first course in the admin panel.', uk: 'У системі ще немає курсів. Додайте перший курс у панелі адміна.', pl: 'Nie ma jeszcze żadnych kursów w systemie. Dodaj pierwszy kurs w panelu admina.' },
+    buyCourse:      { de: 'Kaufen Sie einen Kurs, um zu lernen.', en: 'Buy a course to start learning.', uk: 'Придбайте курс, щоб почати навчання.', pl: 'Kup kurs aby rozpocząć naukę.' },
+    paid:           { de: 'Bezahlt',               en: 'Paid',               uk: 'Оплачено',             pl: 'Opłacone' },
     courses:        { de: 'Kurse',           en: 'Courses',         uk: 'Курси',              pl: 'Kursy' },
     dashboard:      { de: 'Dashboard',       en: 'Dashboard',       uk: 'Панель',             pl: 'Panel' },
     myCourse:       { de: 'Mein Kurs',       en: 'My Course',       uk: 'Мій курс',           pl: 'Mój kurs' },
@@ -350,6 +354,14 @@ export const translations = {
 
   // ─── DASHBOARD ───────────────────────────────────────────────────────────────
   dashboard: {
+    noCoursesUser:  { de: 'Sie haben noch keine Kurse.', en: 'You have no courses yet.', uk: 'У вас ще немає курсів.', pl: 'Nie masz jeszcze żadnych kursów.' },
+    noCoursesAdmin: { de: 'Noch keine Kurse im System. Fügen Sie den ersten Kurs im Admin-Panel hinzu.', en: 'No courses in the system yet. Add the first course in the admin panel.', uk: 'У системі ще немає курсів. Додайте перший курс у панелі адміна.', pl: 'Nie ma jeszcze żadnych kursów w systemie. Dodaj pierwszy kurs w panelu admina.' },
+    buyCourse:      { de: 'Kaufen Sie einen Kurs, um zu lernen.', en: 'Buy a course to start learning.', uk: 'Придбайте курс, щоб почати навчання.', pl: 'Kup kurs aby rozpocząć naukę.' },
+    paid:           { de: 'Bezahlt',               en: 'Paid',               uk: 'Оплачено',             pl: 'Opłacone' },
+    courses:        { de: 'Kurse',                en: 'Courses',            uk: 'Курси',                pl: 'Kursy' },
+    completed:      { de: 'Abgeschlossen',         en: 'Completed',          uk: 'Завершено',            pl: 'Ukończone' },
+    avgProgress:    { de: 'Ø Fortschritt',          en: 'Avg. Progress',       uk: 'Сер. прогрес',         pl: 'Śr. postęp' },
+    homePage:       { de: 'Startseite',         en: 'Home',               uk: 'Головна сторінка',     pl: 'Strona główna' },
     myCourses:      { de: 'Meine Kurse', en: 'My Courses', uk: 'Мої курси', pl: 'Moje kursy' },
     orders:         { de: 'Zamówienia', en: 'Orders', uk: 'Замовлення', pl: 'Zamówienia' },
     profile:        { de: 'Profil', en: 'Profile', uk: 'Профіль', pl: 'Profil' },
@@ -511,6 +523,22 @@ export const translations = {
     goHome:         { de: 'Zur Startseite', en: 'Go to home', uk: 'На головну', pl: 'Przejdź na stronę główną' },
   },
 
+  // ─── ASYSTENT KURSU ──────────────────────────────────────────────────────────
+  courseAssistant: {
+    buttonLabel:    { de: 'Kurs-Assistent',       en: 'Course Assistant',      uk: 'Асистент курсу',        pl: 'Asystent kursu' },
+    headerTitle:    { de: 'Kurs-Assistent',       en: 'Course Assistant',      uk: 'Асистент курсу',        pl: 'Asystent kursu' },
+    greeting:       { de: 'Hallo! Ich bin Ihr Assistent für das Kapitel',  en: 'Hello! I am your assistant for the chapter', uk: 'Привіт! Я ваш асистент для розділу', pl: 'Cześć! Jestem Twoim asystentem dla rozdziału' },
+    greetingEnd:    { de: 'Wie kann ich Ihnen helfen?', en: 'How can I help you?', uk: 'Чим можу допомогти?', pl: 'W czym mogę pomóc?' },
+    suggestedLabel: { de: 'Vorgeschlagene Fragen:', en: 'Suggested questions:', uk: 'Пропоновані запитання:', pl: 'Sugerowane pytania:' },
+    q1:             { de: 'Erläutern Sie die wichtigsten Begriffe dieses Kapitels', en: 'Explain the key concepts of this chapter', uk: 'Поясніть ключові поняття цього розділу', pl: 'Wyjaśnij kluczowe pojęcia z tego rozdziału' },
+    q2:             { de: 'Was sind die wichtigsten Sicherheitsregeln?', en: 'What are the most important safety rules?', uk: 'Які найважливіші правила безпеки?', pl: 'Jakie są najważniejsze zasady BHP?' },
+    q3:             { de: 'Geben Sie ein praktisches Beispiel', en: 'Give a practical example', uk: 'Наведіть практичний приклад', pl: 'Podaj przykład z praktyki' },
+    q4:             { de: 'Was soll ich mir merken?', en: 'What should I remember?', uk: 'Що мені слід запам\'ятати?', pl: 'Co powinienem zapamiętać?' },
+    placeholder:    { de: 'Stellen Sie eine Frage zu diesem Kapitel...', en: 'Ask a question about this chapter...', uk: 'Поставте запитання про цей розділ...', pl: 'Zadaj pytanie o ten rozdział...' },
+    clearChat:      { de: 'Unterhaltung löschen (Kapitelwechsel löscht automatisch)', en: 'Clear conversation (chapter change clears automatically)', uk: 'Очистити розмову (зміна розділу очищає автоматично)', pl: 'Wyczyść rozmowę (przejście do nowego rozdziału czyści automatycznie)' },
+    errorMsg:       { de: 'Entschuldigung, es ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.', en: 'Sorry, an error occurred. Please try again.', uk: 'Вибачте, сталася помилка. Спробуйте ще раз.', pl: 'Przepraszam, wystąpił błąd. Spróbuj ponownie.' },
+  },
+
   // ─── INTERAKTYWNE ĆWICZENIA ───────────────────────────────────────────────────
   interactive: {
     dragOrderTitle: { de: 'Reihenfolge sortieren', en: 'Sort the order', uk: 'Відсортуйте порядок', pl: 'Posortuj kolejność' },
@@ -538,6 +566,111 @@ export const translations = {
     danger:         { de: 'Gefahr', en: 'Danger', uk: 'Небезпека', pl: 'Niebezpiecznie' },
   },
 
+  // ─── PANEL UŻYTKOWNIKA / DASHBOARD ──────────────────────────────────────────
+  dashboard: {
+    myCourses:      { de: 'Meine Kurse',          en: 'My Courses',         uk: 'Мої курси',           pl: 'Moje kursy' },
+    orders:         { de: 'Bestellungen',          en: 'Orders',             uk: 'Замовлення',           pl: 'Zamówienia' },
+    profile:        { de: 'Profil',                en: 'Profile',            uk: 'Профіль',              pl: 'Profil' },
+    welcome:        { de: 'Willkommen',            en: 'Welcome',            uk: 'Ласкаво просимо',      pl: 'Witaj' },
+    startCourse:    { de: 'Kurs starten',          en: 'Start Course',       uk: 'Почати курс',          pl: 'Rozpocznij kurs' },
+    continueCourse: { de: 'Weiterlernen',          en: 'Continue Learning',  uk: 'Продовжити навчання',  pl: 'Kontynuuj naukę' },
+    daysAccess:     { de: 'Tage Zugang',           en: 'days access',        uk: 'днів доступу',         pl: 'dni dostępu' },
+    accessExpired:  { de: 'Zugang abgelaufen',     en: 'Access expired',     uk: 'Доступ вичерпано',     pl: 'Dostęp wygasł' },
+    completed:      { de: 'Abgeschlossen',         en: 'Completed',          uk: 'Завершено',            pl: 'Ukończono' },
+    certificate:    { de: 'Zertifikat',            en: 'Certificate',        uk: 'Сертифікат',           pl: 'Certyfikat' },
+    finalExam:      { de: 'Abschlussprüfung',      en: 'Final Exam',         uk: 'Підсумковий іспит',    pl: 'Egzamin końcowy' },
+    progress:       { de: 'Fortschritt',           en: 'Progress',           uk: 'Прогрес',              pl: 'Postęp' },
+    noCourses:      { de: 'Keine Kurse',           en: 'No Courses',         uk: 'Немає курсів',         pl: 'Brak kursów' },
+    noCoursesDesc:  { de: 'Sie haben noch keinen Kurs erworben.', en: 'You have not purchased any courses yet.', uk: 'Ви ще не придбали жодного курсу.', pl: 'Nie posiadasz jeszcze żadnego kursu.' },
+    browseCourses:  { de: 'Kurse ansehen',         en: 'Browse Courses',     uk: 'Переглянути курси',    pl: 'Zobacz kursy' },
+    adminPanel:     { de: 'Admin-Panel',           en: 'Admin Panel',        uk: 'Панель адміна',        pl: 'Panel admina' },
+    completedCourses: { de: 'Abgeschlossene Kurse', en: 'Completed Courses', uk: 'Завершені курси',      pl: 'Ukończone kursy' },
+    avgProgress:    { de: 'Durchschnittlicher Fortschritt', en: 'Average Progress', uk: 'Середній прогрес', pl: 'Średni postęp' },
+    logout:         { de: 'Abmelden',             en: 'Log out',            uk: 'Вийти',                pl: 'Wyloguj się' },
+    noOrders:       { de: 'Keine Bestellungen',   en: 'No Orders',          uk: 'Немає замовлень',      pl: 'Brak zamówień' },
+    orderDate:      { de: 'Bestelldatum',          en: 'Order Date',         uk: 'Дата замовлення',      pl: 'Data zamówienia' },
+    purchaseDate:   { de: 'Kaufdatum',             en: 'Purchase Date',      uk: 'Дата покупки',         pl: 'Data zakupu' },
+    expiresAt:      { de: 'Gültig bis',            en: 'Valid until',        uk: 'Дійсний до',           pl: 'Ważny do' },
+    loading:        { de: 'Wird geladen…',         en: 'Loading…',           uk: 'Завантаження…',        pl: 'Ładowanie…' },
+  },
+
+  // ─── WIDOK TEMATU (TopicView) ────────────────────────────────────────────────
+  topic: {
+    loading:        { de: 'Kurs wird geladen…',    en: 'Loading course…',    uk: 'Завантаження курсу…',  pl: 'Ładowanie kursu…' },
+    notFound:       { de: 'Thema nicht gefunden.', en: 'Topic not found.',   uk: 'Тема не знайдена.',    pl: 'Nie znaleziono tematu.' },
+    backToDashboard:{ de: 'Zum Dashboard',         en: 'Back to Dashboard',  uk: 'До панелі',            pl: 'Wróć do Dashboard' },
+    course:         { de: 'Kurs',                  en: 'Course',             uk: 'Курс',                 pl: 'Kurs' },
+    completed:      { de: 'Abgeschlossen',         en: 'Completed',          uk: 'Завершено',            pl: 'Ukończono' },
+    noContent:      { de: 'Dieses Thema hat noch keinen Inhalt.', en: 'This topic has no content yet.', uk: 'Ця тема ще не має вмісту.', pl: 'Ten temat nie ma jeszcze treści.' },
+    quizRequired:   { de: 'Kapiteltest erforderlich', en: 'Chapter test required', uk: 'Потрібен тест розділу', pl: 'Test rozdziału wymagany' },
+    quizRequiredDesc: { de: 'Nach Abschluss aller Themen müssen Sie den Test bestehen, um das nächste Kapitel freizuschalten.', en: 'After completing all topics you must pass the test to unlock the next chapter.', uk: 'Після завершення всіх тем потрібно скласти тест для відкриття наступного розділу.', pl: 'Po ukończeniu wszystkich tematów musisz zdać test, aby odblokować następny rozdział.' },
+    prevTopic:      { de: 'Vorheriges Thema',      en: 'Previous Topic',     uk: 'Попередня тема',       pl: 'Poprzedni temat' },
+    nextTopic:      { de: 'Nächstes Thema',        en: 'Next Topic',         uk: 'Наступна тема',        pl: 'Następny temat' },
+    goToTest:       { de: 'Zum Test',              en: 'Go to Test',         uk: 'До тесту',             pl: 'Przejdź do testu' },
+    finishCourse:   { de: 'Kurs beenden',          en: 'Finish Course',      uk: 'Завершити курс',       pl: 'Zakończ kurs' },
+    markComplete:   { de: 'Als abgeschlossen markieren', en: 'Mark as complete', uk: 'Позначити як завершене', pl: 'Oznacz jako ukończony' },
+    saving:         { de: 'Speichern…',            en: 'Saving…',            uk: 'Збереження…',          pl: 'Zapisuję…' },
+    unlockPrev:     { de: 'Vorheriges Kapitel abschließen zum Entsperren', en: 'Complete previous chapter to unlock', uk: 'Завершіть попередній розділ для відкриття', pl: 'Odblokuj zaliczając poprzedni rozdział' },
+    dashboard:      { de: 'Dashboard',             en: 'Dashboard',          uk: 'Панель',               pl: 'Dashboard' },
+    testChapter:    { de: 'Test:',                 en: 'Test:',              uk: 'Тест:',                pl: 'Test:' },
+    finalExam:      { de: 'Abschlussprüfung',      en: 'Final Exam',         uk: 'Підсумковий іспит',    pl: 'Egzamin końcowy' },
+    language:       { de: 'Sprache',               en: 'Language',           uk: 'Мова',                 pl: 'Język' },
+  },
+
+  // ─── TEST ROZDZIAŁU (QuizView) ───────────────────────────────────────────────
+  quiz: {
+    question:       { de: 'Frage',                 en: 'Question',           uk: 'Запитання',            pl: 'Pytanie' },
+    multipleAnswers:{ de: 'Mehrere Antworten möglich', en: 'Multiple answers possible', uk: 'Можливо кілька відповідей', pl: 'Możliwe kilka odpowiedzi' },
+    explanation:    { de: 'Erklärung',             en: 'Explanation',        uk: 'Пояснення',            pl: 'Wyjaśnienie' },
+    trueLabel:      { de: '✅ Wahr',               en: '✅ True',            uk: '✅ Правда',            pl: '✅ Prawda' },
+    falseLabel:     { de: '❌ Falsch',             en: '❌ False',           uk: '❌ Хибно',             pl: '❌ Fałsz' },
+    submit:         { de: 'Test abschließen',      en: 'Finish Test',        uk: 'Завершити тест',       pl: 'Zakończ test' },
+    submitting:     { de: 'Wird gesendet…',        en: 'Sending…',           uk: 'Надсилання…',          pl: 'Wysyłam…' },
+    passed:         { de: 'Bestanden!',            en: 'Passed!',            uk: 'Складено!',            pl: 'Zaliczono!' },
+    failed:         { de: 'Nicht bestanden',       en: 'Not passed',         uk: 'Не складено',          pl: 'Nie zaliczono' },
+    retry:          { de: 'Erneut versuchen',      en: 'Try again',          uk: 'Спробувати ще раз',    pl: 'Spróbuj ponownie' },
+    continue:       { de: 'Weiter',                en: 'Continue',           uk: 'Продовжити',           pl: 'Kontynuuj' },
+    backToMaterial: { de: 'Zurück zu den Materialien', en: 'Back to materials', uk: 'Назад до матеріалів', pl: 'Wróć do materiałów' },
+    correct:        { de: 'von',                   en: 'of',                 uk: 'з',                    pl: 'z' },
+    threshold:      { de: 'Schwelle',              en: 'threshold',          uk: 'поріг',                pl: 'próg' },
+    notFound:       { de: 'Test nicht gefunden.',  en: 'Test not found.',    uk: 'Тест не знайдено.',    pl: 'Nie znaleziono testu.' },
+  },
+
+  // ─── EGZAMIN KOŃCOWY (FinalQuizView) ─────────────────────────────────────────
+  finalQuiz: {
+    loading:        { de: 'Test wird geladen…',    en: 'Loading test…',      uk: 'Завантаження тесту…',  pl: 'Ładowanie testu…' },
+    minScore:       { de: 'Mindestpunktzahl',       en: 'Minimum score',      uk: 'Мінімальний бал',      pl: 'Minimalna liczba punktów' },
+    questions:      { de: 'Fragen',                en: 'Questions',          uk: 'Запитання',            pl: 'Pytania' },
+    alreadyPassed:  { de: 'Bereits bestanden',     en: 'Already passed',     uk: 'Вже складено',         pl: 'Już zaliczono' },
+    lastAttempt:    { de: 'Letzter Versuch',        en: 'Last attempt',       uk: 'Остання спроба',       pl: 'Ostatnia próba' },
+    score:          { de: 'Punktzahl',              en: 'Score',              uk: 'Бал',                  pl: 'Wynik' },
+    passed:         { de: 'Test bestanden!',        en: 'Test passed!',       uk: 'Тест складено!',       pl: 'Test zaliczony!' },
+    failed:         { de: 'Nicht bestanden',        en: 'Not passed',         uk: 'Не складено',          pl: 'Nie zaliczono' },
+    yourScore:      { de: 'Ihre Punktzahl',         en: 'Your score',         uk: 'Ваш результат',        pl: 'Twój wynik' },
+    required:       { de: 'Erforderlich',           en: 'Required',           uk: 'Необхідно',            pl: 'Wymagane' },
+    toDashboard:    { de: 'Zum Dashboard',          en: 'To Dashboard',       uk: 'До панелі',            pl: 'Do dashboardu' },
+    tryAgain:       { de: 'Erneut versuchen',       en: 'Try again',          uk: 'Спробувати ще раз',    pl: 'Spróbuj ponownie' },
+    questionOf:     { de: 'Frage',                  en: 'Question',           uk: 'Запитання',            pl: 'Pytanie' },
+    of:             { de: 'von',                    en: 'of',                 uk: 'з',                    pl: 'z' },
+    submitting:     { de: 'Wird gesendet…',         en: 'Sending…',           uk: 'Надсилання…',          pl: 'Wysyłam…' },
+    finishTest:     { de: 'Test abschließen',       en: 'Finish Test',        uk: 'Завершити тест',       pl: 'Zakończ test' },
+    answeredOf:     { de: 'beantwortet',            en: 'answered',           uk: 'відповіді',            pl: 'odpowiedzi' },
+    correctCount:   { de: 'richtig beantwortet',    en: 'correctly answered', uk: 'правильних відповідей', pl: 'poprawnych odpowiedzi' },
+  },
+
+  // ─── PRZEGLĄD KURSU (CourseOverview) ─────────────────────────────────────────
+  courseOverview: {
+    overallProgress: { de: 'Gesamtfortschritt',    en: 'Overall Progress',   uk: 'Загальний прогрес',    pl: 'Postęp ogólny' },
+    completedTopics: { de: 'Abgeschlossene Themen',en: 'Completed Topics',   uk: 'Завершені теми',       pl: 'Ukończone tematy' },
+    totalChapters:  { de: 'Kapitel insgesamt',      en: 'Total Chapters',     uk: 'Всього розділів',      pl: 'Rozdziałów łącznie' },
+    quizRequired:   { de: 'Test erforderlich',      en: 'Test required',      uk: 'Потрібен тест',        pl: 'Wymagany test' },
+    locked:         { de: 'Gesperrt',               en: 'Locked',             uk: 'Заблоковано',          pl: 'Zablokowany' },
+    startTest:      { de: 'Test starten',           en: 'Start Test',         uk: 'Почати тест',          pl: 'Rozpocznij test' },
+    continue:       { de: 'Fortsetzen',             en: 'Continue',           uk: 'Продовжити',           pl: 'Kontynuuj' },
+    start:          { de: 'Starten',                en: 'Start',              uk: 'Почати',               pl: 'Rozpocznij' },
+  },
+
+
 };
 
 // ─── Helper function ────────────────────────────────────────────────────────
@@ -556,4 +689,4 @@ export function t(key: string, lang: Language = 'de'): string {
 // ─── Hook ───────────────────────────────────────────────────────────────────
 export function useTranslation(language: Language = 'de') {
   return (key: string) => t(key, language);
-}
+}// APPENDED — user panel translations (auto-added)

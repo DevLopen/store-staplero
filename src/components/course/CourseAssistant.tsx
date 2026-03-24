@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Loader2, Bot, User, ChevronDown } from "lucide-react";
+import { X, Send, Loader2, Bot, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface Message {
   role: "user" | "assistant";
@@ -25,6 +26,7 @@ export default function CourseAssistant({
                                           topicContent,
                                           chapterId,
                                         }: CourseAssistantProps) {
+  const { language, t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -75,6 +77,7 @@ export default function CourseAssistant({
         body: JSON.stringify({
           message: text,
           conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
+          language,
           context: {
             courseTitle,
             chapterTitle,
@@ -96,7 +99,7 @@ export default function CourseAssistant({
         ...prev,
         {
           role: "assistant",
-          content: "Przepraszam, wystąpił błąd. Spróbuj ponownie.",
+          content: t("courseAssistant.errorMsg"),
           timestamp: new Date(),
         },
       ]);
@@ -113,10 +116,10 @@ export default function CourseAssistant({
   };
 
   const suggestedQuestions = [
-    "Wyjaśnij kluczowe pojęcia z tego rozdziału",
-    "Jakie są najważniejsze zasady BHP?",
-    "Podaj przykład z praktyki",
-    "Co powinienem zapamiętać?",
+    t("courseAssistant.q1"),
+    t("courseAssistant.q2"),
+    t("courseAssistant.q3"),
+    t("courseAssistant.q4"),
   ];
 
   return (
@@ -128,7 +131,7 @@ export default function CourseAssistant({
                 className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-2xl shadow-lg shadow-amber-500/30 transition-all hover:scale-105 hover:shadow-amber-500/50"
             >
               <Bot className="h-5 w-5" />
-              <span className="text-sm">Asystent kursu</span>
+              <span className="text-sm">{t("courseAssistant.buttonLabel")}</span>
             </button>
         )}
 
@@ -142,7 +145,7 @@ export default function CourseAssistant({
                     <Bot className="h-4 w-4 text-slate-950" />
                   </div>
                   <div>
-                    <p className="text-white text-sm font-semibold">Asystent kursu</p>
+                    <p className="text-white text-sm font-semibold">{t("courseAssistant.headerTitle")}</p>
                     <p className="text-amber-400/80 text-xs truncate max-w-[220px]">{chapterTitle}</p>
                   </div>
                 </div>
@@ -164,13 +167,13 @@ export default function CourseAssistant({
                         </div>
                         <div className="bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%]">
                           <p className="text-slate-200 text-sm">
-                            Cześć! Jestem Twoim asystentem dla rozdziału <strong className="text-amber-400">„{chapterTitle}"</strong>.
-                            Mogę pomóc Ci zrozumieć materiał z tego rozdziału. W czym mogę pomóc?
+                            {t("courseAssistant.greeting")} <strong className="text-amber-400">„{chapterTitle}"</strong>.{" "}
+                            {t("courseAssistant.greetingEnd")}
                           </p>
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <p className="text-slate-500 text-xs px-1">Sugerowane pytania:</p>
+                        <p className="text-slate-500 text-xs px-1">{t("courseAssistant.suggestedLabel")}</p>
                         {suggestedQuestions.map(q => (
                             <button
                                 key={q}
@@ -229,7 +232,7 @@ export default function CourseAssistant({
                         onClick={() => setMessages([])}
                         className="text-xs text-slate-600 hover:text-slate-400 mb-2 block transition-colors"
                     >
-                      Wyczyść rozmowę (przejście do nowego rozdziału czyści automatycznie)
+                      {t("courseAssistant.clearChat")}
                     </button>
                 )}
                 <div className="flex gap-2 items-end">
@@ -238,7 +241,7 @@ export default function CourseAssistant({
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Zadaj pytanie o ten rozdział..."
+                  placeholder={t("courseAssistant.placeholder")}
                   className="flex-1 bg-slate-800 border border-slate-700 text-slate-200 placeholder-slate-500 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-amber-500/60 transition-colors min-h-[40px] max-h-[120px]"
                   rows={1}
                   style={{ height: 'auto' }}

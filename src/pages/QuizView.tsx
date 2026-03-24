@@ -4,11 +4,9 @@ import { getChapterQuiz, submitChapterQuiz } from "@/api/quiz.api";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import {
-  CheckCircle, XCircle, ChevronLeft, ChevronRight,
-  Clock, RotateCcw
-} from "lucide-react";
+import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Clock, RotateCcw } from "lucide-react";
 import { QuizQuestion } from "@/types/course.types";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 function useTimer(seconds: number | undefined, onExpire: () => void) {
   const [remaining, setRemaining] = useState(seconds ?? 0);
@@ -27,12 +25,13 @@ function useTimer(seconds: number | undefined, onExpire: () => void) {
 }
 
 function QuestionCard({
-                        question, answer, setAnswer, feedback,
+                        question, answer, setAnswer, feedback, t,
                       }: {
   question: QuizQuestion;
   answer: unknown;
   setAnswer: (a: unknown) => void;
   feedback?: { wasCorrect: boolean; correctAnswer?: number; correctAnswers?: number[]; correctBool?: boolean; explanation?: string } | null;
+  t: (key: string) => string;
 }) {
   const { type, options } = question;
 
@@ -55,13 +54,13 @@ function QuestionCard({
                                 isCorrect ? "border-green-500 bg-green-50 text-green-800" :
                                     isWrong ? "border-red-400 bg-red-50 text-red-700" :
                                         "border-gray-200 bg-white text-gray-700 hover:border-amber-300 hover:bg-amber-50/50"}`}>
-                <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 text-xs font-bold
+                      <span className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 text-xs font-bold
                   ${selected && !feedback ? "border-amber-500 bg-amber-500 text-white" :
-                    isCorrect ? "border-green-500 bg-green-500 text-white" :
-                        isWrong ? "border-red-400 bg-red-400 text-white" :
-                            "border-gray-300 text-gray-400"}`}>
-                  {String.fromCharCode(65 + idx)}
-                </span>
+                          isCorrect ? "border-green-500 bg-green-500 text-white" :
+                              isWrong ? "border-red-400 bg-red-400 text-white" :
+                                  "border-gray-300 text-gray-400"}`}>
+                        {String.fromCharCode(65 + idx)}
+                      </span>
                       <span className="text-sm leading-relaxed">{opt}</span>
                       {isCorrect && <CheckCircle className="h-4 w-4 text-green-500 ml-auto flex-shrink-0" />}
                       {isWrong && <XCircle className="h-4 w-4 text-red-400 ml-auto flex-shrink-0" />}
@@ -73,7 +72,7 @@ function QuestionCard({
 
         {type === "multi" && options && (
             <div className="space-y-2.5">
-              <p className="text-gray-400 text-xs mb-1">Możliwe kilka odpowiedzi</p>
+              <p className="text-gray-400 text-xs mb-1">{t("quiz.multipleAnswers")}</p>
               {options.map((opt, idx) => {
                 const arr = (answer as string[]) ?? [];
                 const selected = arr.includes(opt);
@@ -86,9 +85,9 @@ function QuestionCard({
                                 isCorrect ? "border-green-500 bg-green-50 text-green-800" :
                                     isWrong ? "border-red-400 bg-red-50 text-red-700" :
                                         "border-gray-200 bg-white text-gray-700 hover:border-amber-300 hover:bg-amber-50/50"}`}>
-                <span className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${selected ? "border-amber-500 bg-amber-500" : "border-gray-300"}`}>
-                  {selected && <CheckCircle className="h-3 w-3 text-white" />}
-                </span>
+                      <span className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${selected ? "border-amber-500 bg-amber-500" : "border-gray-300"}`}>
+                        {selected && <CheckCircle className="h-3 w-3 text-white" />}
+                      </span>
                       <span className="text-sm">{opt}</span>
                     </button>
                 );
@@ -109,7 +108,7 @@ function QuestionCard({
                                 isCorrect ? "border-green-500 bg-green-50 text-green-700" :
                                     isWrong ? "border-red-400 bg-red-50 text-red-600" :
                                         "border-gray-200 bg-white text-gray-600 hover:border-amber-300 hover:bg-amber-50/50"}`}>
-                      {val ? "✅ Prawda" : "❌ Fałsz"}
+                      {val ? t("quiz.trueLabel") : t("quiz.falseLabel")}
                     </button>
                 );
               })}
@@ -118,7 +117,7 @@ function QuestionCard({
 
         {feedback && question.explanation && (
             <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
-              <p className="text-xs text-blue-500 uppercase tracking-wider mb-1">Wyjaśnienie</p>
+              <p className="text-xs text-blue-500 uppercase tracking-wider mb-1">{t("quiz.explanation")}</p>
               <p className="text-blue-800 text-sm leading-relaxed">{question.explanation}</p>
             </div>
         )}
@@ -126,8 +125,9 @@ function QuestionCard({
   );
 }
 
-function ResultScreen({ score, passed, passingScore, correctCount, total, onRetry, onContinue }: {
-  score: number; passed: boolean; passingScore: number; correctCount: number; total: number; onRetry: () => void; onContinue: () => void;
+function ResultScreen({ score, passed, passingScore, correctCount, total, onRetry, onContinue, t }: {
+  score: number; passed: boolean; passingScore: number; correctCount: number; total: number;
+  onRetry: () => void; onContinue: () => void; t: (key: string) => string;
 }) {
   return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -137,15 +137,19 @@ function ResultScreen({ score, passed, passingScore, correctCount, total, onRetr
           </div>
           <div>
             <h2 className="text-4xl font-bold text-gray-900">{score}%</h2>
-            <p className={`text-lg mt-1 font-semibold ${passed ? "text-green-600" : "text-red-500"}`}>{passed ? "Zaliczono!" : "Nie zaliczono"}</p>
-            <p className="text-gray-400 text-sm mt-2">{correctCount} z {total} poprawnych · próg: {passingScore}%</p>
+            <p className={`text-lg mt-1 font-semibold ${passed ? "text-green-600" : "text-red-500"}`}>
+              {passed ? t("quiz.passed") : t("quiz.failed")}
+            </p>
+            <p className="text-gray-400 text-sm mt-2">
+              {correctCount} {t("quiz.correct")} {total} · {t("quiz.threshold")}: {passingScore}%
+            </p>
           </div>
           <div className="flex gap-3">
             <Button onClick={onRetry} variant="outline" className="flex-1 border-gray-200 text-gray-600">
-              <RotateCcw className="h-4 w-4 mr-2" />Spróbuj ponownie
+              <RotateCcw className="h-4 w-4 mr-2" />{t("quiz.retry")}
             </Button>
             <Button onClick={onContinue} className="flex-1 bg-amber-500 hover:bg-amber-400 text-white font-semibold">
-              {passed ? "Kontynuuj" : "Wróć do materiałów"}
+              {passed ? t("quiz.continue") : t("quiz.backToMaterial")}
             </Button>
           </div>
         </div>
@@ -156,6 +160,8 @@ function ResultScreen({ score, passed, passingScore, correctCount, total, onRetr
 const QuizView = () => {
   const { courseId, chapterId } = useParams<{ courseId: string; chapterId: string }>();
   const navigate = useNavigate();
+  const { t } = useLanguage();
+
   const [quizData, setQuizData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -192,14 +198,22 @@ const QuizView = () => {
   );
 
   if (!quizData) return (
-      <div className="min-h-screen bg-background flex items-center justify-center text-gray-400">Nie znaleziono testu.</div>
+      <div className="min-h-screen bg-background flex items-center justify-center text-gray-400">
+        {t("quiz.notFound")}
+      </div>
   );
 
   if (result) return (
-      <ResultScreen score={result.score} passed={result.passed} passingScore={result.passingScore}
-                    correctCount={result.correctCount} total={result.totalQuestions}
-                    onRetry={() => { setResult(null); setAnswers({}); setFeedbacks({}); setCurrentIdx(0); }}
-                    onContinue={() => navigate(`/course/${courseId}`)} />
+      <ResultScreen
+          score={result.score}
+          passed={result.passed}
+          passingScore={result.passingScore}
+          correctCount={result.correctCount}
+          total={result.totalQuestions}
+          onRetry={() => { setResult(null); setAnswers({}); setFeedbacks({}); setCurrentIdx(0); }}
+          onContinue={() => navigate(`/course/${courseId}`)}
+          t={t}
+      />
   );
 
   const questions: QuizQuestion[] = quizData.questions ?? [];
@@ -230,9 +244,17 @@ const QuizView = () => {
         <div className="pt-20 pb-24 px-4">
           <div className="max-w-2xl mx-auto">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <p className="text-amber-600 text-xs uppercase tracking-wider mb-2 font-semibold">Pytanie {currentIdx + 1}</p>
+              <p className="text-amber-600 text-xs uppercase tracking-wider mb-2 font-semibold">
+                {t("quiz.question")} {currentIdx + 1}
+              </p>
               <h2 className="text-xl font-semibold text-gray-900 leading-relaxed mb-6">{q.question}</h2>
-              <QuestionCard question={q} answer={answers[q.id]} setAnswer={val => setAnswers(prev => ({ ...prev, [q.id]: val }))} feedback={feedbacks[q.id] ?? null} />
+              <QuestionCard
+                  question={q}
+                  answer={answers[q.id]}
+                  setAnswer={val => setAnswers(prev => ({ ...prev, [q.id]: val }))}
+                  feedback={feedbacks[q.id] ?? null}
+                  t={t}
+              />
             </div>
           </div>
         </div>
@@ -254,7 +276,7 @@ const QuizView = () => {
                 </Button>
             ) : (
                 <Button onClick={handleSubmit} disabled={submitting || !allAnswered} className="bg-amber-500 hover:bg-amber-400 text-white font-semibold px-5">
-                  {submitting ? "Wysyłam…" : "Zakończ test"}
+                  {submitting ? t("quiz.submitting") : t("quiz.submit")}
                 </Button>
             )}
           </div>

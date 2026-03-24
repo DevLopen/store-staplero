@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -39,6 +40,7 @@ interface QuizResult {
 }
 
 const FinalQuizView = () => {
+    const { t } = useLanguage();
     const { courseId } = useParams<{ courseId: string }>();
     const navigate = useNavigate();
     const { toast } = useToast();
@@ -156,7 +158,7 @@ const FinalQuizView = () => {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background">
-                <span>Lade Test...</span>
+                <span>{t("finalQuiz.loading")}</span>
             </div>
         );
     }
@@ -183,11 +185,11 @@ const FinalQuizView = () => {
                         <div className="flex items-center justify-center gap-6 text-sm">
                             <div className="flex items-center gap-2">
                                 <CheckCircle className="w-4 h-4 text-primary" />
-                                <span>Mindestpunktzahl: {quizData.passingScore}%</span>
+                                <span>{t("finalQuiz.minScore")}: {quizData.passingScore}%</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <AlertTriangle className="w-4 h-4 text-warning" />
-                                <span>{quizData.questions.length} Fragen</span>
+                                <span>{quizData.questions.length} {t("finalQuiz.questions")}</span>
                             </div>
                         </div>
                     </div>
@@ -204,10 +206,10 @@ const FinalQuizView = () => {
                                     )}
                                     <div>
                                         <p className="font-semibold">
-                                            {quizData.previousResult.passed ? "Bereits bestanden" : "Letzter Versuch"}
+                                            {quizData.previousResult.passed ? t("finalQuiz.alreadyPassed") : t("finalQuiz.lastAttempt")}
                                         </p>
                                         <p className="text-sm text-muted-foreground">
-                                            Punktzahl: {quizData.previousResult.score}%
+                                            {t("finalQuiz.score")}: {quizData.previousResult.score}%
                                         </p>
                                     </div>
                                 </div>
@@ -223,38 +225,38 @@ const FinalQuizView = () => {
                                     {result.passed ? (
                                         <>
                                             <CheckCircle className="w-6 h-6 text-success" />
-                                            Test bestanden!
+                                            {t("finalQuiz.passed")}
                                         </>
                                     ) : (
                                         <>
                                             <XCircle className="w-6 h-6 text-destructive" />
-                                            Nicht bestanden
+                                            {t("finalQuiz.failed")}
                                         </>
                                     )}
                                 </CardTitle>
                                 <CardDescription>
-                                    Sie haben {result.correctCount} von {result.totalQuestions} Fragen richtig beantwortet
+                                    {result.correctCount} {t("finalQuiz.of")} {result.totalQuestions} {t("finalQuiz.correctCount")}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center">
-                                        <span>Ihre Punktzahl:</span>
+                                        <span>{t("finalQuiz.yourScore")}:</span>
                                         <span className="text-2xl font-bold">{result.score}%</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm text-muted-foreground">
-                                        <span>Erforderlich:</span>
+                                        <span>{t("finalQuiz.required")}:</span>
                                         <span>{result.passingScore}%</span>
                                     </div>
                                 </div>
 
                                 <div className="flex gap-4 mt-6">
                                     <Button onClick={() => navigate("/dashboard")} className="flex-1">
-                                        Zum Dashboard
+                                        {t("finalQuiz.toDashboard")}
                                     </Button>
                                     {!result.passed && (
                                         <Button onClick={resetQuiz} variant="outline" className="flex-1">
-                                            Erneut versuchen
+                                            {t("finalQuiz.tryAgain")}
                                         </Button>
                                     )}
                                 </div>
@@ -267,7 +269,7 @@ const FinalQuizView = () => {
                         <Card key={q.id}>
                             <CardHeader>
                                 <CardTitle className="text-lg">
-                                    Frage {idx + 1} von {quizData.questions.length}
+                                    {t("finalQuiz.questionOf")} {idx + 1} {t("finalQuiz.of")} {quizData.questions.length}
                                 </CardTitle>
                                 <CardDescription className="text-base text-foreground">
                                     {q.question}
@@ -311,11 +313,11 @@ const FinalQuizView = () => {
                                 variant="hero"
                             >
                                 {submitting ? (
-                                    "Wird gesendet..."
+                                    t("finalQuiz.submitting")
                                 ) : (
                                     <>
                                         <Trophy className="w-5 h-5 mr-2" />
-                                        Test abschließen ({Object.keys(answers).length}/{quizData.questions.length})
+                                        {t("finalQuiz.finishTest")} ({Object.keys(answers).length}/{quizData.questions.length})
                                     </>
                                 )}
                             </Button>

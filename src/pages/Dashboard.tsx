@@ -9,6 +9,8 @@ import {
   Zap, Target, Star, BarChart3, ArrowRight, Calendar, Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -60,6 +62,7 @@ function CourseCard({ course, quizResults, isAdmin }: {
   quizResults: Record<string, { passed: boolean }>;
   isAdmin: boolean;
 }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const navigate = useNavigate();
 
@@ -67,7 +70,7 @@ function CourseCard({ course, quizResults, isAdmin }: {
   const lastPosValid = course.lastPosition
       ? course.chapters.some(ch =>
           ch.id === course.lastPosition!.chapterId &&
-          ch.topics.some((t: any) => t.id === course.lastPosition!.topicId)
+          ch.topics.some((tp: any) => tp.id === course.lastPosition!.topicId)
       )
       : false;
 
@@ -132,7 +135,7 @@ function CourseCard({ course, quizResults, isAdmin }: {
                   isExpired ? "text-red-500" : daysLow ? "text-amber-600" : "text-gray-400"
               }`}>
                 <Clock className="h-3 w-3" />
-                {isExpired ? "Dostęp wygasł" : `${course.daysRemaining} dni dostępu`}
+                {isExpired ? t("dashboard.accessExpired") : `${course.daysRemaining} ${t("dashboard.daysAccess")}`}
               </div>
           )}
 
@@ -183,7 +186,7 @@ function CourseCard({ course, quizResults, isAdmin }: {
                 <Link to={resumeLink}>
                   <button className="w-full bg-amber-500 hover:bg-amber-400 text-white text-sm font-semibold py-2.5 px-4 rounded-xl transition-colors flex items-center justify-center gap-2">
                     <Play className="h-4 w-4" />
-                    {lastPosValid ? "Kontynuuj naukę" : "Rozpocznij kurs"}
+                    {lastPosValid ? t("dashboard.continueCourse") : t("dashboard.startCourse")}
                   </button>
                 </Link>
             )}
@@ -191,7 +194,7 @@ function CourseCard({ course, quizResults, isAdmin }: {
             {canFinalQuiz && !isDone && !isExpired && (
                 <Link to={`/course/${course._id}/final-quiz`}>
                   <button className="w-full border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2">
-                    <Award className="h-4 w-4" /> Egzamin końcowy
+                    <Award className="h-4 w-4" /> {t("dashboard.finalExam")}
                   </button>
                 </Link>
             )}
@@ -199,7 +202,7 @@ function CourseCard({ course, quizResults, isAdmin }: {
             {isDone && course.certificateEnabled && (
                 <a href={downloadCertificateUrl(course._id)} target="_blank" rel="noreferrer">
                   <button className="w-full border border-green-300 text-green-700 hover:bg-green-50 text-sm font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2">
-                    <Download className="h-4 w-4" /> Certyfikat
+                    <Download className="h-4 w-4" /> {t("dashboard.certificate")}
                   </button>
                 </a>
             )}
@@ -214,6 +217,7 @@ function CourseCard({ course, quizResults, isAdmin }: {
 type Tab = "courses" | "orders" | "profile";
 
 const Dashboard = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -248,7 +252,7 @@ const Dashboard = () => {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-gray-400 text-sm mt-4">Ładowanie panelu…</p>
+            <p className="text-gray-400 text-sm mt-4">{t("dashboard.loading")}</p>
           </div>
         </div>
     );
@@ -265,9 +269,9 @@ const Dashboard = () => {
       : 0;
 
   const navItems: { id: Tab; label: string; icon: any }[] = [
-    { id: "courses", label: "Moje kursy", icon: BookOpen },
-    { id: "orders", label: "Zamówienia", icon: ShoppingBag },
-    { id: "profile", label: "Profil", icon: User },
+    { id: "courses", label: t("dashboard.myCourses"), icon: BookOpen },
+    { id: "orders", label: t("dashboard.orders"), icon: ShoppingBag },
+    { id: "profile", label: t("dashboard.profile"), icon: User },
   ];
 
   return (
@@ -314,13 +318,13 @@ const Dashboard = () => {
             <div className="pt-3 mt-3 border-t border-gray-100">
               <Link to="/">
                 <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-all">
-                  <LayoutDashboard className="h-4 w-4" /> Strona główna
+                  <LayoutDashboard className="h-4 w-4" /> Staplero.de
                 </button>
               </Link>
               {isAdmin && (
                   <Link to="/admin">
                     <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-amber-600 hover:bg-amber-50 transition-all mt-1">
-                      <Settings className="h-4 w-4" /> Panel admina
+                      <Settings className="h-4 w-4" /> {t("dashboard.adminPanel")}
                     </button>
                   </Link>
               )}
@@ -331,7 +335,7 @@ const Dashboard = () => {
           <div className="px-3 py-4 border-t border-gray-100">
             <button onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all">
-              <LogOut className="h-4 w-4" /> Wyloguj się
+              <LogOut className="h-4 w-4" /> {t("dashboard.logout")}
             </button>
           </div>
         </aside>
@@ -352,18 +356,19 @@ const Dashboard = () => {
               {/* Page title - desktop */}
               <div className="hidden lg:block">
                 <h1 className="text-xl font-bold text-gray-900">
-                  {activeTab === "courses" ? "Moje kursy" :
-                      activeTab === "orders" ? "Zamówienia" : "Profil"}
+                  {activeTab === "courses" ? t("dashboard.myCourses") :
+                      activeTab === "orders" ? t("dashboard.orders") : t("dashboard.profile")}
                 </h1>
               </div>
 
               {/* Right actions */}
               <div className="flex items-center gap-3">
+                <LanguageSwitcher />
                 {isAdmin && (
                     <Link to="/admin" className="hidden sm:flex">
                       <button className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
                         <Settings className="h-4 w-4" />
-                        Panel admina
+                        {t("dashboard.adminPanel")}
                       </button>
                     </Link>
                 )}
@@ -397,21 +402,16 @@ const Dashboard = () => {
                   <div>
                     <div className="mb-6">
                       <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                        Witaj, {user.name.split(" ")[0]}! 👋
+                        {t("dashboard.welcome")}, {user.name.split(" ")[0]}! 👋
                       </h2>
-                      <p className="text-gray-500 mt-1">
-                        {courses.length === 0
-                            ? "Nie masz jeszcze żadnych kursów."
-                            : `Masz dostęp do ${courses.length} ${courses.length === 1 ? "kursu" : "kursów"}`}
-                      </p>
                     </div>
 
                     {courses.length > 0 && (
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-                          <StatCard icon={BookOpen} label="Kursy" value={courses.length} color="bg-blue-50 text-blue-600" />
-                          <StatCard icon={Trophy} label="Ukończone" value={completedCourses} color="bg-amber-50 text-amber-600" />
-                          <StatCard icon={TrendingUp} label="Śr. postęp" value={`${avgProgress}%`} color="bg-green-50 text-green-600" />
-                          <StatCard icon={ShoppingBag} label="Zamówienia" value={orders.length} color="bg-purple-50 text-purple-600" />
+                          <StatCard icon={BookOpen} label={t("dashboard.courses")} value={courses.length} color="bg-blue-50 text-blue-600" />
+                          <StatCard icon={Trophy} label={t("dashboard.completed")} value={completedCourses} color="bg-amber-50 text-amber-600" />
+                          <StatCard icon={TrendingUp} label={t("dashboard.avgProgress")} value={`${avgProgress}%`} color="bg-green-50 text-green-600" />
+                          <StatCard icon={ShoppingBag} label={t("dashboard.orders")} value={orders.length} color="bg-purple-50 text-purple-600" />
                         </div>
                     )}
                   </div>
@@ -425,14 +425,14 @@ const Dashboard = () => {
                         <h3 className="text-xl font-bold text-gray-900 mb-2">Brak kursów</h3>
                         <p className="text-gray-400 mb-6">
                           {isAdmin
-                              ? "Nie ma jeszcze żadnych kursów w systemie. Dodaj pierwszy kurs w panelu admina."
-                              : "Kup kurs aby rozpocząć naukę."}
+                              ? t("dashboard.noCoursesAdmin")
+                              : t("dashboard.buyCourse")}
                         </p>
                         <div className="flex gap-3 justify-center flex-wrap">
                           {isAdmin ? (
                               <Link to="/admin">
                                 <button className="bg-amber-500 hover:bg-amber-400 text-white font-semibold px-6 py-3 rounded-xl flex items-center gap-2 transition-colors">
-                                  <Settings className="h-4 w-4" /> Panel admina
+                                  <Settings className="h-4 w-4" /> {t("dashboard.adminPanel")}
                                 </button>
                               </Link>
                           ) : (
@@ -458,7 +458,7 @@ const Dashboard = () => {
             {activeTab === "orders" && (
                 <div className="max-w-3xl space-y-4">
                   <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">Zamówienia</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">{t("dashboard.orders")}</h2>
                     <p className="text-gray-500 mt-1">Historia Twoich zakupów</p>
                   </div>
 
@@ -489,7 +489,7 @@ const Dashboard = () => {
                                 <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full mt-1 ${
                                     order.status === "paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
                                 }`}>
-                          {order.status === "paid" ? "Opłacone" : order.status}
+                          {order.status === "paid" ? t("dashboard.paid") : order.status}
                         </span>
                               </div>
                             </div>
@@ -526,15 +526,15 @@ const Dashboard = () => {
                       <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-100">
                         <div className="text-center">
                           <p className="text-2xl font-bold text-gray-900">{courses.length}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">Kursy</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{t("dashboard.courses")}</p>
                         </div>
                         <div className="text-center border-x border-gray-100">
                           <p className="text-2xl font-bold text-green-600">{completedCourses}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">Ukończone</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{t("dashboard.completed")}</p>
                         </div>
                         <div className="text-center">
                           <p className="text-2xl font-bold text-amber-600">{avgProgress}%</p>
-                          <p className="text-xs text-gray-400 mt-0.5">Śr. postęp</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{t("dashboard.avgProgress")}</p>
                         </div>
                       </div>
                     </div>
@@ -556,7 +556,7 @@ const Dashboard = () => {
                   {/* Logout */}
                   <button onClick={handleLogout}
                           className="w-full flex items-center justify-center gap-2 border border-red-200 text-red-500 hover:bg-red-50 font-medium py-3 rounded-xl transition-colors">
-                    <LogOut className="h-4 w-4" /> Wyloguj się
+                    <LogOut className="h-4 w-4" /> {t("dashboard.logout")}
                   </button>
                 </div>
             )}

@@ -9,8 +9,10 @@ import {
 import { useCourse } from "@/hooks/useCourse";
 import { useProgress } from "@/hooks/useProgress";
 import { Chapter, ContentBlock } from "@/types/course.types";
-import  BlocksRenderer  from "@/components/course/BlockRenderer";
+import BlocksRenderer from "@/components/course/BlockRenderer";
 import CourseAssistant from "@/components/course/CourseAssistant";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 function getChapterStatus(
     chapter: Chapter,
@@ -40,13 +42,13 @@ function isChapterBlocked(chapter: Chapter, chapterIndex: number, chapters: Chap
 
 function extractTopicText(blocks: ContentBlock[]): string {
   return blocks
-      .filter(b => b.type === 'richtext' || b.type === 'callout')
+      .filter(b => b.type === "richtext" || b.type === "callout")
       .map(b => {
-        if (b.type === 'richtext') return b.richtextData?.replace(/<[^>]+>/g, ' ') ?? '';
-        if (b.type === 'callout') return `${b.calloutTitle ?? ''}: ${b.calloutText ?? ''}`;
-        return '';
+        if (b.type === "richtext") return b.richtextData?.replace(/<[^>]+>/g, " ") ?? "";
+        if (b.type === "callout") return `${b.calloutTitle ?? ""}: ${b.calloutText ?? ""}`;
+        return "";
       })
-      .join('\n')
+      .join("\n")
       .slice(0, 3000);
 }
 
@@ -57,6 +59,7 @@ const TopicView = () => {
     topicId: string;
   }>();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const { course, isLoading: courseLoading } = useCourse(courseId!);
   const { topics, quizzes, startTopic, markTopicComplete } = useProgress(courseId!);
@@ -87,9 +90,9 @@ const TopicView = () => {
         if (!course) return null;
         const allTopics: { chapterId: string; topicId: string }[] = [];
         course.chapters.forEach(ch =>
-            ch.topics.forEach(t => allTopics.push({
+            ch.topics.forEach(tp => allTopics.push({
               chapterId: ch.id || ch._id?.toString(),
-              topicId: t.id || t._id?.toString()
+              topicId: tp.id || tp._id?.toString()
             }))
         );
         const idx = allTopics.findIndex(
@@ -101,8 +104,8 @@ const TopicView = () => {
       [course, chapterId, topicId]
   );
 
-  const goToTopic = (ch: string, t: string) =>
-      navigate(`/course/${courseId}/chapter/${ch}/topic/${t}`);
+  const goToTopic = (ch: string, tp: string) =>
+      navigate(`/course/${courseId}/chapter/${ch}/topic/${tp}`);
 
   const handleComplete = async () => {
     if (!chapterId || !topicId || !course) return;
@@ -144,7 +147,7 @@ const TopicView = () => {
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
             <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-gray-400">Ładowanie kursu…</p>
+            <p className="text-gray-400">{t("topic.loading")}</p>
           </div>
         </div>
     );
@@ -155,9 +158,11 @@ const TopicView = () => {
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center space-y-4">
             <GraduationCap className="h-16 w-16 mx-auto text-gray-300" />
-            <p className="text-gray-500 text-lg">Nie znaleziono tematu.</p>
+            <p className="text-gray-500 text-lg">{t("topic.notFound")}</p>
             <Link to="/dashboard">
-              <Button className="bg-amber-500 hover:bg-amber-400 text-white font-semibold">Wróć do Dashboard</Button>
+              <Button className="bg-amber-500 hover:bg-amber-400 text-white font-semibold">
+                {t("topic.backToDashboard")}
+              </Button>
             </Link>
           </div>
         </div>
@@ -188,7 +193,7 @@ const TopicView = () => {
               </Button>
               <Link to="/dashboard" className="flex items-center gap-1.5 text-gray-400 hover:text-amber-600 transition-colors flex-shrink-0">
                 <Home className="h-4 w-4" />
-                <span className="hidden sm:inline text-sm">Dashboard</span>
+                <span className="hidden sm:inline text-sm">{t("topic.dashboard")}</span>
               </Link>
               <span className="text-gray-300 flex-shrink-0">/</span>
               <span className="text-gray-700 text-sm font-medium truncate">{course.title}</span>
@@ -202,7 +207,7 @@ const TopicView = () => {
                 <span className="text-gray-500 text-xs font-medium">{courseProgress}%</span>
               </div>
               {currentTopic.duration && (
-                  <Badge variant="outline" className="text-gray-500 border-gray-200 gap-1.5 text-xs">
+                  <Badge variant="outline" className="text-gray-500 border-gray-200 gap-1.5 text-xs hidden sm:flex">
                     <Clock className="h-3 w-3" />
                     {currentTopic.duration}
                   </Badge>
@@ -215,18 +220,20 @@ const TopicView = () => {
           {/* Sidebar */}
           <aside
               className="fixed left-0 top-14 bottom-0 z-40 w-72 overflow-y-auto transition-transform duration-300 ease-in-out border-r border-gray-200 bg-white shadow-sm"
-              style={{
-                transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-              }}
+              style={{ transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)" }}
           >
             <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <p className="text-gray-400 text-xs uppercase tracking-widest mb-1.5 font-medium">Kurs</p>
+              <p className="text-gray-400 text-xs uppercase tracking-widest mb-1.5 font-medium">{t("topic.course")}</p>
               <p className="text-gray-800 font-semibold text-sm leading-tight">{course.title}</p>
               <div className="flex items-center gap-2 mt-3 sm:hidden">
                 <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                   <div className="h-full rounded-full bg-amber-500 transition-all" style={{ width: `${courseProgress}%` }} />
                 </div>
                 <span className="text-gray-500 text-xs">{courseProgress}%</span>
+              </div>
+              {/* Language switcher in sidebar */}
+              <div className="mt-3">
+                <LanguageSwitcher />
               </div>
             </div>
 
@@ -238,7 +245,7 @@ const TopicView = () => {
 
                 return (
                     <div key={chapter.id} className="mb-1">
-                      <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl mb-0.5 ${isActive ? 'bg-amber-50' : ''}`}>
+                      <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl mb-0.5 ${isActive ? "bg-amber-50" : ""}`}>
                         {status === "complete"
                             ? <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0"><CheckCircle className="h-3 w-3 text-white" /></div>
                             : status === "blocked"
@@ -252,8 +259,8 @@ const TopicView = () => {
                                 : status === "complete" ? "text-green-600"
                                     : "text-gray-600"
                         }`}>
-                      {chapter.title}
-                    </span>
+                          {chapter.title}
+                        </span>
                       </div>
 
                       {!chapterBlocked && (
@@ -266,19 +273,19 @@ const TopicView = () => {
                                       key={topic.id}
                                       onClick={() => goToTopic(chapter.id, topic.id)}
                                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all ${
-                                          isCurrent ? 'bg-amber-50 text-amber-700' : 'hover:bg-gray-50'
+                                          isCurrent ? "bg-amber-50 text-amber-700" : "hover:bg-gray-50"
                                       }`}
                                   >
-                            <span className={`flex-shrink-0 ${isDone ? 'text-green-500' : isCurrent ? 'text-amber-500' : 'text-gray-300'}`}>
-                              {isDone
-                                  ? <CheckCircle className="h-3.5 w-3.5" />
-                                  : isCurrent
-                                      ? <PlayCircle className="h-3.5 w-3.5" />
-                                      : <span className="block w-3.5 h-3.5 rounded-full border border-current" />
-                              }
-                            </span>
+                                    <span className={`flex-shrink-0 ${isDone ? "text-green-500" : isCurrent ? "text-amber-500" : "text-gray-300"}`}>
+                                      {isDone
+                                          ? <CheckCircle className="h-3.5 w-3.5" />
+                                          : isCurrent
+                                              ? <PlayCircle className="h-3.5 w-3.5" />
+                                              : <span className="block w-3.5 h-3.5 rounded-full border border-current" />
+                                      }
+                                    </span>
                                     <span className={`truncate text-xs font-medium ${
-                                        isCurrent ? 'text-amber-700' : isDone ? 'text-green-600' : 'text-gray-500'
+                                        isCurrent ? "text-amber-700" : isDone ? "text-green-600" : "text-gray-500"
                                     }`}>{topic.title}</span>
                                   </button>
                               );
@@ -288,11 +295,11 @@ const TopicView = () => {
                                 <Link
                                     to={`/course/${courseId}/chapter/${chapter.id}/quiz`}
                                     className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all hover:bg-gray-50 ${
-                                        quizzes[chapter.id]?.passed ? 'text-green-600' : 'text-amber-600'
+                                        quizzes[chapter.id]?.passed ? "text-green-600" : "text-amber-600"
                                     }`}
                                 >
                                   <Award className="h-3.5 w-3.5 flex-shrink-0" />
-                                  <span className="truncate">Test: {chapter.quiz.title}</span>
+                                  <span className="truncate">{t("topic.testChapter")} {chapter.quiz.title}</span>
                                   {quizzes[chapter.id]?.passed && <CheckCircle className="h-3 w-3 flex-shrink-0" />}
                                 </Link>
                             )}
@@ -301,7 +308,7 @@ const TopicView = () => {
 
                       {chapterBlocked && (
                           <div className="ml-9 px-2 py-1">
-                            <p className="text-gray-300 text-xs italic">Odblokuj zaliczając poprzedni rozdział</p>
+                            <p className="text-gray-300 text-xs italic">{t("topic.unlockPrev")}</p>
                           </div>
                       )}
                     </div>
@@ -315,7 +322,7 @@ const TopicView = () => {
                         className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-amber-600 hover:bg-amber-50"
                     >
                       <Trophy className="h-4 w-4" />
-                      Egzamin końcowy
+                      {t("topic.finalExam")}
                     </Link>
                   </div>
               )}
@@ -333,7 +340,7 @@ const TopicView = () => {
           {/* Main content */}
           <main
               className="flex-1 min-w-0 transition-all duration-300 bg-white"
-              style={{ marginLeft: sidebarOpen ? 'clamp(0px, 18rem, 18rem)' : '0' }}
+              style={{ marginLeft: sidebarOpen ? "clamp(0px, 18rem, 18rem)" : "0" }}
           >
             <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
               {/* Breadcrumb */}
@@ -343,9 +350,9 @@ const TopicView = () => {
                 <span className="text-amber-600">{currentTopic.title}</span>
                 {isCurrentTopicComplete && (
                     <span className="flex items-center gap-1 text-green-600 ml-1">
-                  <CheckCircle className="h-3 w-3" />
-                  Ukończono
-                </span>
+                      <CheckCircle className="h-3 w-3" />
+                      {t("topic.completed")}
+                    </span>
                 )}
               </div>
 
@@ -360,7 +367,7 @@ const TopicView = () => {
               ) : (
                   <div className="text-center py-20 text-gray-400">
                     <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-40" />
-                    <p className="text-lg">Ten temat nie ma jeszcze treści.</p>
+                    <p className="text-lg">{t("topic.noContent")}</p>
                   </div>
               )}
 
@@ -370,8 +377,8 @@ const TopicView = () => {
                     <div className="flex items-start gap-3">
                       <Award className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-amber-700 font-semibold text-sm">Test rozdziału wymagany</p>
-                        <p className="text-amber-600/80 text-sm mt-0.5">Po ukończeniu wszystkich tematów musisz zdać test, aby odblokować następny rozdział.</p>
+                        <p className="text-amber-700 font-semibold text-sm">{t("topic.quizRequired")}</p>
+                        <p className="text-amber-600/80 text-sm mt-0.5">{t("topic.quizRequiredDesc")}</p>
                       </div>
                     </div>
                   </div>
@@ -386,7 +393,7 @@ const TopicView = () => {
                     className="border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-50 disabled:opacity-40"
                 >
                   <ChevronLeft className="h-4 w-4 mr-2" />
-                  Poprzedni temat
+                  {t("topic.prevTopic")}
                 </Button>
 
                 {isCurrentTopicComplete ? (
@@ -405,10 +412,10 @@ const TopicView = () => {
                         className="font-semibold text-white bg-amber-500 hover:bg-amber-400"
                     >
                       {nextTopic
-                          ? "Następny temat"
+                          ? t("topic.nextTopic")
                           : currentChapter?.quiz && !quizzes[chapterId!]?.passed
-                              ? "Przejdź do testu"
-                              : "Zakończ kurs"
+                              ? t("topic.goToTest")
+                              : t("topic.finishCourse")
                       }
                       <ChevronRight className="h-4 w-4 ml-2" />
                     </Button>
@@ -420,13 +427,13 @@ const TopicView = () => {
                     >
                       {completing ? (
                           <span className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                      Zapisuję…
-                    </span>
+                            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            {t("topic.saving")}
+                          </span>
                       ) : (
                           <>
                             <CheckCircle className="h-4 w-4 mr-2" />
-                            Oznacz jako ukończony
+                            {t("topic.markComplete")}
                           </>
                       )}
                     </Button>
