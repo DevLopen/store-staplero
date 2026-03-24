@@ -187,7 +187,9 @@ export const addTopic = async (req: Request, res: Response) => {
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: "Kurs nie znaleziony" });
 
-    const chapter = course.chapters.find(ch => ch.id === chapterId);
+    const chapter = course.chapters.find(
+        (ch: any) => ch._id?.toString() === chapterId || ch.id === chapterId
+    );
     if (!chapter) return res.status(404).json({ message: "Rozdział nie znaleziony" });
 
     const newTopic: Topic = {
@@ -234,7 +236,7 @@ export const updateTopic = async (req: AuthRequest, res: Response) => {
     }
 
     const topicIndex = chapter.topics.findIndex((t: any) =>
-        t._id.toString() === topicId
+        t.id === topicId
     );
 
     if (topicIndex === -1) {
@@ -243,7 +245,6 @@ export const updateTopic = async (req: AuthRequest, res: Response) => {
     const existingTopic = chapter.topics[topicIndex] as any;
 
     chapter.topics[topicIndex] = {
-      _id: existingTopic._id,
       id: existingTopic.id,  // ← DODAJ to
       order: existingTopic.order,
       title,
@@ -329,7 +330,9 @@ export const getTopicById = async (req: AuthRequest, res: Response) => {
     const chapter = course.chapters.find(ch => ch.id === chapterId);
     if (!chapter) return res.status(404).json({ message: "Rozdział nie znaleziony" });
 
-    const topic = chapter.topics.find(t => t.id === topicId);
+    const topic = chapter.topics.find(
+        (t: any) => t._id?.toString() === topicId || t.id === topicId
+    );
     if (!topic) return res.status(404).json({ message: "Temat nie znaleziony" });
 
     res.json(topic);

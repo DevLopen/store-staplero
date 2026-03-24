@@ -948,7 +948,7 @@ const Admin = () => {
                                           </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                          <Button variant="ghost" size="icon" onClick={() => openTopicEditor(chapter.id, topic._id)}>
+                                          <Button variant="ghost" size="icon" onClick={() => openTopicEditor(chapter.id, topic.id)}>
                                             <Edit className="w-4 h-4" />
                                           </Button>
                                           <Button

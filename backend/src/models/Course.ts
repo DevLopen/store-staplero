@@ -3,14 +3,14 @@ import mongoose, { Schema, Document } from "mongoose";
 // ─── Content Block Types ──────────────────────────────────────────────────────
 
 export type BlockType =
-  | "richtext"
-  | "video"
-  | "image"
-  | "model3d"
-  | "embed"
-  | "callout"
-  | "divider"
-  | "interactive";
+    | "richtext"
+    | "video"
+    | "image"
+    | "model3d"
+    | "embed"
+    | "callout"
+    | "divider"
+    | "interactive";
 
 export type CalloutStyle = "info" | "warning" | "danger" | "success";
 export type InteractiveSubtype = "stability-sim" | "drag-order" | "hotspot" | "360-tour";
@@ -170,7 +170,7 @@ const ContentBlockSchema = new Schema<ContentBlock>({
     ]
   },
   interactiveData: { type: Schema.Types.Mixed },
-});
+}, { _id: false });
 
 const HotspotPointSchema = new Schema<HotspotPoint>({
   id: String,
@@ -203,7 +203,7 @@ const QuestionSchema = new Schema<Question>({
   correctOrder: [String],
   hotspotImageUrl: String,
   hotspots: [HotspotPointSchema],
-});
+}, { _id: false });
 
 const QuizSchema = new Schema<Quiz>({
   id: { type: String, required: true },
@@ -214,9 +214,10 @@ const QuizSchema = new Schema<Quiz>({
   timeLimitSeconds: Number,
   isFinalQuiz: { type: Boolean, default: false },
   questions: [QuestionSchema],
-});
+}, { _id: false });
 
 const TopicSchema = new Schema({
+  id: { type: String },
   title: { type: String, required: true },
   duration: String,
   videoUrl: String,
@@ -225,7 +226,7 @@ const TopicSchema = new Schema({
   content: String,
   blocks: [ContentBlockSchema],
   order: { type: Number, required: true }
-});
+}, { _id: false });
 
 const ChapterSchema = new Schema<Chapter>({
   id: { type: String, required: true },
@@ -242,15 +243,15 @@ const ChapterSchema = new Schema<Chapter>({
 });
 
 const CourseSchema = new Schema<CourseDoc>(
-  {
-    title: { type: String, required: true, trim: true },
-    description: { type: String, default: "" },
-    thumbnailUrl: String,
-    certificateEnabled: { type: Boolean, default: true },
-    chapters: [ChapterSchema],
-    finalQuiz: QuizSchema,
-  },
-  { timestamps: true }
+    {
+      title: { type: String, required: true, trim: true },
+      description: { type: String, default: "" },
+      thumbnailUrl: String,
+      certificateEnabled: { type: Boolean, default: true },
+      chapters: [ChapterSchema],
+      finalQuiz: QuizSchema,
+    },
+    { timestamps: true }
 );
 
 // Indexes

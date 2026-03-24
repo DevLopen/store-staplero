@@ -109,9 +109,7 @@ export default function TopicEditor() {
           console.log("Chapter found:", chapter.title);
           console.log("Topics count:", chapter.topics?.length);
 
-          const topic = chapter.topics?.find((t: any) =>
-              t._id === topicId || t._id.toString() === topicId
-          );
+          const topic = chapter.topics?.find((t: any) => t.id === topicId);
 
           if (!topic) {
             console.error("Topic not found!");
