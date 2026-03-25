@@ -7,6 +7,8 @@ const Model3DViewer = lazy(() => import('./Model3DViewer'));
 const StabilitySimulator = lazy(() => import('./interactive/StabilitySimulator'));
 const DragOrderExercise = lazy(() => import('./interactive/DragOrderExercise'));
 const HotspotExercise = lazy(() => import('./interactive/HotspotExercise'));
+const TrueFalseExercise = lazy(() => import('./interactive/TrueFalseExercise'));
+const AnnotatedImageExercise = lazy(() => import('./interactive/AnnotatedImageExercise'));
 
 interface BlockRendererProps {
     blocks: ContentBlock[];
@@ -72,7 +74,7 @@ function SingleBlock({ block }: { block: ContentBlock }) {
             return <VideoBlock url={block.videoUrl || ''} caption={(block as any).videoCaption} />;
 
         case 'image':
-            return <ImageBlock url={block.imageUrl || ''} caption={block.imageCaption} />;
+            return <ImageBlock url={block.imageUrl || ''} caption={block.imageCaption} scale={block.imageScale} align={block.imageAlign} />;
 
         case 'model3d':
             return (
@@ -142,16 +144,25 @@ function VideoBlock({ url, caption }: { url: string; caption?: string }) {
     );
 }
 
-function ImageBlock({ url, caption }: { url: string; caption?: string }) {
+function ImageBlock({ url, caption, scale, align }: { url: string; caption?: string; scale?: number; align?: string }) {
     if (!url) return null;
+
+    const justifyMap: Record<string, string> = {
+        left: 'flex-start',
+        center: 'center',
+        right: 'flex-end',
+    };
 
     return (
         <figure className="space-y-2">
-            <img
-                src={url}
-                alt={caption || 'Obraz'}
-                className="w-full rounded-lg"
-            />
+            <div style={{ display: 'flex', justifyContent: justifyMap[align ?? 'center'] ?? 'center' }}>
+                <img
+                    src={url}
+                    alt={caption || 'Obraz'}
+                    className="rounded-lg"
+                    style={{ width: `${scale ?? 100}%`, display: 'block' }}
+                />
+            </div>
             {caption && (
                 <figcaption className="text-sm text-muted-foreground text-center">
                     {caption}
@@ -225,6 +236,8 @@ function InteractiveBlock({ subtype, config }: { subtype?: string; config?: any 
             {subtype === 'stability-sim' && <StabilitySimulator />}
             {subtype === 'drag-order' && <DragOrderExercise data={config} />}
             {subtype === 'hotspot' && <HotspotExercise data={config} />}
+            {subtype === 'truefalse' && <TrueFalseExercise data={config} />}
+            {subtype === 'annotated-image' && <AnnotatedImageExercise data={config} />}
         </Suspense>
     );
 }

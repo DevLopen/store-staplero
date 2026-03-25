@@ -1,14 +1,14 @@
 // ─── Content Blocks ───────────────────────────────────────────────────────────
 
 export type BlockType =
-  | "richtext"
-  | "video"
-  | "image"
-  | "model3d"
-  | "embed"
-  | "callout"
-  | "divider"
-  | "interactive";
+    | "richtext"
+    | "video"
+    | "image"
+    | "model3d"
+    | "embed"
+    | "callout"
+    | "divider"
+    | "interactive";
 
 export type CalloutStyle = "info" | "warning" | "danger" | "success";
 export type InteractiveSubtype = "stability-sim" | "drag-order" | "hotspot" | "360-tour";
@@ -45,6 +45,8 @@ export interface ContentBlock {
   // image
   imageUrl?: string;
   imageCaption?: string;
+  imageScale?: number;   // 20-100 (percent)
+  imageAlign?: 'left' | 'center' | 'right';
   // model3d
   modelUrl?: string;
   modelLabel?: string;
