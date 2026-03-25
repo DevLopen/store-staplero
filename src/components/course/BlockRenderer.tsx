@@ -69,7 +69,7 @@ function SingleBlock({ block }: { block: ContentBlock }) {
             return <RichTextBlock data={block.richtextData || ''} />;
 
         case 'video':
-            return <VideoBlock url={block.videoUrl || ''} />;
+            return <VideoBlock url={block.videoUrl || ''} caption={(block as any).videoCaption} />;
 
         case 'image':
             return <ImageBlock url={block.imageUrl || ''} caption={block.imageCaption} />;
@@ -92,7 +92,7 @@ function SingleBlock({ block }: { block: ContentBlock }) {
                 <CalloutBlock
                     style={block.calloutStyle || 'info'}
                     title={block.calloutTitle}
-                    content={block.calloutContent || ''}
+                    content={block.calloutText || block.calloutContent || ''}
                 />
             );
 
@@ -119,18 +119,27 @@ function RichTextBlock({ data }: { data: string }) {
     );
 }
 
-function VideoBlock({ url }: { url: string }) {
+function VideoBlock({ url, caption }: { url: string; caption?: string }) {
     if (!url) return null;
 
-    if (ReactPlayer.canPlay(url)) {
-        return (
-            <div className="aspect-video rounded-lg overflow-hidden bg-black">
-                <ReactPlayer url={url} width="100%" height="100%" controls />
-            </div>
-        );
-    }
+    const videoEl = ReactPlayer.canPlay(url) ? (
+        <div className="aspect-video rounded-lg overflow-hidden bg-black">
+            <ReactPlayer url={url} width="100%" height="100%" controls />
+        </div>
+    ) : (
+        <video src={url} controls className="w-full rounded-lg" />
+    );
 
-    return <video src={url} controls className="w-full rounded-lg" />;
+    return (
+        <figure className="space-y-2">
+            {videoEl}
+            {caption && (
+                <figcaption className="text-sm text-muted-foreground text-center">
+                    {caption}
+                </figcaption>
+            )}
+        </figure>
+    );
 }
 
 function ImageBlock({ url, caption }: { url: string; caption?: string }) {

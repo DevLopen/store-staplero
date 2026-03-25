@@ -342,16 +342,6 @@ export default function EnhancedTopicDialog({
                         </div>
                     </div>
 
-                    {/* ── Video URL ── */}
-                    <div className="space-y-2">
-                        <Label htmlFor="topic-video">Video URL (optional)</Label>
-                        <Input
-                            id="topic-video"
-                            value={topicForm.videoUrl ?? ""}
-                            onChange={e => setTopicForm((p: any) => ({ ...p, videoUrl: e.target.value }))}
-                            placeholder="https://youtube.com/watch?v=..."
-                        />
-                    </div>
 
                     {/* ── Time Requirements ── */}
                     <div className="grid grid-cols-2 gap-4">

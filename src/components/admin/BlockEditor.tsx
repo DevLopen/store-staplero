@@ -98,11 +98,34 @@ function RichTextBlockEditor({ block, onChange }: { block: ContentBlock; onChang
 }
 
 function VideoBlockEditor({ block, onChange }: { block: ContentBlock; onChange: (b: ContentBlock) => void }) {
+    const [uploading, setUploading] = useState(false);
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]; if (!file) return;
+        setUploading(true);
+        try { const res = await apiUpload(file); onChange({ ...block, videoUrl: res.url } as any); }
+        catch { console.error("Upload failed"); } finally { setUploading(false); }
+    };
+
     return (
         <div className="space-y-3">
             <div className="space-y-1.5">
                 <Label className={labelCls}>URL wideo</Label>
                 <Input value={block.videoUrl ?? ""} onChange={e => onChange({ ...block, videoUrl: e.target.value })} placeholder="YouTube, Vimeo lub bezpośredni link do pliku..." className={inputCls} />
+            </div>
+            <Label className="flex items-center gap-2 cursor-pointer text-amber-600 text-sm font-medium hover:text-amber-700 transition-colors border border-amber-300 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg w-fit">
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                Wgraj plik wideo
+                <input type="file" accept="video/*" onChange={handleUpload} className="hidden" />
+            </Label>
+            {block.videoUrl && !block.videoUrl.startsWith("http") && (
+                <div className="rounded-lg overflow-hidden border border-gray-200 bg-black">
+                    <video src={block.videoUrl} controls className="w-full max-h-48" />
+                </div>
+            )}
+            <div className="space-y-1.5">
+                <Label className={labelCls}>Podpis (opcjonalny)</Label>
+                <Input value={(block as any).videoCaption ?? ""} onChange={e => onChange({ ...block, videoCaption: e.target.value } as any)} placeholder="Opis wideo widoczny pod spodem..." className={inputCls} />
             </div>
         </div>
     );
