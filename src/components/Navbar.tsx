@@ -1,9 +1,10 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, User, LogOut } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useAuth } from "@/context/AuthContext";
 
 interface NavbarProps {
   isLoggedIn?: boolean;
@@ -11,15 +12,28 @@ interface NavbarProps {
   onLogout?: () => void;
 }
 
-const Navbar = ({ isLoggedIn = false, isAdmin = false, onLogout }: NavbarProps) => {
+const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLogout }: NavbarProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useLanguage();
+  const auth = useAuth();
+
+  // AuthContext is the source of truth; props are a fallback for legacy usage
+  const isLoggedIn = auth.isLoggedIn ?? propLoggedIn ?? false;
+  const isAdmin    = auth.isAdmin    ?? propAdmin    ?? false;
+
+  const handleLogout = () => {
+    auth.logout();
+    if (propLogout) propLogout();
+    navigate("/");
+  };
 
   return (
       <nav className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
+
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
@@ -40,16 +54,10 @@ const Navbar = ({ isLoggedIn = false, isAdmin = false, onLogout }: NavbarProps) 
               >
                 {t('nav.home')}
               </Link>
-              <a
-                  href="/#features"
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
+              <a href="/#features" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
                 {t('nav.benefits')}
               </a>
-              <a
-                  href="/#pricing"
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
+              <a href="/#pricing" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
                 {t('nav.pricing')}
               </a>
               <Link
@@ -60,10 +68,7 @@ const Navbar = ({ isLoggedIn = false, isAdmin = false, onLogout }: NavbarProps) 
               >
                 {t('nav.practicalCourse')}
               </Link>
-              <a
-                  href="/#b2b"
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
+              <a href="/#b2b" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
                 B2B
               </a>
 
@@ -72,8 +77,8 @@ const Navbar = ({ isLoggedIn = false, isAdmin = false, onLogout }: NavbarProps) 
               {isLoggedIn ? (
                   <>
                     <Link to="/dashboard">
-                      <Button variant="ghost" size="sm">
-                        <User className="w-4 h-4 mr-2" />
+                      <Button variant="default" size="sm">
+                        <LayoutDashboard className="w-4 h-4 mr-2" />
                         {t('nav.myCourse')}
                       </Button>
                     </Link>
@@ -84,7 +89,7 @@ const Navbar = ({ isLoggedIn = false, isAdmin = false, onLogout }: NavbarProps) 
                           </Button>
                         </Link>
                     )}
-                    <Button variant="ghost" size="sm" onClick={onLogout}>
+                    <Button variant="ghost" size="sm" onClick={handleLogout}>
                       <LogOut className="w-4 h-4 mr-2" />
                       {t('nav.logout')}
                     </Button>
@@ -108,10 +113,7 @@ const Navbar = ({ isLoggedIn = false, isAdmin = false, onLogout }: NavbarProps) 
             {/* Mobile Menu Button */}
             <div className="md:hidden flex items-center gap-2">
               <LanguageSwitcher />
-              <button
-                  className="p-2 text-foreground"
-                  onClick={() => setIsOpen(!isOpen)}
-              >
+              <button className="p-2 text-foreground" onClick={() => setIsOpen(!isOpen)}>
                 {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
             </div>
@@ -121,40 +123,24 @@ const Navbar = ({ isLoggedIn = false, isAdmin = false, onLogout }: NavbarProps) 
           {isOpen && (
               <div className="md:hidden py-4 border-t border-border">
                 <div className="flex flex-col gap-3">
-                  <Link
-                      to="/"
-                      className="text-sm font-medium text-foreground hover:text-primary py-2"
-                      onClick={() => setIsOpen(false)}
-                  >
+                  <Link to="/" className="text-sm font-medium text-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>
                     {t('nav.home')}
                   </Link>
-                  <a
-                      href="/#features"
-                      className="text-sm font-medium text-muted-foreground hover:text-primary py-2"
-                      onClick={() => setIsOpen(false)}
-                  >
+                  <a href="/#features" className="text-sm font-medium text-muted-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>
                     {t('nav.benefits')}
                   </a>
-                  <a
-                      href="/#pricing"
-                      className="text-sm font-medium text-muted-foreground hover:text-primary py-2"
-                      onClick={() => setIsOpen(false)}
-                  >
+                  <a href="/#pricing" className="text-sm font-medium text-muted-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>
                     {t('nav.pricing')}
                   </a>
-                  <Link
-                      to="/practical-course"
-                      className="text-sm font-medium text-muted-foreground hover:text-primary py-2"
-                      onClick={() => setIsOpen(false)}
-                  >
+                  <Link to="/practical-course" className="text-sm font-medium text-muted-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>
                     {t('nav.practicalCourse')}
                   </Link>
 
                   {isLoggedIn ? (
                       <>
                         <Link to="/dashboard" onClick={() => setIsOpen(false)}>
-                          <Button variant="ghost" className="w-full justify-start">
-                            <User className="w-4 h-4 mr-2" />
+                          <Button variant="default" className="w-full justify-start">
+                            <LayoutDashboard className="w-4 h-4 mr-2" />
                             {t('nav.myCourse')}
                           </Button>
                         </Link>
@@ -165,7 +151,7 @@ const Navbar = ({ isLoggedIn = false, isAdmin = false, onLogout }: NavbarProps) 
                               </Button>
                             </Link>
                         )}
-                        <Button variant="ghost" className="w-full justify-start" onClick={onLogout}>
+                        <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
                           <LogOut className="w-4 h-4 mr-2" />
                           {t('nav.logout')}
                         </Button>
