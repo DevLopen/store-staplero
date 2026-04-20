@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 const sections_de = [
   {
     heading: "1. Verantwortlicher",
-    text: `Verantwortlicher im Sinne der DSGVO ist:\n\nSTAPLERO – Inh. [Vorname Nachname]\n[Straße und Hausnummer], [PLZ] [Stadt], Deutschland\nE-Mail: info@staplero.com`,
+    text: `Verantwortlicher im Sinne der DSGVO ist:\n\nSTAPLERO – Inh. Bohdan Kutko\nJakobstr. 13, 02826 Görlitz, Deutschland\nE-Mail: info@staplero.com`,
   },
   {
     heading: "2. Erhobene Daten",
@@ -40,7 +40,7 @@ const sections_de = [
 const sections_en = [
   {
     heading: "1. Data Controller",
-    text: `The data controller under GDPR is:\n\nSTAPLERO – Owner: [First Name Last Name]\n[Street], [ZIP] [City], Germany\nEmail: info@staplero.com`,
+    text: `The data controller under GDPR is:\n\nSTAPLERO – Owner: Bohdan Kutko\nJakobstr. 13, 02826 Görlitz, Germany\nEmail: info@staplero.com`,
   },
   {
     heading: "2. Data Collected",
@@ -75,7 +75,7 @@ const sections_en = [
 const sections_uk = [
   {
     heading: "1. Відповідальна особа",
-    text: `Відповідальна особа відповідно до GDPR:\n\nSTAPLERO – Власник: [Ім'я Прізвище]\n[Вулиця], [Індекс] [Місто], Німеччина\nEmail: info@staplero.com`,
+    text: `Відповідальна особа відповідно до GDPR:\n\nSTAPLERO – Власник: Богдан Кутко\nJakobstr. 13, 02826 Görlitz, Німеччина\nEmail: info@staplero.com`,
   },
   {
     heading: "2. Зібрані дані",
@@ -110,7 +110,7 @@ const sections_uk = [
 const sections_pl = [
   {
     heading: "1. Administrator danych",
-    text: `Administratorem danych zgodnie z RODO jest:\n\nSTAPLERO – Właściciel: [Imię Nazwisko]\n[Ulica], [Kod] [Miasto], Niemcy\nE-mail: info@staplero.com`,
+    text: `Administratorem danych zgodnie z RODO jest:\n\nSTAPLERO – Właściciel: Bohdan Kutko\nJakobstr. 13, 02826 Görlitz, Niemcy\nE-mail: info@staplero.com`,
   },
   {
     heading: "2. Gromadzone dane",
@@ -155,26 +155,26 @@ const Datenschutz = () => {
   const c = allContent[lang];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Navbar />
-      <main className="flex-1 container mx-auto px-4 py-16 max-w-4xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">{c.title}</h1>
-          <p className="text-muted-foreground text-sm">{c.lastUpdated}</p>
-        </div>
-        <div className="space-y-8">
-          {c.sections.map((section, idx) => (
-            <section key={idx}>
-              <h2 className="text-xl font-semibold text-foreground mb-3">{section.heading}</h2>
-              <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                {section.text}
-              </div>
-            </section>
-          ))}
-        </div>
-      </main>
-      <Footer />
-    </div>
+      <div className="min-h-screen bg-background flex flex-col">
+        <Navbar />
+        <main className="flex-1 container mx-auto px-4 py-16 max-w-4xl">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-foreground mb-2">{c.title}</h1>
+            <p className="text-muted-foreground text-sm">{c.lastUpdated}</p>
+          </div>
+          <div className="space-y-8">
+            {c.sections.map((section, idx) => (
+                <section key={idx}>
+                  <h2 className="text-xl font-semibold text-foreground mb-3">{section.heading}</h2>
+                  <div className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                    {section.text}
+                  </div>
+                </section>
+            ))}
+          </div>
+        </main>
+        <Footer />
+      </div>
   );
 };
 
