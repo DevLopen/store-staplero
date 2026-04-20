@@ -23,6 +23,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const token = getToken();
         const loggedIn = localStorage.getItem("isLoggedIn") === "true";
         if (loggedIn && token) {
+            // Sprawdź czy token JWT nie wygasł
+            try {
+                const payload = JSON.parse(atob(token.split(".")[1]));
+                const isExpired = payload.exp && payload.exp * 1000 < Date.now();
+                if (isExpired) {
+                    clearUserSession();
+                    return;
+                }
+            } catch {
+                // Token ma nieprawidłowy format – wyczyść sesję
+                clearUserSession();
+                return;
+            }
             setIsLoggedIn(true);
             setIsAdmin(localStorage.getItem("isAdmin") === "true");
             setUserName(localStorage.getItem("userName") || "");

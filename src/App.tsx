@@ -24,6 +24,10 @@ import CheckoutSuccess from "./pages/CheckoutSuccess";
 import CheckoutCancel from "./pages/CheckoutCancel";
 import ScrollToTop from "@/components/ScrollToTop";
 import ChatWidget from "./components/ChatWidget";
+import AGB from "./pages/AGB";
+import Impressum from "./pages/Impressum";
+import Datenschutz from "./pages/Datenschutz";
+import CookieBanner from "./components/CookieBanner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,10 +74,14 @@ const AppContent = () => {
           <Route path="/admin/topic-editor/:courseId/:chapterId" element={<TopicEditor />} />
           <Route path="/admin/topic-editor/:courseId/:chapterId/:topicId" element={<TopicEditor />} />
 
+          <Route path="/agb" element={<AGB />} />
+          <Route path="/impressum" element={<Impressum />} />
+          <Route path="/datenschutz" element={<Datenschutz />} />
+
           {/* --- 404 --- */}
           <Route path="*" element={<NotFound />} />
         </Routes>
-
+        {!isPanelArea && <CookieBanner />}
         {/* Renderuj czat tylko jeśli NIE jesteśmy w panelu */}
         {!isPanelArea && <ChatWidget />}
       </>
