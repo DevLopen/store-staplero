@@ -27,6 +27,8 @@ export interface ContentBlock {
   // image
   imageUrl?: string;
   imageCaption?: string;
+  imageScale?: number;   // 20-100 (percent)
+  imageAlign?: string;   // "left" | "center" | "right"
   // model3d
   modelUrl?: string;
   modelLabel?: string;
@@ -141,6 +143,8 @@ const ContentBlockSchema = new Schema<ContentBlock>({
   videoUrl: String,
   imageUrl: String,
   imageCaption: String,
+  imageScale: { type: Number, min: 20, max: 100, default: 100 },
+  imageAlign: { type: String, enum: ["left", "center", "right"], default: "center" },
   modelUrl: String,
   modelLabel: String,
   modelAnnotations: [

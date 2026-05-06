@@ -28,6 +28,7 @@ import AGB from "./pages/AGB";
 import Impressum from "./pages/Impressum";
 import Datenschutz from "./pages/Datenschutz";
 import CookieBanner from "./components/CookieBanner";
+import VerifyCertificate from "./pages/VerifyCertificate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,6 +69,8 @@ const AppContent = () => {
           <Route path="/course/:courseId/chapter/:chapterId/topic/:topicId" element={<TopicView />} />
           <Route path="/course/:courseId/chapter/:chapterId/quiz" element={<QuizView />} />
           <Route path="/course/:courseId/final-quiz" element={<FinalQuizView />} />
+
+          <Route path="/verify/:code" element={<VerifyCertificate />} />
 
           {/* --- ADMIN --- */}
           <Route path="/admin" element={<Admin />} />

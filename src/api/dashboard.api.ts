@@ -2,10 +2,10 @@ import apiFetch from "./http";
 import { DashboardData } from "@/types/dashboard";
 
 export const getDashboard = (): Promise<DashboardData> =>
-  apiFetch("/dashboard");
+    apiFetch("/dashboard");
 
 export const getCertificate = (courseId: string) =>
-  apiFetch(`/certificates/${courseId}`);
+    apiFetch(`/certificates/${courseId}`);
 
 export const downloadCertificateUrl = (courseId: string): string => {
   const token = localStorage.getItem("token");
@@ -14,4 +14,13 @@ export const downloadCertificateUrl = (courseId: string): string => {
 };
 
 export const verifyCertificate = (code: string) =>
-  apiFetch(`/certificates/verify/${code}`);
+    apiFetch(`/certificates/verify/${code}`);
+
+export const seedDemoCertificate = () =>
+    apiFetch("/certificates/admin/seed-demo", { method: "POST" });
+
+export const deleteDemoCertificates = () =>
+    apiFetch("/certificates/admin/seed-demo", { method: "DELETE" });
+
+export const getMyCertificates = () =>
+    apiFetch("/certificates/my");

@@ -18,6 +18,36 @@ interface Message {
     timestamp: Date;
 }
 
+// Renders assistant text — converts [label](url) markdown into clickable links
+const renderMessage = (text: string): React.ReactNode => {
+    const LINK_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const nodes: React.ReactNode[] = [];
+    let last = 0;
+    let m: RegExpExecArray | null;
+    // eslint-disable-next-line no-cond-assign
+    while ((m = LINK_RE.exec(text)) !== null) {
+        if (m.index > last) nodes.push(text.slice(last, m.index));
+        const label = m[1];
+        const href  = m[2];
+        const isExternal = href.startsWith("http");
+        nodes.push(
+            <a
+                key={m.index}
+                href={href}
+                target={isExternal ? "_blank" : "_self"}
+                rel={isExternal ? "noopener noreferrer" : undefined}
+                className="underline font-semibold text-primary hover:opacity-80 transition-opacity"
+            >
+                {label}
+            </a>
+        );
+        last = m.index + m[0].length;
+    }
+    if (last < text.length) nodes.push(text.slice(last));
+    return nodes.length > 0 ? <>{nodes}</> : text;
+};
+
+
 const ChatWidget = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
@@ -293,7 +323,9 @@ const ChatWidget = () => {
                                             : "bg-muted text-foreground rounded-bl-md"
                                     )}
                                 >
-                                    {message.content}
+                                    {message.role === "assistant"
+                                        ? renderMessage(message.content)
+                                        : message.content}
                                 </div>
                             </div>
                         ))}

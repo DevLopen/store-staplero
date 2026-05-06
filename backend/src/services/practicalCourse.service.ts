@@ -58,6 +58,29 @@ export const addParticipantToCourse = async (
 };
 
 /**
+ * Get single participant by order number
+ */
+export const getParticipantByOrderNumber = async (orderNumber: string) => {
+    return PracticalCourseParticipant.findOne({ orderNumber }).lean();
+};
+
+/**
+ * Mark participant as completed
+ */
+export const completeParticipant = async (orderNumber: string) => {
+    const participant = await PracticalCourseParticipant.findOneAndUpdate(
+        { orderNumber },
+        {
+            status: "completed",
+            completedAt: new Date(),
+        },
+        { new: true }
+    );
+    if (!participant) throw new Error(`Teilnehmer ${orderNumber} nicht gefunden`);
+    return participant;
+};
+
+/**
  * Generuj ID terminu z dat (jeśli nie ma w order)
  */
 const generateDateId = (startDate: string, endDate: string): string => {
@@ -267,4 +290,6 @@ export default {
     getParticipantsCount,
     cancelParticipant,
     increaseAvailableSpots,
+    getParticipantByOrderNumber,
+    completeParticipant
 };

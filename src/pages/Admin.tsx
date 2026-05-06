@@ -16,6 +16,7 @@ import { mockLocations, Location, CourseDate } from "@/data/practicalCourseData"
 import { mockOrders, Order, getOrderStatusLabel, getOrderStatusColor } from "@/data/orderData";
 import EnhancedTopicDialog from "@/components/EnhancedTopicDialog";
 import ParticipantsListDialog from "@/components/ParticipantsListDialog";
+import AdminCertificates from "@/components/admin/AdminCertificates";
 import {
   Plus,
   Edit,
@@ -742,7 +743,7 @@ const Admin = () => {
             </div>
 
             <Tabs defaultValue="courses" className="space-y-6">
-              <TabsList className="grid w-full max-w-4xl grid-cols-7">
+              <TabsList className="grid w-full max-w-5xl grid-cols-8">
                 <TabsTrigger value="courses" className="flex items-center gap-2">
                   <Library className="w-4 h-4" />
                   <span className="hidden sm:inline">Kurse</span>
@@ -766,6 +767,10 @@ const Admin = () => {
                 <TabsTrigger value="users" className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
                   <span className="hidden sm:inline">Benutzer</span>
+                </TabsTrigger>
+                <TabsTrigger value="certificates" className="flex items-center gap-2">
+                  <Award className="w-4 h-4" />
+                  <span className="hidden sm:inline">Zertifikate</span>
                 </TabsTrigger>
                 <TabsTrigger value="stats" className="flex items-center gap-2">
                   <BarChart3 className="w-4 h-4" />
@@ -1633,6 +1638,10 @@ const Admin = () => {
               </TabsContent>
 
               {/* Stats Tab */}
+              <TabsContent value="certificates">
+                <AdminCertificates />
+              </TabsContent>
+
               <TabsContent value="stats">
                 <Card>
                   <CardHeader>
