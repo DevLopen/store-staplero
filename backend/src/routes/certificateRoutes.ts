@@ -56,11 +56,11 @@ router.post("/admin/:certId/restore", protect, admin, adminRestoreCertificate);
 // GET  /api/certificates/admin/:certId/download
 router.get("/admin/:certId/download", protect, admin, adminDownloadCertificate);
 
-export default router;
-
-// ── ADMIN DEMO SEED (remove in production if desired) ─────────────────────────
-// POST /api/certificates/admin/seed-demo   → creates demo certs for admin preview
-// DELETE /api/certificates/admin/seed-demo → removes demo certs
+// ── ADMIN DEMO SEED ───────────────────────────────────────────────────────────
+// POST   /api/certificates/admin/seed-demo
+// DELETE /api/certificates/admin/seed-demo
 import { seedDemoCertificate, deleteDemoCertificates } from "../controllers/seedController";
 router.post("/admin/seed-demo",   protect, admin, seedDemoCertificate);
 router.delete("/admin/seed-demo", protect, admin, deleteDemoCertificates);
+
+export default router;
