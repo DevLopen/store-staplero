@@ -74,7 +74,26 @@ export const me = async (req: Request, res: Response) => {
 
 export const getAllUsers = async (req: Request, res: Response) => {
     try {
-        const users = await User.find().select("-password").sort({ createdAt: -1 });
+        const { page = "1", limit = "20", search, role } = req.query;
+        const pageNum  = parseInt(page as string);
+        const limitNum = parseInt(limit as string);
+        const skip     = (pageNum - 1) * limitNum;
+
+        const filter: any = {};
+        if (role === "admin") filter.isAdmin = true;
+        if (role === "user")  filter.isAdmin = { $ne: true };
+        if (search) {
+            filter.$or = [
+                { name:  { $regex: search, $options: "i" } },
+                { email: { $regex: search, $options: "i" } },
+            ];
+        }
+
+        const [users, total] = await Promise.all([
+            User.find(filter).select("-password").sort({ createdAt: -1 }).skip(skip).limit(limitNum),
+            User.countDocuments(filter),
+        ]);
+
         const usersWithStats = users.map(user => ({
             id: user._id,
             name: user.name,
@@ -86,9 +105,15 @@ export const getAllUsers = async (req: Request, res: Response) => {
             postalCode: user.postalCode,
             createdAt: user.createdAt,
             purchasedCoursesCount: user.purchasedCourses?.length || 0,
-            activeCourses: user.purchasedCourses?.filter(c => c.status === "active").length || 0,
+            activeCourses: user.purchasedCourses?.filter((c: any) => c.status === "active").length || 0,
         }));
-        res.json({ users: usersWithStats });
+
+        res.json({
+            users: usersWithStats,
+            total,
+            page: pageNum,
+            totalPages: Math.ceil(total / limitNum),
+        });
     } catch (err) {
         res.status(500).json({ message: "Server error", error: err });
     }

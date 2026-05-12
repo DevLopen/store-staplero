@@ -47,7 +47,7 @@ const AdminOrders = () => {
                 ...(search && { search }),
                 ...(status && { status }),
             });
-            const res = await fetch(`${API}/orders/admin?${p}`, { headers: authH() });
+            const res = await fetch(`${API}/orders?${p}`, { headers: authH() });
             if (res.ok) {
                 const d = await res.json();
                 setOrders(d.orders || []);
@@ -63,8 +63,8 @@ const AdminOrders = () => {
     const updateStatus = async (id: string, newStatus: string) => {
         setUpdating(id);
         try {
-            await fetch(`${API}/orders/admin/${id}/status`, {
-                method: "PATCH",
+            await fetch(`${API}/orders/${id}/status`, {
+                method: "PUT",
                 headers: authH(),
                 body: JSON.stringify({ status: newStatus }),
             });

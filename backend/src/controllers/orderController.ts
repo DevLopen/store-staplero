@@ -8,20 +8,34 @@ import orderService from "../services/order.service";
  */
 export const getAllOrders = async (req: Request, res: Response) => {
     try {
-        const user = (req as any).user; // Z middleware protect
+        const user = (req as any).user;
+        const { page = "1", limit = "20", search, status } = req.query;
+        const pageNum  = parseInt(page as string);
+        const limitNum = parseInt(limit as string);
+        const skip     = (pageNum - 1) * limitNum;
 
-        let orders;
-        if (user.isAdmin) {
-            // Admin widzi wszystkie zamówienia
-            orders = await Order.find().sort({ createdAt: -1 });
-            console.log(`✅ Admin fetched ${orders.length} orders`);
-        } else {
-            // Zwykły użytkownik widzi tylko swoje
-            orders = await orderService.getUserOrders(user._id);
-            console.log(`✅ User ${user.email} fetched ${orders.length} orders`);
+        if (!user.isAdmin) {
+            // Non-admin: return own orders without pagination
+            const orders = await orderService.getUserOrders(user._id);
+            return res.json({ orders });
         }
 
-        // Mapowanie do formatu oczekiwanego przez frontend
+        // Build admin filter
+        const filter: any = {};
+        if (status) filter.status = status;
+        if (search) {
+            filter.$or = [
+                { "userDetails.name":  { $regex: search, $options: "i" } },
+                { "userDetails.email": { $regex: search, $options: "i" } },
+                { orderNumber:         { $regex: search, $options: "i" } },
+            ];
+        }
+
+        const [orders, total] = await Promise.all([
+            Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limitNum),
+            Order.countDocuments(filter),
+        ]);
+
         const formattedOrders = orders.map(order => ({
             id: order._id,
             _id: order._id,
@@ -29,7 +43,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
             userId: order.userId,
             userEmail: order.userDetails.email,
             userName: order.userDetails.name,
-            items: order.items.map(item => ({
+            items: order.items.map((item: any) => ({
                 id: item.courseId || `item-${Date.now()}`,
                 type: item.type === "online" ? "online_course" : "practical_course",
                 name: item.courseName,
@@ -55,7 +69,12 @@ export const getAllOrders = async (req: Request, res: Response) => {
             practicalCourseDetails: order.practicalCourseDetails,
         }));
 
-        res.json({ orders: formattedOrders });
+        res.json({
+            orders: formattedOrders,
+            total,
+            page: pageNum,
+            totalPages: Math.ceil(total / limitNum),
+        });
     } catch (err) {
         console.error("❌ Error fetching orders:", err);
         res.status(500).json({ message: "Server error", error: err });
@@ -69,6 +88,10 @@ export const getAllOrders = async (req: Request, res: Response) => {
 export const getOrderById = async (req: Request, res: Response) => {
     try {
         const user = (req as any).user;
+        // Guard against non-ObjectId params (e.g. "admin")
+        if (!req.params.id.match(/^[a-f\d]{24}$/i)) {
+            return res.status(404).json({ message: "Order not found" });
+        }
         const order = await orderService.findOrderById(req.params.id);
 
         if (!order) {
