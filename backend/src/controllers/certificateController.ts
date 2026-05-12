@@ -9,6 +9,36 @@ import PracticalCourseParticipant from "../models/PracticalCourseParticipant";
 import { AuthRequest } from "../types";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:8080";
+
+// Stufen definitions per DGUV Grundsatz 308-001
+const STUFEN: Record<string, string> = {
+    "stufe1": "Stufe 1 – Frontgabelstapler / Mitgänger-Flurförderzeuge (DGUV G 308-001)",
+    "stufe2": "Stufe 2 – Schubmaststapler / Teleskopstapler / Containerstapler (Zusatzqualifizierung)",
+    "stufe2_anbau": "Stufe 2 – Zusatzqualifizierung Anbaugeräte (Klammern >1 t etc.)",
+};
+
+const TH: {n:string;t:string;p:string}[] = [
+    { n:"1",  t:"Rechtliche Grundlagen",                             p:"10–15%" },
+    { n:"2",  t:"Unfallgeschehen",                                   p:"5%"     },
+    { n:"3",  t:"Aufbau/Funktion von Flurförderzeugen/Anbaugeräten", p:"5–10%"  },
+    { n:"4",  t:"Antriebsarten",                                     p:"5–10%"  },
+    { n:"5",  t:"Standsicherheit",                                   p:"10–15%" },
+    { n:"6",  t:"Betrieb allgemein",                                 p:"15–20%" },
+    { n:"7",  t:"Regelmäßige Prüfung",                               p:"5%"     },
+    { n:"8",  t:"Umgang mit Last",                                   p:"10–15%" },
+    { n:"9",  t:"Sondereinsätze",                                    p:"10–15%" },
+    { n:"10", t:"Verkehrsregeln / Verkehrswege",                     p:""       },
+];
+const PR: {n:string;t:string;p:string}[] = [
+    { n:"1",  t:"Einweisung am Flurförderzeug",                      p:"10–20%" },
+    { n:"2",  t:"Tägliche Einsatzprüfung",                           p:""       },
+    { n:"3",  t:"Lastschwerpunkt, Gewichtsverteilung, zul. Lasten",  p:""       },
+    { n:"4",  t:"Gefahrstellen am Flurförderzeug",                   p:""       },
+    { n:"5",  t:"Gewöhnung an das Flurförderzeug",                   p:"5%"     },
+    { n:"6",  t:"Verlassen des Flurförderzeugs",                     p:""       },
+    { n:"7",  t:"Fahr- und Stapelübungen",                           p:"55–65%" },
+    { n:"8",  t:"Abschlussprüfung (15–20 min/Teilnehmer)",           p:"20%"    },
+];
 const GOOGLE_SERVICE_ACCOUNT = process.env.GOOGLE_WALLET_SERVICE_ACCOUNT
     ? JSON.parse(process.env.GOOGLE_WALLET_SERVICE_ACCOUNT)
     : null;
@@ -138,248 +168,297 @@ export const downloadCertificate = async (req: AuthRequest, res: Response) => {
 export async function generateCertificatePDF(cert: any): Promise<Buffer> {
     return new Promise(async (resolve, reject) => {
         try {
+            const isP = cert.type === "practical";
             const verifyUrl = `${FRONTEND_URL}/verify/${cert.verificationCode}`;
+            const fmtD = (d: any) => new Date(d).toLocaleDateString("de-DE",
+                {day:"2-digit", month:"2-digit", year:"numeric"});
 
             const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
-                margin: 1, width: 220,
-                color: { dark: "#1e3a5f", light: "#ffffff" },
-                errorCorrectionLevel: "M",
+                margin:1, width:200,
+                color:{ dark: isP ? "#1e3a5f" : "#1e3a7f", light:"#ffffff" },
+                errorCorrectionLevel:"M",
             });
-            const qrBuffer = Buffer.from(qrDataUrl.split(",")[1], "base64");
+            const qrBuf = Buffer.from(qrDataUrl.split(",")[1], "base64");
 
             const _fs   = require("fs");
             const _path = require("path");
             const logoPath = _path.join(__dirname, "../assets/staplero_logo.jpeg");
-            const logoBuffer: Buffer | null = _fs.existsSync(logoPath) ? _fs.readFileSync(logoPath) : null;
+            const logoBuf: Buffer | null = _fs.existsSync(logoPath) ? _fs.readFileSync(logoPath) : null;
 
-            const doc = new PDFDocument({
-                size: "A4",
-                layout: "landscape",
-                margins: { top: 0, bottom: 0, left: 0, right: 0 },
-            });
-
+            const doc = new PDFDocument({ size:"A4", layout:"landscape",
+                margins:{top:0,bottom:0,left:0,right:0} });
             const chunks: Buffer[] = [];
             doc.on("data", (c: Buffer) => chunks.push(c));
             doc.on("end",  () => resolve(Buffer.concat(chunks)));
             doc.on("error", reject);
 
-            const W  = doc.page.width;   // 841.89
-            const H  = doc.page.height;  // 595.28
-            const CX = W / 2;
+            const W = doc.page.width;   // 841.89
+            const H = doc.page.height;  // 595.28
+            const bm = 16;
 
-            const navy   = "#1e3a5f";
-            const isPractical = cert.type === "practical";
-            const accent = isPractical ? "#f59e0b" : "#2563eb";   // amber vs blue
-            const accentD= isPractical ? "#d97706" : "#1d4ed8";   // darker shade
-            const orange = accent;   // keep existing refs working
-            const dark   = "#1f2937";
-            const mid    = "#4b5563";
-            const muted  = "#9ca3af";
-            const cream  = isPractical ? "#FAFAF7" : "#F0F6FF";   // warm vs cool bg
+            // Palette
+            const navy  = "#1e3a5f";
+            const acc   = isP ? "#f59e0b" : "#2563eb";
+            const accBg = isP ? "#FEFCE8" : "#EFF6FF";
+            const bg    = isP ? "#FAFAF7" : "#F5F8FF";
+            const dark  = "#1f2937";
+            const mid   = "#4b5563";
+            const muted = "#9ca3af";
 
-            // ── Background ────────────────────────────────────────────────────
-            doc.rect(0, 0, W, H).fill(cream);
-
-            // ── Outer border ──────────────────────────────────────────────────
-            const bm = 20;
-            doc.rect(bm, bm, W - bm*2, H - bm*2)
-                .lineWidth(2.5).strokeColor(navy).stroke();
-            doc.rect(bm+5, bm+5, W - (bm+5)*2, H - (bm+5)*2)
-                .lineWidth(0.6).strokeColor(orange).stroke();
-
-            // ── Corner diamonds ───────────────────────────────────────────────
-            [[bm+24, bm+24],[W-bm-24, bm+24],[bm+24, H-bm-24],[W-bm-24, H-bm-24]].forEach(([cx,cy]) => {
-                doc.save().translate(cx,cy).rotate(45)
-                    .rect(-4,-4,8,8).fill(orange).restore();
-                doc.circle(cx,cy,11).lineWidth(0.6).strokeColor(orange).stroke();
+            // Background + frame
+            doc.rect(0,0,W,H).fill(bg);
+            doc.rect(bm,bm,W-bm*2,H-bm*2).lineWidth(2.2).strokeColor(navy).stroke();
+            doc.rect(bm+4,bm+4,W-(bm+4)*2,H-(bm+4)*2).lineWidth(0.5).strokeColor(acc).stroke();
+            [[bm+20,bm+20],[W-bm-20,bm+20],[bm+20,H-bm-20],[W-bm-20,H-bm-20]].forEach(([cx,cy])=>{
+                doc.save().translate(cx,cy).rotate(45).rect(-3,-3,6,6).fill(acc).restore();
             });
 
-            // ═════════════════════════════════════════════════════════════════
-            // TOP: Logo + org
-            // ═════════════════════════════════════════════════════════════════
-            let y = bm + 20;
+            const CX = W/2;
+            const pad = 14;
 
-            if (logoBuffer) {
-                const lW = 130, lH = 52;
-                doc.image(logoBuffer, CX - lW/2, y, { width: lW, height: lH, fit: [lW, lH], align:"center" });
-                y += lH + 10;
-            } else {
-                doc.fontSize(22).fillColor(navy).font("Helvetica-Bold")
-                    .text("STAPLER", CX-90, y, { continued: true })
-                    .fillColor(orange).text("O");
-                y += 30;
+            // ════════════════════════════════════════════════════════════════
+            // ZONE A — TOP BANNER
+            // logo left | ZERTIFIKAT + title centre | org right
+            // ════════════════════════════════════════════════════════════════
+            const aY = bm + pad;
+
+            if (logoBuf) {
+                doc.image(logoBuf, bm+pad, aY, {width:100, height:40, fit:[100,40]});
             }
 
-            doc.fontSize(7.5).fillColor(muted).font("Helvetica")
-                .text("AUSBILDUNGSZENTRUM · JAKOBSTR. 13 · 02826 GÖRLITZ", 0, y, {
-                    width: W, align: "center", characterSpacing: 0.5,
-                });
-            y += 13;
+            // Titles centred
+            doc.fontSize(7.5).fillColor(acc).font("Helvetica-Bold")
+                .text("ZERTIFIKAT", 0, aY+2, {width:W, align:"center", characterSpacing:3});
+            doc.fontSize(15).fillColor(navy).font("Helvetica-Bold")
+                .text("BEFÄHIGUNGSNACHWEIS", 0, aY+13, {width:W, align:"center"});
+            doc.fontSize(7.5).fillColor(mid).font("Helvetica")
+                .text(isP ? "GABELSTAPLER · THEORIE & PRAXIS" : "GABELSTAPLER · THEORIEKURS",
+                    0, aY+32, {width:W, align:"center"});
 
-            // ── Ornamental divider ────────────────────────────────────────────
-            const odW = 300, odX = CX - odW/2;
-            doc.moveTo(odX, y).lineTo(CX-14, y).lineWidth(0.5).strokeColor(muted).stroke();
-            doc.moveTo(CX+14, y).lineTo(odX+odW, y).lineWidth(0.5).strokeColor(muted).stroke();
-            doc.save().translate(CX,y).rotate(45).rect(-3.5,-3.5,7,7).fill(orange).restore();
-            y += 16;
+            // Org right
+            doc.fontSize(6.5).fillColor(muted).font("Helvetica")
+                .text("STAPLERO Ausbildungszentrum", W-bm-pad-115, aY+4, {width:115, align:"right"});
+            doc.fontSize(6.5).fillColor(muted).font("Helvetica")
+                .text("Jakobstr. 13 · 02826 Görlitz", W-bm-pad-115, aY+13, {width:115, align:"right"});
+            doc.fontSize(6.5).fillColor(navy).font("Helvetica-Bold")
+                .text("staplero.com", W-bm-pad-115, aY+22, {width:115, align:"right"});
 
-            // ═════════════════════════════════════════════════════════════════
-            // ZERTIFIKAT title block
-            // ═════════════════════════════════════════════════════════════════
-            doc.fontSize(10).fillColor(orange).font("Helvetica-Bold")
-                .text("ZERTIFIKAT", 0, y, { width: W, align: "center", characterSpacing: 4 });
-            y += 19;
+            // Rule
+            const rY = aY + 46;
+            doc.moveTo(bm+pad, rY).lineTo(CX-16, rY).lineWidth(1).strokeColor(acc).stroke();
+            doc.moveTo(CX+16, rY).lineTo(W-bm-pad, rY).lineWidth(1).strokeColor(acc).stroke();
+            doc.circle(CX, rY, 3.5).fill(acc);
 
-            doc.fontSize(22).fillColor(navy).font("Helvetica-Bold")
-                .text("BEFÄHIGUNGSNACHWEIS", 0, y, { width: W, align: "center", characterSpacing: 0.5 });
-            y += 32;
+            // ════════════════════════════════════════════════════════════════
+            // ZONE B — NAME + QUALIFICATION (full width, centred)
+            // ════════════════════════════════════════════════════════════════
+            let y = rY + 10;
 
-            const typeLabel = isPractical
-                ? "VOLLSTÄNDIGER BEFÄHIGUNGSNACHWEIS · THEORIE & PRAXIS"
-                : "THEORETISCHER BEFÄHIGUNGSNACHWEIS · THEORIEKURS";
-            doc.fontSize(9.5).fillColor(mid).font("Helvetica")
-                .text(typeLabel, 0, y, {
-                    width: W, align: "center",
-                });
-            y += 13;
+            doc.fontSize(8.5).fillColor(mid).font("Helvetica")
+                .text("Hiermit wird bestätigt, dass", 0, y, {width:W, align:"center"});
+            y += 12;
 
-            // ── Main divider ──────────────────────────────────────────────────
-            const mdW = 460, mdX = CX - mdW/2;
-            doc.moveTo(mdX, y).lineTo(CX-22, y).lineWidth(1.2).strokeColor(orange).stroke();
-            doc.moveTo(CX+22, y).lineTo(mdX+mdW, y).lineWidth(1.2).strokeColor(orange).stroke();
-            doc.circle(CX, y, 4.5).fill(orange);
-            y += 18;
+            const nl  = cert.userName.length;
+            const nfs = nl>28?24:nl>22?28:nl>16?33:38;
+            doc.fontSize(nfs).fillColor(dark).font("Helvetica-Bold")
+                .text(cert.userName, 60, y, {width:W-120, align:"center"});
+            y += nfs + 4;
 
-            // ═════════════════════════════════════════════════════════════════
-            // "Hiermit wird bestätigt, dass"
-            // ═════════════════════════════════════════════════════════════════
-            doc.fontSize(11.5).fillColor(mid).font("Helvetica")
-                .text("Hiermit wird bestätigt, dass", 0, y, { width: W, align: "center" });
-            y += 18;
+            // Underline
+            const ulw = Math.min(nl*nfs*0.43, W-180);
+            doc.moveTo(CX-ulw/2, y).lineTo(CX+ulw/2, y).lineWidth(2.5).strokeColor(acc).stroke();
+            y += 9;
 
-            // ═════════════════════════════════════════════════════════════════
-            // NAME — dominant, biggest
-            // ═════════════════════════════════════════════════════════════════
-            const nameLen = cert.userName.length;
-            const nameFs  = nameLen > 30 ? 30 : nameLen > 22 ? 36 : nameLen > 16 ? 42 : 48;
-            doc.fontSize(nameFs).fillColor(dark).font("Helvetica-Bold")
-                .text(cert.userName, 80, y, { width: W - 160, align: "center" });
-            y += nameFs + 8;
+            doc.fontSize(9).fillColor(mid).font("Helvetica")
+                .text("die Ausbildung zum Führen von Gabelstaplern gemäß", 0, y, {width:W, align:"center"});
+            y += 12;
+            doc.fontSize(10.5).fillColor(navy).font("Helvetica-Bold")
+                .text("DGUV Vorschrift 68  ·  DGUV Grundsatz 308-001", 0, y, {width:W, align:"center"});
+            y += 12;
 
-            // Orange underline
-            const ulW = Math.min(nameLen * nameFs * 0.48, W - 180);
-            doc.moveTo(CX - ulW/2, y).lineTo(CX + ulW/2, y)
-                .lineWidth(3).strokeColor(orange).stroke();
-            y += 14;
-
-            // ═════════════════════════════════════════════════════════════════
-            // Qualification sentence
-            // ═════════════════════════════════════════════════════════════════
-            doc.fontSize(10.5).fillColor(mid).font("Helvetica")
-                .text("die Ausbildung zum Führen von Gabelstaplern gemäß", 0, y, { width: W, align: "center" });
-            y += 15;
-
-            doc.fontSize(12).fillColor(navy).font("Helvetica-Bold")
-                .text("DGUV Vorschrift 68  ·  DGUV Grundsatz 308-001", 0, y, { width: W, align: "center" });
-            y += 15;
-
-            doc.fontSize(10.5).fillColor(mid).font("Helvetica")
-                .text("erfolgreich abgeschlossen hat und berechtigt ist, Gabelstapler zu führen.", 0, y, { width: W, align: "center" });
-            y += cert.score !== undefined ? 13 : 0;
+            if (isP) {
+                // Authorisation text
+                doc.fontSize(9).fillColor(mid).font("Helvetica")
+                    .text("erfolgreich abgeschlossen hat und ist berechtigt,", 0, y, {width:W, align:"center"});
+                y += 11;
+                doc.fontSize(10).fillColor(navy).font("Helvetica-Bold")
+                    .text("Flurförderzeuge (Gabelstapler) selbstständig zu führen.", 0, y, {width:W, align:"center"});
+                y += 13;
+            } else {
+                // Warning — compact, readable
+                const wW=460, wH=24, wX=CX-wW/2;
+                // Subtle warning — no bold bar, just a clean framed note
+                doc.rect(wX, y, wW, wH).fill("#FFF5F5");
+                doc.rect(wX, y, wW, wH).lineWidth(0.6).strokeColor("#fca5a5").stroke();
+                doc.fontSize(7.5).fillColor("#991b1b").font("Helvetica-Bold")
+                    .text("Dieser Nachweis berechtigt NICHT zum selbstständigen Führen eines Flurförderzeugs.", wX+12, y+5, {width:wW-24, align:"center"});
+                doc.fontSize(6.5).fillColor("#b91c1c").font("Helvetica")
+                    .text("Für die Fahrberechtigung ist eine zusätzliche praktische Ausbildung nach DGUV Grundsatz 308-001 erforderlich.",
+                        wX+12, y+14, {width:wW-24, align:"center"});
+                y += wH + 6;
+            }
 
             if (cert.score !== undefined) {
-                doc.fontSize(9.5).fillColor(muted).font("Helvetica")
-                    .text(`Prüfungsergebnis: ${cert.score} %`, 0, y, { width: W, align: "center" });
+                doc.fontSize(8).fillColor(muted).font("Helvetica")
+                    .text(`Prüfungsergebnis Theorie: ${cert.score} %`, 0, y, {width:W, align:"center"});
+                y += 11;
             }
-            y += 22;
 
-            // ═════════════════════════════════════════════════════════════════
-            // DATA BOXES — centered row
-            // ═════════════════════════════════════════════════════════════════
-            const fmtDate = (d: any) => new Date(d).toLocaleDateString("de-DE", {
-                day: "2-digit", month: "long", year: "numeric",
-            });
+            // Dashed separator
+            const sepY = y + 3;
+            doc.moveTo(bm+pad, sepY).lineTo(W-bm-pad, sepY)
+                .lineWidth(0.4).strokeColor(muted).dash(2,{space:3}).stroke();
+            doc.undash();
+            y = sepY + 8;
 
-            const items = [
-                { label: "Ausgestellt am",   value: fmtDate(cert.issuedAt) },
-                { label: "Ausbildungsdatum", value: fmtDate(cert.trainingDate) },
-                ...(cert.trainingLocation ? [{ label: "Ausbildungsort", value: cert.trainingLocation.split("–")[0].trim() }] : []),
-                ...(cert.instructorName   ? [{ label: "Ausbilder",      value: cert.instructorName }] : []),
+            // ════════════════════════════════════════════════════════════════
+            // ZONE C — 3 COLUMNS: data+sigs | curriculum | QR+nr
+            // ════════════════════════════════════════════════════════════════
+            const zC  = y;
+            const colL = 185;
+            const colR = 96;
+            const colM = W - bm*2 - pad*2 - colL - colR - 16;
+            const xL   = bm + pad;
+            const xM   = xL + colL + 8;
+            const xR   = xM + colM + 8;
+
+            // ── LEFT col: date box + stufen + forklift + sigs ────────────────
+            let ly = zC;
+
+            // Single date box — Kursdatum only
+            const dateLabel = isP ? "KURSDATUM" : "AUSBILDUNGSDATUM";
+            const dateVal   = fmtD(cert.trainingDate);
+            const dbH = 34;
+            doc.rect(xL, ly, colL, dbH).fill(accBg);
+            doc.rect(xL, ly, colL, 2.5).fill(acc);
+            doc.fontSize(6).fillColor(muted).font("Helvetica-Bold")
+                .text(dateLabel, xL+6, ly+5, {width:colL-12});
+            doc.fontSize(13).fillColor(dark).font("Helvetica-Bold")
+                .text(dateVal, xL+6, ly+14, {width:colL-12});
+            ly += dbH + 6;
+
+            // Location + instructor in smaller boxes side by side
+            const smallBoxes = [
+                ...(cert.trainingLocation?[{l:"AUSBILDUNGSORT",v:cert.trainingLocation.split("–")[0].trim()}]:[]),
+                ...(cert.instructorName  ?[{l:"AUSBILDER",     v:cert.instructorName}]:[]),
             ];
+            if (smallBoxes.length > 0) {
+                const sbW = smallBoxes.length===1 ? colL : Math.floor((colL-6)/2);
+                let sx = xL;
+                smallBoxes.forEach(b => {
+                    doc.rect(sx, ly, sbW, 28).fill(accBg);
+                    doc.rect(sx, ly, sbW, 2).fill(acc);
+                    doc.fontSize(5.5).fillColor(muted).font("Helvetica-Bold")
+                        .text(b.l, sx+5, ly+4, {width:sbW-10});
+                    doc.fontSize(b.v.length>16?7.5:8.5).fillColor(dark).font("Helvetica-Bold")
+                        .text(b.v, sx+5, ly+13, {width:sbW-10});
+                    sx += sbW + 6;
+                });
+                ly += 34;
+            }
 
-            const boxW   = 168;
-            const boxH   = 50;
-            const boxGap = 14;
-            const totalBoxW = items.length * boxW + (items.length - 1) * boxGap;
-            let bx = CX - totalBoxW / 2;
+            // Stufen / Fahrzeugklassen
+            const stufen = cert.stufen || (isP ? ["stufe1"] : []);
+            if (stufen.length > 0) {
+                ly += 3;
+                doc.fontSize(6).fillColor(muted).font("Helvetica-Bold")
+                    .text("QUALIFIZIERUNGSSTUFEN:", xL, ly, {characterSpacing:0.5});
+                ly += 9;
+                stufen.forEach((s: string) => {
+                    const label = STUFEN[s] || s;
+                    doc.circle(xL+4, ly+3.5, 2).fill(acc);
+                    doc.fontSize(7).fillColor(dark).font("Helvetica")
+                        .text(label, xL+11, ly, {width:colL-14});
+                    ly += 11;
+                });
+            }
 
-            items.forEach(item => {
-                doc.rect(bx, y, boxW, boxH).fill("#EEF2F7");
-                doc.rect(bx, y, boxW, 3).fill(orange);
-                doc.fontSize(7.5).fillColor(muted).font("Helvetica-Bold")
-                    .text(item.label.toUpperCase(), bx+8, y+9, { width: boxW-16, align:"center", characterSpacing: 0.5 });
-                const vfs = item.value.length > 20 ? 9 : 11;
-                doc.fontSize(vfs).fillColor(dark).font("Helvetica-Bold")
-                    .text(item.value, bx+8, y+23, { width: boxW-16, align:"center" });
-                bx += boxW + boxGap;
+            // Sig lines pinned to bottom of left col
+            const sigY = H - bm - pad - 14;
+            const sw   = (colL-6)/2;
+            [xL, xL+sw+6].forEach((sx,i) => {
+                doc.moveTo(sx, sigY).lineTo(sx+sw, sigY).lineWidth(0.4).strokeColor("#cbd5e1").stroke();
+                doc.fontSize(5.5).fillColor(muted).font("Helvetica")
+                    .text(i===0?"Unterschrift Ausbilder":"Stempel / Siegel",
+                        sx, sigY+4, {width:sw, align:"center"});
             });
-            y += boxH + 14;
 
-            // ═════════════════════════════════════════════════════════════════
-            // BOTTOM ROW: sig left | QR center | sig right
-            // ═════════════════════════════════════════════════════════════════
-            const botY   = H - bm - 36;
-            const sigLW  = 120;
-            const sigLX  = bm + 60;
-            const sigRX  = W - bm - 60 - sigLW;
+            // ── CENTRE col: curriculum ───────────────────────────────────────
+            let ry = zC;
+            const rowH = 11;
 
-            // Left signature
-            doc.moveTo(sigLX, botY).lineTo(sigLX + sigLW, botY)
-                .lineWidth(0.5).strokeColor("#cbd5e1").stroke();
-            doc.fontSize(7).fillColor(muted).font("Helvetica")
-                .text("Unterschrift Ausbilder", sigLX, botY+5, { width: sigLW, align:"center" });
+            // Theorie band
+            doc.rect(xM, ry, colM, 13).fill(navy);
+            doc.fontSize(6.5).fillColor("#fff").font("Helvetica-Bold")
+                .text("THEORIE  –  Ausbildungsinhalte", xM+6, ry+3, {characterSpacing:0.5});
+            ry += 15;
 
-            // Right signature / stamp
-            doc.moveTo(sigRX, botY).lineTo(sigRX + sigLW, botY)
-                .lineWidth(0.5).strokeColor("#cbd5e1").stroke();
-            doc.fontSize(7).fillColor(muted).font("Helvetica")
-                .text("Stempel / Siegel", sigRX, botY+5, { width: sigLW, align:"center" });
+            TH.forEach(t => {
+                doc.fontSize(6.5).fillColor(acc).font("Helvetica-Bold")
+                    .text(t.n+".", xM, ry, {width:13});
+                doc.fontSize(7).fillColor(dark).font("Helvetica")
+                    .text(t.t, xM+13, ry, {width:colM-55, lineBreak:false});
+                if (t.p) doc.fontSize(6.5).fillColor(muted).font("Helvetica-Bold")
+                    .text(t.p, xM+colM-40, ry, {width:40, align:"right"});
+                ry += rowH;
+            });
 
-            // Center: QR + cert number below, all grouped
-            const qrS = 72;
-            const qrX = CX - qrS/2;
-            const qrY = botY - qrS - 28;
+            if (isP) {
+                ry += 4;
+                doc.rect(xM, ry, colM, 13).fill(acc);
+                doc.fontSize(6.5).fillColor("#000").font("Helvetica-Bold")
+                    .text("PRAXIS  –  Ausbildungsinhalte", xM+6, ry+3, {characterSpacing:0.5});
+                ry += 15;
 
-            // White bg box for QR
-            doc.rect(qrX-5, qrY-5, qrS+10, qrS+10).fill("#ffffff");
-            doc.rect(qrX-5, qrY-5, qrS+10, qrS+10)
-                .lineWidth(1.2).strokeColor(orange).stroke();
-            doc.image(qrBuffer, qrX, qrY, { width: qrS, height: qrS });
-
-            // Cert number — navy pill below QR, clearly readable
-            const codeBoxW = 240;
-            const codeBoxX = CX - codeBoxW / 2;
-            const codeBoxY = qrY + qrS + 6;
-            const codeBoxH = 30;
-
-            doc.rect(codeBoxX, codeBoxY, codeBoxW, codeBoxH).fill(navy);
-            doc.fontSize(7).fillColor("rgba(255,255,255,0.5)").font("Helvetica-Bold")
-                .text("ZERTIFIKAT-NR.", codeBoxX, codeBoxY + 5, {
-                    width: codeBoxW, align: "center", characterSpacing: 1.5,
+                PR.forEach(t => {
+                    doc.fontSize(6.5).fillColor(acc).font("Helvetica-Bold")
+                        .text(t.n+".", xM, ry, {width:13});
+                    doc.fontSize(7).fillColor(dark).font("Helvetica")
+                        .text(t.t, xM+13, ry, {width:colM-55, lineBreak:false});
+                    if (t.p) doc.fontSize(6.5).fillColor(muted).font("Helvetica-Bold")
+                        .text(t.p, xM+colM-40, ry, {width:40, align:"right"});
+                    ry += rowH;
                 });
-            doc.fontSize(12).fillColor(orange).font("Helvetica-Bold")
-                .text(cert.verificationCode, codeBoxX, codeBoxY + 14, {
-                    width: codeBoxW, align: "center", characterSpacing: 2,
-                });
+            }
 
-            // Bottom url
-            const stripY = H - bm - 13;
-            doc.fontSize(6.5).fillColor(muted).font("Helvetica")
-                .text(`Echtheit prüfen: ${FRONTEND_URL}/verify/${cert.verificationCode}`,
-                    0, stripY, { width: W, align: "center" });
+            // DGUV note bottom of centre col
+            const noteY = H - bm - pad - 18;
+            doc.rect(xM, noteY, colM, 16).fill(accBg);
+            doc.rect(xM, noteY, 2.5, 16).fill(acc);
+            doc.fontSize(5.5).fillColor(mid).font("Helvetica")
+                .text("DGUV Vorschrift 68 · DGUV Grundsatz 308-001",
+                    xM+7, noteY+3, {width:colM-10});
+            doc.fontSize(5.5).fillColor(muted).font("Helvetica")
+                .text("Ausgestellt von STAPLERO Ausbildungszentrum Görlitz",
+                    xM+7, noteY+10, {width:colM-10});
+
+            // ── RIGHT col: QR + cert number ──────────────────────────────────
+            const qs  = 76;
+            const qrx = xR + (colR-qs)/2;
+            const qry = zC + 4;
+            doc.rect(qrx-4, qry-4, qs+8, qs+8).fill("#fff");
+            doc.rect(qrx-4, qry-4, qs+8, qs+8).lineWidth(1).strokeColor(acc).stroke();
+            doc.image(qrBuf, qrx, qry, {width:qs, height:qs});
+
+            doc.fontSize(5.5).fillColor(acc).font("Helvetica-Bold")
+                .text("QR · ECHTHEIT PRÜFEN", xR, qry+qs+5,
+                    {width:colR, align:"center", characterSpacing:0.5});
+
+            // Cert nr pill
+            const nrY = qry + qs + 16;
+            const nrH = H - bm - pad - 8 - nrY;
+            doc.rect(xR, nrY, colR, nrH).fill(navy);
+            doc.fontSize(5.5).fillColor("rgba(255,255,255,0.45)").font("Helvetica-Bold")
+                .text("ZERTIFIKAT-NR.", xR, nrY+5, {width:colR, align:"center", characterSpacing:0.5});
+            const code = cert.verificationCode;
+            const cfs  = code.length>14 ? 7 : 8.5;
+            doc.fontSize(cfs).fillColor(acc).font("Helvetica-Bold")
+                .text(code, xR, nrY+14, {width:colR, align:"center", characterSpacing:1});
+            doc.fontSize(5).fillColor("rgba(255,255,255,0.25)").font("Helvetica")
+                .text("staplero.com/verify", xR, nrY+nrH-10, {width:colR, align:"center"});
 
             doc.end();
-        } catch (err) { reject(err); }
+        } catch(e) { reject(e); }
     });
 }
 
@@ -676,9 +755,11 @@ export const verifyCertificate = async (req: Request, res: Response) => {
             courseName: cert.courseName,
             trainingDate: cert.trainingDate,
             trainingLocation: cert.trainingLocation,
+            instructorName: cert.instructorName,
             issuedAt: cert.issuedAt,
             verificationCode: cert.verificationCode,
             ...(cert.score !== undefined && { score: cert.score }),
+            ...(cert.stufen?.length && { stufen: cert.stufen }),
         });
     } catch (err) {
         res.status(500).json({ message: "Serverfehler", error: err });

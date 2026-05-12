@@ -16,6 +16,7 @@ export interface ICertificate extends Document {
     trainingLocation?: string;  // for practical: city + address
     instructorName?: string;
     score?: number;             // for online: quiz score
+    stufen?: string[];          // DGUV 308-001 qualification levels e.g. ["stufe1"]
     issuedAt: Date;
     revokedAt?: Date;
     revokedReason?: string;
@@ -42,6 +43,7 @@ const CertificateSchema = new Schema<ICertificate>(
         trainingLocation: { type: String },
         instructorName:   { type: String },
         score:            { type: Number },
+        stufen:           { type: [String], default: undefined },
         issuedAt:         { type: Date, default: Date.now },
         revokedAt:        { type: Date },
         revokedReason:    { type: String },

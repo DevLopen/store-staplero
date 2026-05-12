@@ -17,6 +17,7 @@ import {
     Award,
     CheckCircle
 } from "lucide-react";
+import CompleteParticipantButton from "@/components/admin/CompleteParticipantButton";
 
 interface Participant {
     _id: string;
@@ -27,6 +28,7 @@ interface Participant {
     paidAt: string;
     wantsPlasticCard: boolean;
     invoiceNumber?: string;
+    status: "confirmed" | "completed" | "cancelled";
 }
 
 interface ParticipantsListDialogProps {
@@ -78,11 +80,11 @@ export const ParticipantsListDialog = ({
             if (!res.ok) throw new Error("Fehler beim Laden der Teilnehmer");
 
             const data = await res.json();
-            // Filtruj tylko potwierdzonych (status === "confirmed")
-            const confirmedOnly = (data.participants || []).filter(
-                (p: any) => p.status === "confirmed"
+            // Show all participants (confirmed + completed) — cancelled excluded
+            const active = (data.participants || []).filter(
+                (p: any) => p.status !== "cancelled"
             );
-            setParticipants(confirmedOnly);
+            setParticipants(active);
         } catch (error: any) {
             toast({
                 title: "Fehler",
@@ -217,6 +219,7 @@ export const ParticipantsListDialog = ({
     };
 
     const withCardCount = participants.filter(p => p.wantsPlasticCard).length;
+    const completedCount = participants.filter(p => p.status === "completed").length;
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
@@ -247,7 +250,7 @@ export const ParticipantsListDialog = ({
                 ) : (
                     <div className="space-y-4">
                         {/* Stats */}
-                        <div className="grid grid-cols-2 md:grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                             <Card>
                                 <CardContent className="p-4">
                                     <div className="flex items-center gap-2">
@@ -267,6 +270,17 @@ export const ParticipantsListDialog = ({
                                         <div>
                                             <p className="text-2xl font-bold text-blue-600">{withCardCount}</p>
                                             <p className="text-xs text-muted-foreground">Mit Plastikkarte</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardContent className="p-4">
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle className="w-5 h-5 text-green-500" />
+                                        <div>
+                                            <p className="text-2xl font-bold text-green-600">{completedCount}</p>
+                                            <p className="text-xs text-muted-foreground">Abgeschlossen</p>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -333,6 +347,9 @@ export const ParticipantsListDialog = ({
                                             <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">
                                                 Plastikkarte
                                             </th>
+                                            <th className="text-left py-3 px-4 font-medium text-muted-foreground text-sm">
+                                                Status / Zertifikat
+                                            </th>
                                         </tr>
                                         </thead>
                                         <tbody>
@@ -377,6 +394,15 @@ export const ParticipantsListDialog = ({
                                                     ) : (
                                                         <span className="text-xs text-muted-foreground">Nein</span>
                                                     )}
+                                                </td>
+                                                <td className="py-3 px-4">
+                                                    <CompleteParticipantButton
+                                                        orderNumber={participant.orderNumber}
+                                                        participantName={participant.userName}
+                                                        participantEmail={participant.userEmail}
+                                                        currentStatus={participant.status}
+                                                        onCompleted={fetchParticipants}
+                                                    />
                                                 </td>
                                             </tr>
                                         ))}
@@ -426,6 +452,15 @@ export const ParticipantsListDialog = ({
                                                         <p className="text-xs text-muted-foreground">
                                                             Bezahlt: {new Date(participant.paidAt).toLocaleDateString("de-DE")}
                                                         </p>
+                                                    </div>
+                                                    <div className="mt-3 pt-3 border-t border-border">
+                                                        <CompleteParticipantButton
+                                                            orderNumber={participant.orderNumber}
+                                                            participantName={participant.userName}
+                                                            participantEmail={participant.userEmail}
+                                                            currentStatus={participant.status}
+                                                            onCompleted={fetchParticipants}
+                                                        />
                                                     </div>
                                                 </div>
                                             </CardContent>

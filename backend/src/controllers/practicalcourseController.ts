@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import practicalCourseService from "../services/practicalCourse.service";
 import Location from "../models/Location";
 import Certificate from "../models/Certificate";
+import PracticalCourseParticipant from "../models/PracticalCourseParticipant";
 import { generateCertificatePDF } from "./certificateController";
 import { sendCertificateEmail } from "../services/email.service";
 import { AuthRequest } from "../types";
@@ -117,7 +118,7 @@ export const getParticipantsStats = async (req: Request, res: Response) => {
 export const completeParticipant = async (req: AuthRequest, res: Response) => {
     try {
         const { orderNumber } = req.params;
-        const { instructorName } = req.body;
+        const { instructorName, stufen } = req.body;
 
         // 1. Find participant
         const participant = await practicalCourseService.getParticipantByOrderNumber(orderNumber);
@@ -150,6 +151,7 @@ export const completeParticipant = async (req: AuthRequest, res: Response) => {
             trainingDate: new Date(participant.startDate),
             trainingLocation: `${participant.locationName} – ${participant.locationAddress}`,
             instructorName: instructorName || undefined,
+            stufen: (stufen && stufen.length) ? stufen : ["stufe1"],
         });
 
         // 4. Generate PDF buffer for email attachment
@@ -219,8 +221,90 @@ export const resendCertificateEmail = async (req: AuthRequest, res: Response) =>
     }
 };
 
+
+// ── ADMIN: Archive all participants paginated + search ───────────────────────
+export const getAllParticipantsPaginated = async (req: Request, res: Response) => {
+    try {
+        const { page = "1", limit = "20", search, status } = req.query;
+        const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
+        const filter: any = {};
+        if (status) filter.status = status;
+        if (search) {
+            filter.$or = [
+                { userName:    { $regex: search, $options: "i" } },
+                { userEmail:   { $regex: search, $options: "i" } },
+                { orderNumber: { $regex: search, $options: "i" } },
+            ];
+        }
+        const [participants, total] = await Promise.all([
+            PracticalCourseParticipant.find(filter).sort({ createdAt: -1 })
+                .skip(skip).limit(parseInt(limit as string)).lean(),
+            PracticalCourseParticipant.countDocuments(filter),
+        ]);
+        res.json({ success: true, participants, total, page: parseInt(page as string),
+            totalPages: Math.ceil(total / parseInt(limit as string)) });
+    } catch (err: any) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// ── ADMIN: Manually add participant + optionally issue certificate ────────────
+export const addManualParticipant = async (req: AuthRequest, res: Response) => {
+    try {
+        const { userName, userEmail, userPhone, locationName, startDate,
+            instructorName, stufen, notes, issueNow } = req.body;
+        if (!userName || !userEmail || !startDate)
+            return res.status(400).json({ message: "userName, userEmail, startDate sind Pflicht." });
+
+        const orderNumber = `MANUAL-${Date.now()}`;
+        const participant = await PracticalCourseParticipant.create({
+            userId: "manual", userName: userName.trim(),
+            userEmail: userEmail.trim().toLowerCase(),
+            userPhone: userPhone?.trim(),
+            orderId: orderNumber, orderNumber,
+            paidAt: new Date(),
+            locationId: "manual",
+            locationName: locationName?.trim() || "Manuell erfasst",
+            locationAddress: locationName?.trim() || "",
+            dateId: "manual", startDate, endDate: startDate, time: "–",
+            wantsPlasticCard: false,
+            status: issueNow ? "completed" : "confirmed",
+        });
+
+        if (issueNow) {
+            const cert = await Certificate.create({
+                userId: "manual",
+                participantId: (participant._id as any).toString(),
+                type: "practical",
+                userName: userName.trim(),
+                userEmail: userEmail.trim().toLowerCase(),
+                courseName: "Gabelstapler-Fahrausweis (Praxiskurs)",
+                trainingDate: new Date(startDate),
+                trainingLocation: locationName?.trim(),
+                instructorName: instructorName?.trim(),
+                stufen: stufen?.length ? stufen : ["stufe1"],
+            });
+            const pdfBuffer = await generateCertificatePDF(cert.toObject());
+            await sendCertificateEmail({
+                to: userEmail.trim().toLowerCase(),
+                userName: userName.trim(),
+                certId: (cert._id as any).toString(),
+                verificationCode: cert.verificationCode,
+                certType: "practical",
+                trainingDate: new Date(startDate),
+                pdfBuffer,
+            });
+        }
+        res.json({ success: true, participant });
+    } catch (err: any) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
 export default {
     getAllParticipants,
+    getAllParticipantsPaginated,
+    addManualParticipant,
     getParticipantsByLocation,
     getParticipantsByDate,
     getLocationsWithParticipants,

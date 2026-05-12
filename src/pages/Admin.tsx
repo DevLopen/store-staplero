@@ -17,6 +17,9 @@ import { mockOrders, Order, getOrderStatusLabel, getOrderStatusColor } from "@/d
 import EnhancedTopicDialog from "@/components/EnhancedTopicDialog";
 import ParticipantsListDialog from "@/components/ParticipantsListDialog";
 import AdminCertificates from "@/components/admin/AdminCertificates";
+import AdminParticipants from "@/components/admin/AdminParticipants";
+import AdminOrders from "@/components/admin/AdminOrders";
+import AdminUsers from "@/components/admin/AdminUsers";
 import {
   Plus,
   Edit,
@@ -743,7 +746,7 @@ const Admin = () => {
             </div>
 
             <Tabs defaultValue="courses" className="space-y-6">
-              <TabsList className="grid w-full max-w-5xl grid-cols-8">
+              <TabsList className="grid w-full max-w-5xl grid-cols-9">
                 <TabsTrigger value="courses" className="flex items-center gap-2">
                   <Library className="w-4 h-4" />
                   <span className="hidden sm:inline">Kurse</span>
@@ -771,6 +774,10 @@ const Admin = () => {
                 <TabsTrigger value="certificates" className="flex items-center gap-2">
                   <Award className="w-4 h-4" />
                   <span className="hidden sm:inline">Zertifikate</span>
+                </TabsTrigger>
+                <TabsTrigger value="participants" className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  <span className="hidden sm:inline">Teilnehmer</span>
                 </TabsTrigger>
                 <TabsTrigger value="stats" className="flex items-center gap-2">
                   <BarChart3 className="w-4 h-4" />
@@ -1467,179 +1474,21 @@ const Admin = () => {
               </TabsContent>
 
               {/* Orders Tab */}
-              <TabsContent value="orders" className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-display text-xl font-semibold text-foreground">
-                      Bestellungen
-                    </h2>
-                    <p className="text-sm text-muted-foreground">Übersicht aller Bestellungen</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {orders.length === 0 ? (
-                      <Card>
-                        <CardContent className="py-12 text-center">
-                          <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                          <p className="text-muted-foreground">Noch keine Bestellungen vorhanden.</p>
-                        </CardContent>
-                      </Card>
-                  ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                          <tr className="border-b border-border">
-                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Bestellung</th>
-                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Kunde</th>
-                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Datum</th>
-                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Betrag</th>
-                            <th className="text-left py-3 px-4 font-medium text-muted-foreground">Status</th>
-                            <th className="text-right py-3 px-4 font-medium text-muted-foreground">Aktionen</th>
-                          </tr>
-                          </thead>
-                          <tbody>
-                          {orders.map((order) => (
-                              <tr key={order.id} className="border-b border-border hover:bg-muted/30">
-                                <td className="py-3 px-4">
-                                  <span className="font-medium text-foreground">#{order.id}</span>
-                                </td>
-                                <td className="py-3 px-4">
-                                  <div>
-                                    <p className="font-medium text-foreground">{order.userName}</p>
-                                    <p className="text-sm text-muted-foreground">{order.userEmail}</p>
-                                  </div>
-                                </td>
-                                <td className="py-3 px-4 text-muted-foreground">
-                                  {new Date(order.createdAt).toLocaleDateString('de-DE')}
-                                </td>
-                                <td className="py-3 px-4">
-                                  <span className="font-semibold text-foreground">{order.total.toFixed(2)} €</span>
-                                </td>
-                                <td className="py-3 px-4">
-                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${getOrderStatusColor(order.status)}`}>
-                                {getOrderStatusLabel(order.status)}
-                              </span>
-                                </td>
-                                <td className="py-3 px-4 text-right">
-                                  <div className="flex items-center justify-end gap-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => {
-                                          setSelectedOrder(order);
-                                          setIsOrderDetailOpen(true);
-                                        }}
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                    </Button>
-                                    <Select
-                                        value={order.status}
-                                        onValueChange={(value) => {
-                                          setOrders(prev => prev.map(o =>
-                                              o.id === order.id
-                                                  ? { ...o, status: value as Order['status'] }
-                                                  : o
-                                          ));
-                                          toast({ title: "Erfolg", description: "Status wurde aktualisiert." });
-                                        }}
-                                    >
-                                      <SelectTrigger className="w-32">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="pending">Ausstehend</SelectItem>
-                                        <SelectItem value="paid">Bezahlt</SelectItem>
-                                        <SelectItem value="completed">Abgeschlossen</SelectItem>
-                                        <SelectItem value="cancelled">Storniert</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                </td>
-                              </tr>
-                          ))}
-                          </tbody>
-                        </table>
-                      </div>
-                  )}
-                </div>
+              <TabsContent value="orders">
+                <AdminOrders />
               </TabsContent>
 
               {/* Users Tab */}
-              <TabsContent value="users" className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-display text-xl font-semibold text-foreground">Benutzer</h2>
-                    <p className="text-sm text-muted-foreground">{users.length} registrierte Benutzer</p>
-                  </div>
-                </div>
-                {usersLoading ? (
-                    <Card>
-                      <CardContent className="py-12 text-center">
-                        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent mb-4"></div>
-                        <p className="text-muted-foreground">Lade Benutzer...</p>
-                      </CardContent>
-                    </Card>
-                ) : users.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-12 text-center">
-                        <Users className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                        <p className="text-muted-foreground">Keine Benutzer gefunden.</p>
-                      </CardContent>
-                    </Card>
-                ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                        <tr className="border-b border-border">
-                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Name</th>
-                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">E-Mail</th>
-                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Telefon</th>
-                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Kurse</th>
-                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Registriert</th>
-                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Rolle</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {users.map((user) => (
-                            <tr key={user.id} className="border-b border-border hover:bg-muted/30">
-                              <td className="py-3 px-4">
-                                <p className="font-medium text-foreground">{user.name}</p>
-                              </td>
-                              <td className="py-3 px-4">
-                                <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                  <Mail className="w-3 h-3" />{user.email}
-                                </p>
-                              </td>
-                              <td className="py-3 px-4">
-                                <p className="text-sm text-muted-foreground">{user.phone || "-"}</p>
-                              </td>
-                              <td className="py-3 px-4">
-                                <span className="text-sm">{user.activeCourses} aktiv / {user.purchasedCoursesCount} gesamt</span>
-                              </td>
-                              <td className="py-3 px-4">
-                              <span className="text-sm text-muted-foreground">
-                                {new Date(user.createdAt).toLocaleDateString("de-DE")}
-                              </span>
-                              </td>
-                              <td className="py-3 px-4">
-                                {user.isAdmin ? (
-                                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-primary/10 text-primary">Admin</span>
-                                ) : (
-                                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-muted text-muted-foreground">Benutzer</span>
-                                )}
-                              </td>
-                            </tr>
-                        ))}
-                        </tbody>
-                      </table>
-                    </div>
-                )}
+              <TabsContent value="users">
+                <AdminUsers />
               </TabsContent>
-
               {/* Stats Tab */}
               <TabsContent value="certificates">
                 <AdminCertificates />
+              </TabsContent>
+
+              <TabsContent value="participants">
+                <AdminParticipants />
               </TabsContent>
 
               <TabsContent value="stats">

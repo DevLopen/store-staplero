@@ -34,6 +34,7 @@ export const seedDemoCertificate = async (req: AuthRequest, res: Response) => {
             userId: user._id,
             participantId: "demo-participant-001",
             type: "practical",
+            stufen: ["stufe1"],
             userName: user.name || "Bohdan Kutko",
             userEmail: user.email,
             courseName: "Gabelstapler-Fahrausweis (Praxiskurs)",

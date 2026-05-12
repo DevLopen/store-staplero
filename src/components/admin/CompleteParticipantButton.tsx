@@ -21,7 +21,16 @@ const CompleteParticipantButton = ({
                                    }: CompleteParticipantButtonProps) => {
     const [showModal, setShowModal] = useState(false);
     const [instructorName, setInstructorName] = useState("");
+    const [stufen, setStufen] = useState(["stufe1"]);
     const [loading, setLoading] = useState(false);
+
+    const STUFEN_LABELS: Record<string, string> = {
+        stufe1:       "Stufe 1 – Frontgabelstapler / Mitgänger",
+        stufe2:       "Stufe 2 – Schubmaststapler / Teleskopstapler",
+        stufe2_anbau: "Stufe 2 – Zusatzqualifizierung Anbaugeräte",
+    };
+    const toggleStufe = (s: string) =>
+        setStufen(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
     const [resendLoading, setResendLoading] = useState(false);
     const [done, setDone] = useState(false);
     const [error, setError] = useState("");
@@ -40,7 +49,7 @@ const CompleteParticipantButton = ({
                 {
                     method: "POST",
                     headers: authHeaders(),
-                    body: JSON.stringify({ instructorName: instructorName.trim() || undefined }),
+                    body: JSON.stringify({ instructorName: instructorName.trim() || undefined, stufen }),
                 }
             );
             const data = await res.json();
@@ -153,6 +162,23 @@ const CompleteParticipantButton = ({
                                     <p>✓ Participant wird als <strong>completed</strong> markiert</p>
                                     <p>✓ Staplerschein-Zertifikat wird ausgestellt</p>
                                     <p>✓ E-Mail mit PDF + Apple/Google Wallet an <strong>{participantEmail}</strong></p>
+                                </div>
+
+                                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
+                                    Qualifizierungsstufen
+                                </label>
+                                <div className="space-y-1.5 mb-4">
+                                    {Object.entries(STUFEN_LABELS).map(([key, label]) => (
+                                        <label key={key} className="flex items-center gap-2 cursor-pointer p-2 rounded-lg border border-border hover:bg-muted/40 text-sm">
+                                            <input
+                                                type="checkbox"
+                                                checked={stufen.includes(key)}
+                                                onChange={() => toggleStufe(key)}
+                                                className="accent-amber-500"
+                                            />
+                                            {label}
+                                        </label>
+                                    ))}
                                 </div>
 
                                 <label className="block text-xs text-muted-foreground mb-1.5">
