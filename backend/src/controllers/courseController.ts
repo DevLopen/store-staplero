@@ -288,14 +288,17 @@ export const reorderTopics = async (req: Request, res: Response) => {
     if (!chapter) return res.status(404).json({ message: "Rozdział nie znaleziony" });
 
     const reordered = order
-      .map((id, idx) => {
-        const t = chapter.topics.find(tp => tp.id === id);
-        if (t) t.order = idx + 1;
-        return t;
-      })
-      .filter(Boolean) as Topic[];
+        .map((id, idx) => {
+          const t = chapter.topics.find(tp => tp.id === id || tp.id?.toString() === id);
+          if (t) t.order = idx + 1;
+          return t;
+        })
+        .filter(Boolean) as Topic[];
 
-    chapter.topics = reordered;
+    const reorderedIds = new Set(reordered.map(t => t.id));
+    const missing = chapter.topics.filter(t => !reorderedIds.has(t.id));
+    chapter.topics = [...reordered, ...missing];
+
     await course.save();
     res.json(course);
   } catch (err) {

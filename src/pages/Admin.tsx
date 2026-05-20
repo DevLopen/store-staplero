@@ -20,6 +20,8 @@ import AdminCertificates from "@/components/admin/AdminCertificates";
 import AdminParticipants from "@/components/admin/AdminParticipants";
 import AdminOrders from "@/components/admin/AdminOrders";
 import AdminUsers from "@/components/admin/AdminUsers";
+import { adminReorderTopics } from "@/api/course.api";
+import { adminReorderChapters } from "@/api/course.api";
 import {
   Plus,
   Edit,
@@ -411,33 +413,87 @@ const Admin = () => {
     }
   };
 
-  // Topic sorting
-  const moveTopicUp = (chapterId: string, topicId: string) => {
-    setSelectedCourse(prev => ({
-      ...prev,
-      chapters: prev.chapters.map(ch => {
-        if (ch.id !== chapterId) return ch;
-        const topicIndex = ch.topics.findIndex(t => t.id === topicId);
-        if (topicIndex <= 0) return ch;
-        const newTopics = [...ch.topics];
-        [newTopics[topicIndex - 1], newTopics[topicIndex]] = [newTopics[topicIndex], newTopics[topicIndex - 1]];
-        return { ...ch, topics: newTopics.map((t, i) => ({ ...t, order: i + 1 })) };
-      })
-    }));
+  const moveChapterUp = async (chapterId: string) => {
+    if (!selectedCourse) return;
+    const idx = selectedCourse.chapters.findIndex(ch => ch.id === chapterId);
+    if (idx <= 0) return;
+    const newChapters = [...selectedCourse.chapters];
+    [newChapters[idx - 1], newChapters[idx]] = [newChapters[idx], newChapters[idx - 1]];
+    const reordered = newChapters.map((ch, i) => ({ ...ch, order: i + 1 }));
+    setSelectedCourse(prev => ({ ...prev, chapters: reordered }));
+    try {
+      await adminReorderChapters(selectedCourse._id, reordered.map(ch => ch.id));
+      toast({ title: "Kolejność rozdziałów zapisana" });
+    } catch {
+      toast({ title: "Błąd zapisu kolejności", variant: "destructive" });
+    }
   };
 
-  const moveTopicDown = (chapterId: string, topicId: string) => {
+  const moveChapterDown = async (chapterId: string) => {
+    if (!selectedCourse) return;
+    const idx = selectedCourse.chapters.findIndex(ch => ch.id === chapterId);
+    if (idx >= selectedCourse.chapters.length - 1) return;
+    const newChapters = [...selectedCourse.chapters];
+    [newChapters[idx], newChapters[idx + 1]] = [newChapters[idx + 1], newChapters[idx]];
+    const reordered = newChapters.map((ch, i) => ({ ...ch, order: i + 1 }));
+    setSelectedCourse(prev => ({ ...prev, chapters: reordered }));
+    try {
+      await adminReorderChapters(selectedCourse._id, reordered.map(ch => ch.id));
+      toast({ title: "Kolejność rozdziałów zapisana" });
+    } catch {
+      toast({ title: "Błąd zapisu kolejności", variant: "destructive" });
+    }
+  };
+
+  // Topic sorting
+  const moveTopicUp = async (chapterId: string, topicId: string) => {
+    if (!selectedCourse) return;
+    const chapter = selectedCourse.chapters.find(ch => ch.id === chapterId);
+    if (!chapter) return;
+    const topicIndex = chapter.topics.findIndex(t => t.id === topicId);
+    if (topicIndex <= 0) return;
+
+    const newTopics = [...chapter.topics];
+    [newTopics[topicIndex - 1], newTopics[topicIndex]] = [newTopics[topicIndex], newTopics[topicIndex - 1]];
+    const reordered = newTopics.map((t, i) => ({ ...t, order: i + 1 }));
+
     setSelectedCourse(prev => ({
       ...prev,
-      chapters: prev.chapters.map(ch => {
-        if (ch.id !== chapterId) return ch;
-        const topicIndex = ch.topics.findIndex(t => t.id === topicId);
-        if (topicIndex >= ch.topics.length - 1) return ch;
-        const newTopics = [...ch.topics];
-        [newTopics[topicIndex], newTopics[topicIndex + 1]] = [newTopics[topicIndex + 1], newTopics[topicIndex]];
-        return { ...ch, topics: newTopics.map((t, i) => ({ ...t, order: i + 1 })) };
-      })
+      chapters: prev.chapters.map(ch =>
+          ch.id !== chapterId ? ch : { ...ch, topics: reordered }
+      )
     }));
+
+    try {
+      await adminReorderTopics(selectedCourse._id, chapterId, reordered.map(t => t.id ?? t._id));
+    } catch {
+      toast({ title: "Błąd zapisu kolejności tematów", variant: "destructive" });
+    }
+  };
+
+  const moveTopicDown = async (chapterId: string, topicId: string) => {
+    if (!selectedCourse) return;
+    const chapter = selectedCourse.chapters.find(ch => ch.id === chapterId);
+    if (!chapter) return;
+    const topicIndex = chapter.topics.findIndex(t => t.id === topicId);
+    if (topicIndex >= chapter.topics.length - 1) return;
+
+    const newTopics = [...chapter.topics];
+    [newTopics[topicIndex], newTopics[topicIndex + 1]] = [newTopics[topicIndex + 1], newTopics[topicIndex]];
+    const reordered = newTopics.map((t, i) => ({ ...t, order: i + 1 }));
+
+    setSelectedCourse(prev => ({
+      ...prev,
+      chapters: prev.chapters.map(ch =>
+          ch.id !== chapterId ? ch : { ...ch, topics: reordered }
+      )
+    }));
+
+    try {
+      await adminReorderTopics(selectedCourse._id, chapterId, reordered.map(t => t.id ?? t._id));
+    } catch {
+      toast({ title: "Błąd zapisu kolejności tematów", variant: "destructive" });
+    }
   };
 
   const deleteTopic = async (chapterId: string, topicId: string) => {
@@ -896,6 +952,22 @@ const Admin = () => {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => moveChapterUp(chapter.id)}
+                                        disabled={chapter.order === 1}
+                                    >
+                                      <ChevronUp className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => moveChapterDown(chapter.id)}
+                                        disabled={chapter.order === selectedCourse.chapters.length}
+                                    >
+                                      <ChevronDown className="w-4 h-4" />
+                                    </Button>
                                     <Button variant="ghost" size="icon" onClick={() => openChapterDialog(chapter)}>
                                       <Edit className="w-4 h-4" />
                                     </Button>

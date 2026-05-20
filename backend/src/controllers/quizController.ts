@@ -232,8 +232,7 @@ function gradeAnswers(
     switch (q.type ?? "single") {
       case "single": {
         // user sends option string
-        const correctOption = q.options?.[q.correctAnswer ?? 0];
-        correct = userAnswer === correctOption;
+        correct = userAnswer === (q.correctAnswer ?? 0);
         break;
       }
       case "multi": {
