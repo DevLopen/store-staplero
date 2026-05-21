@@ -16,6 +16,7 @@ const AdminUsers = () => {
     const [page,       setPage]       = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [total,      setTotal]      = useState(0);
+    const [detail, setDetail] = useState<any | null>(null);
 
     const authH = () => ({
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -95,7 +96,7 @@ const AdminUsers = () => {
                             <table className="w-full">
                                 <thead>
                                 <tr className="border-b border-border bg-muted/30">
-                                    {["Name", "E-Mail", "Telefon", "Kurse", "Registriert", "Rolle"].map(h => (
+                                    {["Name", "E-Mail", "Telefon", "Adresse", "Kurse", "Registriert", "Rolle"].map(h => (
                                         <th key={h} className="text-left text-xs font-bold text-muted-foreground uppercase tracking-wide px-4 py-3">{h}</th>
                                     ))}
                                 </tr>
@@ -120,6 +121,11 @@ const AdminUsers = () => {
                                                         </span>
                                                 ) : "–"}
                                             </p>
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                                            {u.address
+                                                ? `${u.address}, ${u.postalCode ?? ""} ${u.city ?? ""}`.trim().replace(/,\s*$/, "")
+                                                : "–"}
                                         </td>
                                         <td className="px-4 py-3">
                                                 <span className="text-sm">

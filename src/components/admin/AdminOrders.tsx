@@ -141,6 +141,11 @@ const AdminOrders = () => {
                                         <td className="px-4 py-3">
                                             <p className="text-sm font-medium">{o.userName || o.user?.name}</p>
                                             <p className="text-xs text-muted-foreground">{o.userEmail || o.user?.email}</p>
+                                            {o.customerInfo?.address && (
+                                                <p className="text-xs text-muted-foreground">
+                                                    {o.customerInfo.address}, {o.customerInfo.postalCode} {o.customerInfo.city}
+                                                </p>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 text-sm text-muted-foreground">
                                             {fmtDate(o.createdAt)}
@@ -209,6 +214,7 @@ const AdminOrders = () => {
                                 {[
                                     ["Kunde", detail.userName || detail.user?.name || "–"],
                                     ["E-Mail", detail.userEmail || detail.user?.email || "–"],
+                                    ["Telefon", detail.customerInfo?.phone || "–"],
                                     ["Datum", fmtDate(detail.createdAt)],
                                     ["Betrag", fmtEur(detail.totalAmount || detail.total || 0)],
                                     ["Status", STATUS_LABELS[detail.status] || detail.status],
@@ -219,6 +225,20 @@ const AdminOrders = () => {
                                         <p className="font-semibold">{v}</p>
                                     </div>
                                 ))}
+
+                                {(detail.customerInfo?.address || detail.customerInfo?.city) && (
+                                    <div className="bg-muted/30 rounded-lg p-3 col-span-2">
+                                        <p className="text-xs text-muted-foreground mb-1">Adresse</p>
+                                        <p className="font-semibold">
+                                            {[
+                                                detail.customerInfo?.address,
+                                                detail.customerInfo?.postalCode && detail.customerInfo?.city
+                                                    ? `${detail.customerInfo.postalCode} ${detail.customerInfo.city}`
+                                                    : detail.customerInfo?.city,
+                                            ].filter(Boolean).join(", ")}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                             {detail.items?.length > 0 && (
                                 <div>
