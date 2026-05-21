@@ -154,11 +154,23 @@ function VideoBlockEditor({ block, onChange }: { block: ContentBlock; onChange: 
                     />
                 </div>
             )}
-            {block.videoUrl && (
-                <div className="rounded-lg overflow-hidden border border-gray-200 bg-black">
-                    <video src={block.videoUrl} controls className="w-full max-h-48" />
-                </div>
-            )}
+            {block.videoUrl && (() => {
+                const url = block.videoUrl ?? "";
+                const isEmbed = /youtube|youtu\.be|vimeo|dailymotion/i.test(url);
+                const isDirectFile = /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url) || (!isEmbed && url.startsWith("http"));
+                if (isEmbed) return (
+                    <div className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-xs text-slate-400 flex items-center gap-2">
+                        <span>🎬</span>
+                        <span>Link zewnętrzny — podgląd dostępny w trybie nauki kursanta.</span>
+                    </div>
+                );
+                if (isDirectFile) return (
+                    <div className="rounded-lg overflow-hidden border border-gray-200 bg-black">
+                        <video src={url} controls className="w-full max-h-48" />
+                    </div>
+                );
+                return null;
+            })()}
             <div className="space-y-1.5">
                 <Label className={labelCls}>Podpis (opcjonalny)</Label>
                 <Input value={(block as any).videoCaption ?? ""} onChange={e => onChange({ ...block, videoCaption: e.target.value } as any)} placeholder="Opis wideo widoczny pod spodem..." className={inputCls} />
