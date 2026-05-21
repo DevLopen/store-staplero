@@ -54,7 +54,10 @@ app.use(express.json({ limit: "10mb" }));
 
 // ── Static file serving for uploads ──────────────────────────────────────────
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), "uploads");
-app.use("/uploads", express.static(UPLOADS_DIR));
+app.use("/uploads", (_req, res, next) => {
+  res.setHeader("Accept-Ranges", "bytes");
+  next();
+}, express.static(UPLOADS_DIR, { acceptRanges: true }));
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.use("/api/auth",                   authRoutes);
