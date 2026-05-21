@@ -160,7 +160,6 @@ function VideoBlockEditor({ block, onChange }: { block: ContentBlock; onChange: 
                 const isDirectFile = /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url) || (!isEmbed && url.startsWith("http"));
                 if (isEmbed) return (
                     <div className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-xs text-slate-400 flex items-center gap-2">
-                        <span>🎬</span>
                         <span>Link zewnętrzny — podgląd dostępny w trybie nauki kursanta.</span>
                     </div>
                 );
