@@ -20,8 +20,6 @@ import AdminCertificates from "@/components/admin/AdminCertificates";
 import AdminParticipants from "@/components/admin/AdminParticipants";
 import AdminOrders from "@/components/admin/AdminOrders";
 import AdminUsers from "@/components/admin/AdminUsers";
-import { adminReorderTopics } from "@/api/course.api";
-import { adminReorderChapters } from "@/api/course.api";
 import {
   Plus,
   Edit,
@@ -413,87 +411,33 @@ const Admin = () => {
     }
   };
 
-  const moveChapterUp = async (chapterId: string) => {
-    if (!selectedCourse) return;
-    const idx = selectedCourse.chapters.findIndex(ch => ch.id === chapterId);
-    if (idx <= 0) return;
-    const newChapters = [...selectedCourse.chapters];
-    [newChapters[idx - 1], newChapters[idx]] = [newChapters[idx], newChapters[idx - 1]];
-    const reordered = newChapters.map((ch, i) => ({ ...ch, order: i + 1 }));
-    setSelectedCourse(prev => ({ ...prev, chapters: reordered }));
-    try {
-      await adminReorderChapters(selectedCourse._id, reordered.map(ch => ch.id));
-      toast({ title: "Kolejność rozdziałów zapisana" });
-    } catch {
-      toast({ title: "Błąd zapisu kolejności", variant: "destructive" });
-    }
-  };
-
-  const moveChapterDown = async (chapterId: string) => {
-    if (!selectedCourse) return;
-    const idx = selectedCourse.chapters.findIndex(ch => ch.id === chapterId);
-    if (idx >= selectedCourse.chapters.length - 1) return;
-    const newChapters = [...selectedCourse.chapters];
-    [newChapters[idx], newChapters[idx + 1]] = [newChapters[idx + 1], newChapters[idx]];
-    const reordered = newChapters.map((ch, i) => ({ ...ch, order: i + 1 }));
-    setSelectedCourse(prev => ({ ...prev, chapters: reordered }));
-    try {
-      await adminReorderChapters(selectedCourse._id, reordered.map(ch => ch.id));
-      toast({ title: "Kolejność rozdziałów zapisana" });
-    } catch {
-      toast({ title: "Błąd zapisu kolejności", variant: "destructive" });
-    }
-  };
-
   // Topic sorting
-  const moveTopicUp = async (chapterId: string, topicId: string) => {
-    if (!selectedCourse) return;
-    const chapter = selectedCourse.chapters.find(ch => ch.id === chapterId);
-    if (!chapter) return;
-    const topicIndex = chapter.topics.findIndex(t => t.id === topicId);
-    if (topicIndex <= 0) return;
-
-    const newTopics = [...chapter.topics];
-    [newTopics[topicIndex - 1], newTopics[topicIndex]] = [newTopics[topicIndex], newTopics[topicIndex - 1]];
-    const reordered = newTopics.map((t, i) => ({ ...t, order: i + 1 }));
-
+  const moveTopicUp = (chapterId: string, topicId: string) => {
     setSelectedCourse(prev => ({
       ...prev,
-      chapters: prev.chapters.map(ch =>
-          ch.id !== chapterId ? ch : { ...ch, topics: reordered }
-      )
+      chapters: prev.chapters.map(ch => {
+        if (ch.id !== chapterId) return ch;
+        const topicIndex = ch.topics.findIndex(t => t.id === topicId);
+        if (topicIndex <= 0) return ch;
+        const newTopics = [...ch.topics];
+        [newTopics[topicIndex - 1], newTopics[topicIndex]] = [newTopics[topicIndex], newTopics[topicIndex - 1]];
+        return { ...ch, topics: newTopics.map((t, i) => ({ ...t, order: i + 1 })) };
+      })
     }));
-
-    try {
-      await adminReorderTopics(selectedCourse._id, chapterId, reordered.map(t => t.id ?? t._id));
-    } catch {
-      toast({ title: "Błąd zapisu kolejności tematów", variant: "destructive" });
-    }
   };
 
-  const moveTopicDown = async (chapterId: string, topicId: string) => {
-    if (!selectedCourse) return;
-    const chapter = selectedCourse.chapters.find(ch => ch.id === chapterId);
-    if (!chapter) return;
-    const topicIndex = chapter.topics.findIndex(t => t.id === topicId);
-    if (topicIndex >= chapter.topics.length - 1) return;
-
-    const newTopics = [...chapter.topics];
-    [newTopics[topicIndex], newTopics[topicIndex + 1]] = [newTopics[topicIndex + 1], newTopics[topicIndex]];
-    const reordered = newTopics.map((t, i) => ({ ...t, order: i + 1 }));
-
+  const moveTopicDown = (chapterId: string, topicId: string) => {
     setSelectedCourse(prev => ({
       ...prev,
-      chapters: prev.chapters.map(ch =>
-          ch.id !== chapterId ? ch : { ...ch, topics: reordered }
-      )
+      chapters: prev.chapters.map(ch => {
+        if (ch.id !== chapterId) return ch;
+        const topicIndex = ch.topics.findIndex(t => t.id === topicId);
+        if (topicIndex >= ch.topics.length - 1) return ch;
+        const newTopics = [...ch.topics];
+        [newTopics[topicIndex], newTopics[topicIndex + 1]] = [newTopics[topicIndex + 1], newTopics[topicIndex]];
+        return { ...ch, topics: newTopics.map((t, i) => ({ ...t, order: i + 1 })) };
+      })
     }));
-
-    try {
-      await adminReorderTopics(selectedCourse._id, chapterId, reordered.map(t => t.id ?? t._id));
-    } catch {
-      toast({ title: "Błąd zapisu kolejności tematów", variant: "destructive" });
-    }
   };
 
   const deleteTopic = async (chapterId: string, topicId: string) => {
@@ -647,9 +591,13 @@ const Admin = () => {
   const openQuestionDialog = (chapterId: string, question?: QuizQuestion) => {
     setSelectedQuizChapterId(chapterId);
 
-    // Tworzymy lokalny quiz jeśli jeszcze nie istnieje
+    // Pobierz istniejący quiz z kursu zamiast tworzyć pusty
     if (!editingQuiz) {
-      setEditingQuiz({
+      const existingQuiz = chapterId === "final"
+          ? selectedCourse?.finalQuiz
+          : selectedCourse?.chapters.find((ch: any) => ch.id === chapterId)?.quiz;
+
+      setEditingQuiz(existingQuiz ?? {
         id: `quiz-${Date.now()}`,
         chapterId: chapterId !== "final" ? chapterId : undefined,
         title: quizForm.title || "",
@@ -664,11 +612,11 @@ const Admin = () => {
       setEditingQuestion(question);
       setQuestionForm({
         question: question.question,
-        option1: question.options[0] || "",
-        option2: question.options[1] || "",
-        option3: question.options[2] || "",
-        option4: question.options[3] || "",
-        correctAnswer: question.correctAnswer.toString(),
+        option1: question.options?.[0] || "",
+        option2: question.options?.[1] || "",
+        option3: question.options?.[2] || "",
+        option4: question.options?.[3] || "",
+        correctAnswer: (question.correctAnswer ?? 0).toString(),
       });
     } else {
       setEditingQuestion(null);
@@ -685,7 +633,7 @@ const Admin = () => {
 
     const newQuestion: QuizQuestion = editingQuestion
         ? { ...editingQuestion, question: questionForm.question, options, correctAnswer: Number(questionForm.correctAnswer) }
-        : { id: `q-${Date.now()}`, question: questionForm.question, options, correctAnswer: Number(questionForm.correctAnswer) };
+        : { id: `q-${Date.now()}`, type: "single", question: questionForm.question, options, correctAnswer: Number(questionForm.correctAnswer) };
 
     const updatedQuestions = editingQuestion
         ? editingQuiz.questions.map(q => (q.id === editingQuestion.id ? newQuestion : q))
@@ -726,18 +674,22 @@ const Admin = () => {
     }
   };
 
-  const deleteQuestion = async (questionId: string) => {
-    if (!editingQuiz) return;
+  const deleteQuestion = async (chapterId: string, questionId: string) => {
+    // Pobierz aktualny quiz bezpośrednio z kursu (nie z editingQuiz który może być nieaktualny)
+    const currentQuiz = chapterId === "final"
+        ? selectedCourse?.finalQuiz
+        : selectedCourse?.chapters.find((ch: any) => ch.id === chapterId)?.quiz;
 
-    const updatedQuestions = editingQuiz.questions.filter(q => q.id !== questionId);
-    setEditingQuiz(prev => prev ? { ...prev, questions: updatedQuestions } : null);
+    if (!currentQuiz) return;
+
+    const updatedQuestions = currentQuiz.questions.filter((q: any) => q.id !== questionId);
+    const quizPayload = { ...currentQuiz, questions: updatedQuestions };
 
     try {
       const token = localStorage.getItem("token");
-      const quizPayload = { ...editingQuiz, questions: updatedQuestions };
 
       const res = await fetch(
-          `${API_URL}/courses/admin/${selectedCourse._id}/quizzes/${selectedQuizChapterId}`,
+          `${API_URL}/courses/admin/${selectedCourse._id}/quizzes/${chapterId}`,
           { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(quizPayload) }
       );
 
@@ -745,6 +697,15 @@ const Admin = () => {
 
       const updatedCourse = await res.json();
       setSelectedCourse(updatedCourse);
+
+      // Odśwież editingQuiz jeśli jest otwarty
+      if (editingQuiz) {
+        const refreshedQuiz = chapterId === "final"
+            ? updatedCourse.finalQuiz ?? null
+            : updatedCourse.chapters.find((ch: any) => ch.id === chapterId)?.quiz ?? null;
+        setEditingQuiz(refreshedQuiz);
+      }
+
       toast({ title: "Erfolg", description: "Frage wurde gelöscht." });
 
     } catch (err: any) {
@@ -952,22 +913,6 @@ const Admin = () => {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => moveChapterUp(chapter.id)}
-                                        disabled={chapter.order === 1}
-                                    >
-                                      <ChevronUp className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => moveChapterDown(chapter.id)}
-                                        disabled={chapter.order === selectedCourse.chapters.length}
-                                    >
-                                      <ChevronDown className="w-4 h-4" />
-                                    </Button>
                                     <Button variant="ghost" size="icon" onClick={() => openChapterDialog(chapter)}>
                                       <Edit className="w-4 h-4" />
                                     </Button>

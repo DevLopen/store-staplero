@@ -218,6 +218,13 @@ const QuizView = () => {
 
   const questions: QuizQuestion[] = quizData.questions ?? [];
   const q = questions[currentIdx];
+
+  if (!q) return (
+      <div className="min-h-screen bg-background flex items-center justify-center text-gray-400">
+        {t("quiz.notFound")}
+      </div>
+  );
+
   const progress = Math.round(((currentIdx + 1) / questions.length) * 100);
   const allAnswered = questions.every(qq => answers[qq.id] !== undefined && answers[qq.id] !== null);
   const formatTime = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
