@@ -335,9 +335,27 @@ const Index = () => {
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <img src={warehouseImage} alt="Warehouse" className="rounded-2xl shadow-lg w-full h-48 object-cover" />
-                            <img src={controlsImage} alt="Forklift controls" className="rounded-2xl shadow-lg w-full h-48 object-cover mt-8" />
-                            <img src={trainingImage} alt="Training room" className="rounded-2xl shadow-lg w-full h-48 object-cover col-span-2" />
+                            <div className="aspect-square overflow-hidden rounded-2xl shadow-lg bg-muted">
+                                <img
+                                    src={warehouseImage}
+                                    alt="Warehouse"
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+                            <div className="aspect-square overflow-hidden rounded-2xl shadow-lg bg-muted">
+                                <img
+                                    src={controlsImage}
+                                    alt="Forklift controls"
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+                            <div className="col-span-2 aspect-video overflow-hidden rounded-2xl shadow-lg bg-muted">
+                                <img
+                                    src={trainingImage}
+                                    alt="Training room"
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
