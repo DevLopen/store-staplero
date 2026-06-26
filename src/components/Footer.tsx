@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
+import logo from "@/assets/staplero-white-cropped.svg";
 
 const footerText = {
   de: { quickLinks: "Schnelllinks", home: "Startseite", advantages: "Vorteile", prices: "Preise", contact: "Kontakt", hours: "Mo-Fr: 9:00 - 17:00 Uhr", rights: "Alle Rechte vorbehalten.", dev: "Website entwickelt von" },
@@ -27,14 +28,13 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Logo & Description */}
           <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-xl">S</span>
-              </div>
-              <span className="font-display font-bold text-xl text-primary-foreground">
-                Stapler<span className="text-primary">o</span>
-              </span>
-            </div>
+            <Link to="/" className="flex items-center">
+              <img
+                  src={logo}
+                  alt="Staplero"
+                  className="h-10 w-auto"
+              />
+            </Link>
             <p className="text-primary-foreground/70 text-sm max-w-sm">
               Ihre Online-Plattform für die theoretische Ausbildung zum Gabelstaplerfahrer.
               Lernen Sie flexibel und bereiten Sie sich optimal auf Ihre Prüfung vor.

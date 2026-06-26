@@ -28,6 +28,7 @@ export const markOrderAsPaid = async (
   orderNumber: string,
   paymentIntentId: string
 ): Promise<void> => {
+  console.log("🔔 saaaaaaaaaa:");
   const order = await findOrderByNumber(orderNumber);
   if (!order) throw new Error(`Order ${orderNumber} not found`);
 
@@ -139,15 +140,23 @@ export const markOrderAsPaid = async (
       console.error("❌ Failed to process practical course:", err.message);
     }
 
+    const theoryDate = new Date(order.practicalCourseDetails.startDate);
+    const practiceDate = new Date(theoryDate);
+    practiceDate.setDate(practiceDate.getDate() + 1);
+    const fmt = (d: Date) => d.toLocaleDateString("de-DE", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
+    console.log("🔔 sendPracticalCourseBookingEmail wywołane dla:", user.email);
     await emailService.sendPracticalCourseBookingEmail(
-      user.email,
-      user.name,
-      order.orderNumber,
-      order.practicalCourseDetails.locationName,
-      order.practicalCourseDetails.locationAddress,
-      `${order.practicalCourseDetails.startDate} – ${order.practicalCourseDetails.endDate}`,
-      order.practicalCourseDetails.time,
-      order.practicalCourseDetails.wantsPlasticCard
+        user.email,
+        user.name,
+        order.orderNumber,
+        order.practicalCourseDetails.locationName,
+        order.practicalCourseDetails.locationAddress,
+        fmt(theoryDate),
+        fmt(practiceDate),
+        order.practicalCourseDetails.wantsPlasticCard,
+        ""
     );
   }
 
