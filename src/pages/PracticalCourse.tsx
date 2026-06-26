@@ -341,21 +341,21 @@ const PracticalCourse = () => {
                               </div>
                           )}
 
-                          <div className="flex items-start space-x-3 p-3 border border-border rounded-lg">
-                            <Checkbox
-                                id="plasticCard"
-                                checked={wantsPlasticCard}
-                                onCheckedChange={(checked) => setWantsPlasticCard(checked === true)}
-                            />
-                            <div className="flex-1">
-                              <Label htmlFor="plasticCard" className="cursor-pointer">
-                                {t('practical.plasticCard')}
-                              </Label>
-                              <p className="text-sm font-medium text-primary">
-                                {calculatePriceWithVAT(PLASTIC_CARD_PRICE).toFixed(2)} € ({t('practical.inclVatShort')})
-                              </p>
-                            </div>
-                          </div>
+                          {/*<div className="flex items-start space-x-3 p-3 border border-border rounded-lg">*/}
+                          {/*  <Checkbox*/}
+                          {/*      id="plasticCard"*/}
+                          {/*      checked={wantsPlasticCard}*/}
+                          {/*      onCheckedChange={(checked) => setWantsPlasticCard(checked === true)}*/}
+                          {/*  />*/}
+                          {/*  <div className="flex-1">*/}
+                          {/*    <Label htmlFor="plasticCard" className="cursor-pointer">*/}
+                          {/*      {t('practical.plasticCard')}*/}
+                          {/*    </Label>*/}
+                          {/*    <p className="text-sm font-medium text-primary">*/}
+                          {/*      {calculatePriceWithVAT(PLASTIC_CARD_PRICE).toFixed(2)} € ({t('practical.inclVatShort')})*/}
+                          {/*    </p>*/}
+                          {/*  </div>*/}
+                          {/*</div>*/}
 
                           <div className="border-t border-border pt-4">
                             <div className="flex justify-between text-sm mb-2">

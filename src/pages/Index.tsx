@@ -8,7 +8,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Link } from "react-router-dom";
 import {
     Play, Shield, Clock, Award, ChevronRight, Check, BookOpen, Users, Zap, Star,
-    Building2, Phone, Mail, MapPin, FileCheck, GraduationCap, Globe, Truck, RefreshCcw, Send, Calendar,
+    Building2, Phone, Mail, MapPin, FileCheck, GraduationCap, Globe, Truck, RefreshCcw, Send, Calendar, Forklift,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -429,13 +429,24 @@ const Index = () => {
                             {/* Practical */}
                             <CarouselItem className="pl-2 md:pl-4 basis-[85%] md:basis-1/2 lg:basis-1/3">
                                 <div className="relative bg-card rounded-3xl p-6 shadow-xl border-2 border-primary overflow-hidden">
-                                    <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 rounded-bl-xl text-sm font-medium">{t('pricing.available')}</div>
+                                    <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 rounded-bl-xl text-sm font-medium">
+                                        {t('pricing.available')}
+                                    </div>
                                     <div className="text-center mb-6">
-                                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4"><Truck className="w-6 h-6 text-primary" /></div>
-                                        <h3 className="font-display text-xl font-bold text-foreground mb-2">{t('pricing.practicalTitle')}</h3>
-                                        <p className="text-muted-foreground text-sm mb-4">{t('pricing.practicalDesc')}</p>
+                                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                                            <Forklift className="w-6 h-6 text-primary" />
+                                        </div>
+                                        <h3 className="font-display text-xl font-bold text-foreground mb-1">
+                                            Basis-Ausbildung
+                                        </h3>
+                                        <p className="text-sm text-primary font-medium mb-2">
+                                            Frontstapler · Stufe 1
+                                        </p>
+                                        <p className="text-muted-foreground text-sm mb-4">
+                                            Theorie &amp; Praxis + Prüfungen
+                                        </p>
                                         <div className="flex items-baseline justify-center gap-2">
-                                            <span className="font-display text-4xl font-bold text-foreground">€249,99</span>
+                                            <span className="font-display text-4xl font-bold text-foreground">€279,99</span>
                                             <span className="text-muted-foreground text-sm">{t('pricing.perPerson')}</span>
                                         </div>
                                         <p className="text-xs text-muted-foreground mt-1">{t('pricing.vatNote')}</p>
@@ -443,13 +454,23 @@ const Index = () => {
                                     <div className="space-y-3 mb-6">
                                         {['practicalF1','practicalF2','practicalF3','practicalF4'].map((k, i) => (
                                             <div key={i} className="flex items-center gap-2">
-                                                <div className="w-4 h-4 rounded-full bg-success flex items-center justify-center shrink-0"><Check className="w-2.5 h-2.5 text-success-foreground" /></div>
+                                                <div className="w-4 h-4 rounded-full bg-success flex items-center justify-center shrink-0">
+                                                    <Check className="w-2.5 h-2.5 text-success-foreground" />
+                                                </div>
                                                 <span className="text-foreground text-xs">{t(`pricing.${k}`)}</span>
                                             </div>
                                         ))}
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 rounded-full bg-success flex items-center justify-center shrink-0">
+                                                <Check className="w-2.5 h-2.5 text-success-foreground" />
+                                            </div>
+                                            <span className="text-foreground text-xs">Staplero ProCard</span>
+                                        </div>
                                     </div>
                                     <Link to="/practical-course" className="block">
-                                        <Button variant="hero" size="lg" className="w-full"><Calendar className="w-4 h-4 mr-2" />{t('pricing.bookAppointment')}</Button>
+                                        <Button variant="hero" size="lg" className="w-full">
+                                            <Calendar className="w-4 h-4 mr-2" />Buchen →
+                                        </Button>
                                     </Link>
                                 </div>
                             </CarouselItem>
