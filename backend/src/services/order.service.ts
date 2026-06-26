@@ -156,7 +156,7 @@ export const markOrderAsPaid = async (
         fmt(theoryDate),
         fmt(practiceDate),
         order.practicalCourseDetails.wantsPlasticCard,
-        ""
+        "https://staplero.de/assets/Hinweis.jpeg"
     );
   }
 
