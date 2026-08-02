@@ -138,6 +138,8 @@ const Index = () => {
     const { toast } = useToast();
     const { t, language } = useLanguage();
     const [contactForm, setContactForm] = useState({ name: "", email: "", phone: "", company: "", message: "" });
+    const [contactHoneypot, setContactHoneypot] = useState(""); // pole-pułapka dla botów, nie pokazywane ludziom
+    const [contactFormRenderedAt] = useState(() => Date.now()); // moment wyrenderowania formularza (do wykrywania botów)
     const [isSubmitting, setIsSubmitting] = useState(false);
     const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
     const [faqCustomerType, setFaqCustomerType] = useState('b2b');
@@ -151,14 +153,55 @@ const Index = () => {
         }
     }, []);
 
+    const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+
+    useEffect(() => {
+        if (!RECAPTCHA_SITE_KEY) return; // klucz nieskonfigurowany - pomijamy ładowanie skryptu
+        if (document.querySelector('script[src*="recaptcha/api.js"]')) return;
+        const script = document.createElement('script');
+        script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+        script.async = true;
+        document.body.appendChild(script);
+    }, [RECAPTCHA_SITE_KEY]);
+
+    // Pobiera token reCAPTCHA v3 (niewidoczny dla użytkownika) tuż przed wysłaniem formularza.
+    const getRecaptchaToken = async (): Promise<string> => {
+        if (!RECAPTCHA_SITE_KEY || !window.grecaptcha) return "";
+        return new Promise((resolve) => {
+            window.grecaptcha!.ready(async () => {
+                try {
+                    const token = await window.grecaptcha!.execute(RECAPTCHA_SITE_KEY, { action: 'contact' });
+                    resolve(token);
+                } catch {
+                    resolve("");
+                }
+            });
+        });
+    };
+
     const handleContactSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Honeypot: pole niewidoczne dla ludzi. Jeśli zostało wypełnione,
+        // to prawie na pewno bot - udajemy sukces i nic nie wysyłamy.
+        if (contactHoneypot.trim() !== "") {
+            toast({ title: t('contact.successTitle'), description: t('contact.successDesc') });
+            setContactForm({ name: "", email: "", phone: "", company: "", message: "" });
+            return;
+        }
+
         setIsSubmitting(true);
         try {
+            const recaptchaToken = await getRecaptchaToken();
             const response = await fetch(`${API_URL}/contact`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(contactForm),
+                body: JSON.stringify({
+                    ...contactForm,
+                    website: contactHoneypot, // pole-pułapka, backend też je sprawdza
+                    formRenderedAt: contactFormRenderedAt,
+                    recaptchaToken,
+                }),
             });
             const data = await response.json();
             if (response.ok) {
@@ -583,6 +626,20 @@ const Index = () => {
                             </CardHeader>
                             <CardContent>
                                 <form onSubmit={handleContactSubmit} className="space-y-4">
+                                    {/* Honeypot: pole ukryte przed ludźmi (poza ekranem, nieosiągalne Tabem),
+                                        ale widoczne w DOM dla botów, które automatycznie wypełniają każde pole. */}
+                                    <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '1px', height: '1px', overflow: 'hidden' }} aria-hidden="true">
+                                        <label htmlFor="contact-website">Website</label>
+                                        <input
+                                            type="text"
+                                            id="contact-website"
+                                            name="website"
+                                            tabIndex={-1}
+                                            autoComplete="off"
+                                            value={contactHoneypot}
+                                            onChange={e => setContactHoneypot(e.target.value)}
+                                        />
+                                    </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label htmlFor="contact-name">{t('contact.name')}</Label>

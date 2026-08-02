@@ -1,6 +1,16 @@
 import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Zapobiega wstrzyknięciu HTML w treść e-maili budowanych z danych
+// wpisanych przez użytkownika (np. formularz kontaktowy).
+const escapeHtml = (value: string): string =>
+    value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 const FROM_EMAIL = process.env.FROM_EMAIL || "STAPLERO <noreply@staplero.com>";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.com";
 
@@ -751,13 +761,13 @@ export const sendContactFormEmail = async (
       <div class="header"><h1>Neue Kontaktanfrage</h1></div>
       <div class="content">
         <h2>Sie haben eine neue Nachricht erhalten</h2>
-        <div class="info-box"><p><span class="label">Name:</span> ${name}</p></div>
-        <div class="info-box"><p><span class="label">E-Mail:</span> <a href="mailto:${email}">${email}</a></p></div>
-        ${phone ? `<div class="info-box"><p><span class="label">Telefon:</span> <a href="tel:${phone}">${phone}</a></p></div>` : ''}
-        ${company ? `<div class="info-box"><p><span class="label">Firma:</span> ${company}</p></div>` : ''}
+        <div class="info-box"><p><span class="label">Name:</span> ${escapeHtml(name)}</p></div>
+        <div class="info-box"><p><span class="label">E-Mail:</span> <a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p></div>
+        ${phone ? `<div class="info-box"><p><span class="label">Telefon:</span> <a href="tel:${escapeHtml(phone)}">${escapeHtml(phone)}</a></p></div>` : ''}
+        ${company ? `<div class="info-box"><p><span class="label">Firma:</span> ${escapeHtml(company)}</p></div>` : ''}
         <div class="message-box">
           <p class="label">Nachricht:</p>
-          <p>${message.replace(/\n/g, '<br>')}</p>
+          <p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>
         </div>
         <p style="margin-top:30px;padding-top:20px;border-top:1px solid #ddd;">
           <small>Gesendet am ${new Date().toLocaleString('de-DE')}</small>
