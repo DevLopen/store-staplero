@@ -287,7 +287,7 @@ export const cancelParticipant = async (
         await participant.save();
 
         // Zwiększ z powrotem liczbę miejsc (wpisy ręczne spoza kalendarza nie mają terminu w Location)
-        if (participant.locationId !== "manual") {
+        if (participant.locationId !== "manual" && !participant.overbooked) {
             await increaseAvailableSpots(participant.locationId, participant.dateId);
         }
 

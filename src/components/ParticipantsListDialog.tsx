@@ -15,12 +15,22 @@ import {
     Download,
     Search,
     Award,
-    CheckCircle
+    CheckCircle,
+    Pencil,
+    UserPlus,
+    Camera
 } from "lucide-react";
 import CompleteParticipantButton from "@/components/admin/CompleteParticipantButton";
+import AddParticipantModal from "@/components/admin/AddParticipantModal";
+import EditParticipantModal, { EditableParticipant } from "@/components/admin/EditParticipantModal";
+import RemoveParticipantButton from "@/components/admin/RemoveParticipantButton";
 
 interface Participant {
     _id: string;
+    firstName?: string;
+    lastName?: string;
+    notes?: string;
+    photoUrl?: string;
     userName: string;
     userEmail: string;
     userPhone?: string;
@@ -37,6 +47,8 @@ interface ParticipantsListDialogProps {
     dateId: string;
     locationName: string;
     dateInfo: string;
+    /** Wywoływane po zmianie listy (dodanie/edycja/usunięcie), żeby odświeżyć liczbę wolnych miejsc w panelu */
+    onChanged?: () => void;
 }
 
 export const ParticipantsListDialog = ({
@@ -45,13 +57,16 @@ export const ParticipantsListDialog = ({
                                            locationId,
                                            dateId,
                                            locationName,
-                                           dateInfo
+                                           dateInfo,
+                                           onChanged
                                        }: ParticipantsListDialogProps) => {
     const { toast } = useToast();
     const [participants, setParticipants] = useState<Participant[]>([]);
     const [filteredParticipants, setFilteredParticipants] = useState<Participant[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [addOpen, setAddOpen] = useState(false);
+    const [editing, setEditing] = useState<EditableParticipant | null>(null);
     const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
     useEffect(() => {
@@ -93,6 +108,12 @@ export const ParticipantsListDialog = ({
         } finally {
             setLoading(false);
         }
+    };
+
+    // Odśwież listę oraz dane rodzica (liczba wolnych miejsc)
+    const refresh = () => {
+        fetchParticipants();
+        onChanged?.();
     };
 
     const filterParticipants = () => {
@@ -216,7 +237,8 @@ export const ParticipantsListDialog = ({
     const completedCount = participants.filter(p => p.status === "completed").length;
 
     return (
-        <Dialog open={open} onOpenChange={onClose}>
+        <>
+        <Dialog open={open && !addOpen && !editing} onOpenChange={onClose}>
             <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <div className="flex items-center justify-between pr-6">
@@ -282,6 +304,10 @@ export const ParticipantsListDialog = ({
                                 />
                             </div>
                             <div className="flex gap-2">
+                                <Button onClick={() => setAddOpen(true)} className="flex-1 md:flex-none bg-amber-500 hover:bg-amber-400 text-black">
+                                    <UserPlus className="w-4 h-4 mr-2" />
+                                    Kursant hinzufügen
+                                </Button>
                                 <Button onClick={exportToPDF} variant="outline" className="flex-1 md:flex-none">
                                     <Download className="w-4 h-4 mr-2" />
                                     PDF
@@ -339,7 +365,14 @@ export const ParticipantsListDialog = ({
                                                     {index + 1}
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <p className="font-medium text-sm">{participant.userName}</p>
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="w-9 h-11 shrink-0 rounded overflow-hidden bg-muted border border-border flex items-center justify-center" title={participant.photoUrl ? "Foto vorhanden" : "Kein Foto"}>
+                                                            {participant.photoUrl
+                                                                ? <img src={participant.photoUrl} alt="" className="w-full h-full object-cover" />
+                                                                : <Camera className="w-4 h-4 text-muted-foreground/40" />}
+                                                        </div>
+                                                        <p className="font-medium text-sm">{participant.userName}</p>
+                                                    </div>
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <div className="space-y-1">
@@ -366,13 +399,25 @@ export const ParticipantsListDialog = ({
                             </span>
                                                 </td>
                                                 <td className="py-3 px-4">
-                                                    <CompleteParticipantButton
-                                                        participantId={participant._id}
-                                                        participantName={participant.userName}
-                                                        participantEmail={participant.userEmail}
-                                                        currentStatus={participant.status}
-                                                        onCompleted={fetchParticipants}
-                                                    />
+                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                        <CompleteParticipantButton
+                                                            participantId={participant._id}
+                                                            participantName={participant.userName}
+                                                            participantEmail={participant.userEmail}
+                                                            currentStatus={participant.status}
+                                                            onCompleted={refresh}
+                                                        />
+                                                        <Button size="sm" variant="outline" className="text-xs h-7 px-2.5" onClick={() => setEditing(participant)}>
+                                                            <Pencil className="w-3 h-3 mr-1" /> Bearbeiten
+                                                        </Button>
+                                                        {participant.status === "confirmed" && (
+                                                            <RemoveParticipantButton
+                                                                participantId={participant._id}
+                                                                participantName={participant.userName}
+                                                                onRemoved={refresh}
+                                                            />
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -417,14 +462,24 @@ export const ParticipantsListDialog = ({
                                                             Bezahlt: {new Date(participant.paidAt).toLocaleDateString("de-DE")}
                                                         </p>
                                                     </div>
-                                                    <div className="mt-3 pt-3 border-t border-border">
+                                                    <div className="mt-3 pt-3 border-t border-border flex flex-wrap items-center gap-1.5">
                                                         <CompleteParticipantButton
                                                             participantId={participant._id}
                                                             participantName={participant.userName}
                                                             participantEmail={participant.userEmail}
                                                             currentStatus={participant.status}
-                                                            onCompleted={fetchParticipants}
+                                                            onCompleted={refresh}
                                                         />
+                                                        <Button size="sm" variant="outline" className="text-xs h-7 px-2.5" onClick={() => setEditing(participant)}>
+                                                            <Pencil className="w-3 h-3 mr-1" /> Bearbeiten
+                                                        </Button>
+                                                        {participant.status === "confirmed" && (
+                                                            <RemoveParticipantButton
+                                                                participantId={participant._id}
+                                                                participantName={participant.userName}
+                                                                onRemoved={refresh}
+                                                            />
+                                                        )}
                                                     </div>
                                                 </div>
                                             </CardContent>
@@ -437,6 +492,23 @@ export const ParticipantsListDialog = ({
                 )}
             </DialogContent>
         </Dialog>
+
+        {addOpen && (
+            <AddParticipantModal
+                presetLocationId={locationId}
+                presetDateId={dateId}
+                onClose={() => setAddOpen(false)}
+                onDone={refresh}
+            />
+        )}
+        {editing && (
+            <EditParticipantModal
+                participant={editing}
+                onClose={() => setEditing(null)}
+                onSaved={refresh}
+            />
+        )}
+        </>
     );
 };
 

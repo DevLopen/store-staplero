@@ -43,6 +43,13 @@ export interface PracticalCourseParticipantDoc extends Document {
     isManual?: boolean;
     notes?: string;
 
+    // Zdjęcie kursanta (używane na certyfikacie). photoFile = ścieżka względem katalogu uploads.
+    photoUrl?: string;
+    photoFile?: string;
+
+    // Zapis ponad limit (admin użył "trotzdem hinzufügen"): nie zajmuje miejsca, więc po usunięciu go nie zwracamy
+    overbooked?: boolean;
+
     createdAt: Date;
     updatedAt: Date;
 }
@@ -88,6 +95,11 @@ const PracticalCourseParticipantSchema = new Schema<PracticalCourseParticipantDo
         // Wpisy ręczne
         isManual: { type: Boolean, default: false },
         notes: { type: String },
+
+        photoUrl: { type: String },
+        photoFile: { type: String },
+
+        overbooked: { type: Boolean, default: false },
     },
     { timestamps: true }
 );

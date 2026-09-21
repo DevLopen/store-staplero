@@ -373,11 +373,13 @@ const Checkout = () => {
                                                 />
                                                 {existingAccountError ? (
                                                     <p className="text-xs text-destructive font-medium">
-                                                        ⚠️ Ein Konto mit dieser E-Mail existiert bereits. Bitte geben Sie Ihr Passwort ein.
+                                                        ⚠️ Ein Konto mit dieser E-Mail existiert bereits. Bitte geben Sie Ihr Passwort ein.{" "}
+                                                        <a href="/forgot-password" target="_blank" rel="noopener noreferrer" className="underline">Passwort vergessen?</a>
                                                     </p>
                                                 ) : isExistingCustomer ? (
                                                     <p className="text-xs text-muted-foreground">
-                                                        Melden Sie sich mit dem Passwort Ihres bestehenden Kontos an.
+                                                        Melden Sie sich mit dem Passwort Ihres bestehenden Kontos an.{" "}
+                                                        <a href="/forgot-password" target="_blank" rel="noopener noreferrer" className="text-primary underline">Passwort vergessen?</a>
                                                     </p>
                                                 ) : (
                                                     <p className="text-xs text-muted-foreground">

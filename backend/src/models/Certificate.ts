@@ -23,6 +23,8 @@ export interface ICertificate extends Document {
     // wallet
     applePassUrl?: string;
     googlePassUrl?: string;
+    // Zdjęcie kursanta na certyfikacie (ścieżka względem katalogu uploads)
+    photoFile?: string;
 }
 
 const CertificateSchema = new Schema<ICertificate>(
@@ -49,6 +51,7 @@ const CertificateSchema = new Schema<ICertificate>(
         revokedReason:    { type: String },
         applePassUrl:     { type: String },
         googlePassUrl:    { type: String },
+        photoFile:        { type: String },
     },
     { timestamps: true }
 );

@@ -66,7 +66,7 @@ const STEPS = [
 const VARIANTS = [
     { days: "2 Tage", name: "Standard", text: "Gabelstapler: Tag 1 Theorie mit schriftlicher Prüfung, Tag 2 Praxis mit Fahrprüfung." },
     { days: "1 Tag", name: "Verkürzt", text: "Für Teilnehmende mit mindestens 6 Monaten Praxiserfahrung." },
-    { days: "3 Tage", name: "Intensiv", text: "Z. B. bei Schubmaststaplern, mit mehr Zeit für Theorie und Fahrpraxis." },
+    { days: "3 Tage", name: "Erweitert", text: "Z. B. bei Schubmaststaplern, mit mehr Zeit für Theorie und Fahrpraxis." },
 ];
 
 const WE_BRING = [

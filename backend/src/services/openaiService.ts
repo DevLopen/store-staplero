@@ -403,7 +403,7 @@ Social media: Facebook https://www.facebook.com/Staplero, Instagram https://www.
 1. STAPLERSCHEIN STUFE 1: TEORIA I PRAKTYKA (kurs 2 dni), można rezerwować online
    Strona z kursami: /kursy (wybór miasta i terminu, płatność online)
    Cena: 279,99 € netto + 19% VAT (około 333,19 € brutto) za osobę
-   Czas: 2 dni intensywnie
+   Czas: 2 dni
    Dzień 1: teoria i egzamin pisemny
    Dzień 2: praktyka i egzamin jazdy
    Zakres Stufe 1: wózek czołowy (Frontgabelstapler) i wózek prowadzony (Mitgänger)
@@ -425,7 +425,7 @@ Szkolenie odbywa się w jednym z dwóch miejsc:
 2) We własnej hali szkoleniowej STAPLERO w Berlinie: szkolimy na własnych wózkach (klasyczne wózki czołowe oraz wózki boczne, Seitenstapler). Klient nie musi zapewniać sali, placu ćwiczeń ani wózka. Dokładny adres hali podaje kontakt przy ofercie, nie znasz go.
 Wycena jest indywidualna. Do wyceny potrzebne: liczba pracowników, miejsce szkolenia, typ urządzenia (np. wózek czołowy, wózek wysokiego składowania, Elektro-Ameise), doświadczenie uczestników.
 Języki: DE, EN, PL, UK, RU oraz rumuński (dopłata za tłumacza 179,99 € netto/dzień)
-Czas: standard 2 dni (1 dzień przy min. 6 miesiącach doświadczenia; 3 dni intensywnie, np. dla wózków wysokiego składowania)
+Czas: standard 2 dni (1 dzień przy min. 6 miesiącach doświadczenia; 3 dni, np. dla wózków wysokiego składowania)
 Przy szkoleniu w zakładzie klienta firma zapewnia: cichą salę ze stołami i krzesłami na teorię, miejsce do ćwiczeń (hala lub plac), sprawny wózek, palety euro (najlepiej także boksy kratowe).
 Instruktorzy przywożą wszystkie materiały szkoleniowe.
 Uczestnicy przynoszą: ważny dokument tożsamości, zdjęcie paszportowe, obuwie ochronne.

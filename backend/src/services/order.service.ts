@@ -190,7 +190,11 @@ export const markOrderAsPaid = async (
         order.practicalCourseDetails.locationAddress,
         fmt(theoryDate),
         fmt(practiceDate),
-        "https://staplero.de/Hinweis.jpeg"
+        "https://staplero.de/Hinweis.jpeg",
+        [
+          user.name,
+          ...(order.practicalCourseDetails.additionalParticipants || []).map((p) => p.name),
+        ]
     );
   }
 

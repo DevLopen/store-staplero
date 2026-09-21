@@ -116,7 +116,8 @@ const Admin = () => {
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
   const [selectedQuizChapterId, setSelectedQuizChapterId] = useState<string>("");
 
-  useEffect(() => {
+  // Ładuje lokalizacje z terminami (wywoływane też po dopisaniu/usunięciu kursanta, bo zmienia się liczba wolnych miejsc)
+  const loadLocations = () => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
@@ -129,15 +130,14 @@ const Admin = () => {
           setLocations(mappedLocations);
         })
         .catch(err => console.error(err));
+  };
+
+  useEffect(() => {
+    loadLocations();
   }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    console.log(token);
-    console.log(token);
-    console.log(token);
-    console.log(token);
-    console.log(token);
     if (!token) {
       navigate("/login");
       return;
@@ -1996,6 +1996,7 @@ const Admin = () => {
             dateId={participantsDialog.dateId}
             locationName={participantsDialog.locationName}
             dateInfo={participantsDialog.dateInfo}
+            onChanged={loadLocations}
         />
       </div>
   );

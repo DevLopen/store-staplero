@@ -1,5 +1,5 @@
 import express from "express";
-import practicalCourseController from "../controllers/practicalcourseController";
+import practicalCourseController, { participantPhotoUpload } from "../controllers/practicalcourseController";
 import { protect, admin } from "../middleware/authMiddleware";
 
 const router = express.Router();
@@ -25,5 +25,10 @@ router.get("/participants/all",       protect, admin, practicalCourseController.
 
 // NEW: manually add participant
 router.post("/participants/manual",   protect, admin, practicalCourseController.addManualParticipant);
+
+// Edycja kursanta i jego zdjęcie (używane na certyfikacie)
+router.put("/participants/:id",              protect, admin, practicalCourseController.updateParticipant);
+router.post("/participants/:id/photo",       protect, admin, participantPhotoUpload, practicalCourseController.uploadParticipantPhoto);
+router.delete("/participants/:id/photo",     protect, admin, practicalCourseController.deleteParticipantPhoto);
 
 export default router;

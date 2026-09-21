@@ -61,7 +61,8 @@ const Products = () => {
             <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-primary mb-5">
               {t("products.howItWorksTitle")}
             </h2>
-            <div className="flex flex-col sm:flex-row items-stretch justify-center gap-2 sm:gap-0">
+            {/* Mobile: wszystkie 5 kroków w jednym rzędzie (siatka), od sm: rząd ze strzałkami między krokami */}
+            <div className="grid grid-cols-5 gap-1 sm:flex sm:items-stretch sm:justify-center sm:gap-0">
               {[
                 { icon: Search, label: t("products.step1") },
                 { icon: FileSearch, label: t("products.step2") },
@@ -69,12 +70,12 @@ const Products = () => {
                 { icon: CalendarCheck, label: t("products.step4") },
                 { icon: CreditCard, label: t("products.step5") },
               ].map((step, i, arr) => (
-                <div key={i} className="flex items-center sm:flex-1">
-                  <div className="flex flex-col items-center gap-2 flex-1 px-2">
+                <div key={i} className="flex items-start sm:items-center sm:flex-1">
+                  <div className="flex flex-col items-center gap-2 flex-1 px-0.5 sm:px-2">
                     <SealBadge size="sm" tone={i % 2 === 0 ? "primary" : "dark"} rotate={i % 2 === 0 ? -6 : 6}>
                       <step.icon className="w-5 h-5 text-primary-foreground" />
                     </SealBadge>
-                    <span className="text-xs sm:text-sm font-medium text-foreground text-center">{step.label}</span>
+                    <span className="text-[11px] leading-tight sm:text-sm font-medium text-foreground text-center break-words">{step.label}</span>
                   </div>
                   {i < arr.length - 1 && (
                     <ChevronRight className="hidden sm:block w-5 h-5 text-muted-foreground/40 shrink-0" />

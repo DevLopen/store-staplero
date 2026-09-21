@@ -19,6 +19,8 @@ import TopicEditor from "./pages/TopicEditor";
 import Admin from "./pages/Admin";
 import PracticalCourse from "./pages/PracticalCourse";
 import FirmenschulungBerlin from "./pages/FirmenschulungBerlin";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
@@ -61,6 +63,8 @@ const AppContent = () => {
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/practical-course" element={<PracticalCourse />} />
           <Route path="/kursy" element={<Products />} />
           <Route path="/firmenschulung-berlin" element={<FirmenschulungBerlin />} />

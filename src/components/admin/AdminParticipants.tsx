@@ -2,16 +2,22 @@ import { useState, useEffect, useCallback } from "react";
 import {
     Users, Search, Plus, CheckCircle, Mail, Loader2, Award,
     ChevronLeft, ChevronRight, RefreshCw, UserPlus, X,
-    MapPin, Calendar, Filter, Download, AlertCircle
+    MapPin, Calendar, Filter, Download, AlertCircle, Pencil, Camera
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import AddParticipantModal from "@/components/admin/AddParticipantModal";
+import EditParticipantModal, { EditableParticipant } from "@/components/admin/EditParticipantModal";
+import RemoveParticipantButton from "@/components/admin/RemoveParticipantButton";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 interface Participant {
     _id: string;
     orderNumber: string;
+    firstName?: string;
+    lastName?: string;
+    photoUrl?: string;
     seatIndex?: number;
     userName: string;
     userEmail: string;
@@ -194,274 +200,6 @@ const CompleteModal = ({
     );
 };
 
-// ── Manual add modal ──────────────────────────────────────────────────────────
-interface LocationDate { id: string; startDate: string; endDate: string; time: string; availableSpots: number }
-interface LocationOption { _id: string; city: string; address: string; dates: LocationDate[] }
-
-const AddManualModal = ({ onClose, onDone }: { onClose: () => void; onDone: () => void }) => {
-    // "calendar" = zapis na konkretny termin w mieście (zajmuje miejsce),
-    // "archive"  = wpis archiwalny z wolnym tekstem (bez wpływu na kalendarz)
-    const [mode, setMode] = useState<"calendar" | "archive">("calendar");
-    const [locations, setLocations] = useState<LocationOption[]>([]);
-    const [locationId, setLocationId] = useState("");
-    const [dateId, setDateId] = useState("");
-    const [force, setForce] = useState(false);
-    const [form, setForm] = useState({
-        firstName: "", lastName: "", userEmail: "", userPhone: "",
-        locationName: "", startDate: "", instructorName: "",
-        stufen: ["stufe1"], notes: "", issueNow: false,
-    });
-    const [loading, setLoading] = useState(false);
-    const [done, setDone] = useState(false);
-    const [error, setError] = useState("");
-
-    const authH = () => ({
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-    });
-
-    useEffect(() => {
-        fetch(`${API}/locations`)
-            .then(r => (r.ok ? r.json() : []))
-            .then((data: LocationOption[]) => setLocations(Array.isArray(data) ? data : []))
-            .catch(() => {});
-    }, []);
-
-    const location = locations.find(l => l._id === locationId);
-    const selectedDate = location?.dates.find(d => d.id === dateId);
-    const dateFull = !!selectedDate && selectedDate.availableSpots <= 0;
-
-    const changeMode = (m: "calendar" | "archive") => {
-        setMode(m);
-        setError("");
-        // Archiwum: domyślnie od razu certyfikat (dawne zachowanie); kalendarz: dopiero po kursie
-        setForm(f => ({ ...f, issueNow: m === "archive" }));
-    };
-
-    const toggleStufe = (s: string) =>
-        setForm(f => ({ ...f, stufen: f.stufen.includes(s) ? f.stufen.filter(x => x !== s) : [...f.stufen, s] }));
-
-    const submit = async () => {
-        if (!form.firstName.trim() || !form.lastName.trim() || !form.userEmail.trim()) {
-            setError("Vorname, Nachname und E-Mail sind Pflichtfelder."); return;
-        }
-        if (mode === "calendar" && (!locationId || !dateId)) {
-            setError("Bitte Standort und Termin auswählen."); return;
-        }
-        if (mode === "archive" && !form.startDate) {
-            setError("Kursdatum ist ein Pflichtfeld."); return;
-        }
-        setLoading(true); setError("");
-        try {
-            const body = mode === "calendar"
-                ? { ...form, locationId, dateId, force }
-                : { ...form };
-            const res = await fetch(`${API}/admin/practical-courses/participants/manual`, {
-                method: "POST",
-                headers: authH(),
-                body: JSON.stringify(body),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message || "Fehler");
-            setDone(true);
-            onDone();
-        } catch (e: any) { setError(e.message); }
-        finally { setLoading(false); }
-    };
-
-    const inputCls = "w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary";
-    const labelCls = "text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block";
-
-    return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
-                {done ? (
-                    <div className="text-center py-4">
-                        <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                        <h3 className="font-bold text-lg mb-2">Kursant hinzugefügt!</h3>
-                        {mode === "calendar" && selectedDate && location && (
-                            <p className="text-sm text-muted-foreground">
-                                {location.city} · {fmtDate(selectedDate.startDate)} — Platz wurde reserviert.
-                            </p>
-                        )}
-                        {form.issueNow && <p className="text-sm text-muted-foreground">Zertifikat ausgestellt und per E-Mail gesendet.</p>}
-                        <Button className="mt-5 w-full" onClick={onClose}>Schließen</Button>
-                    </div>
-                ) : (
-                    <>
-                        <div className="flex items-center justify-between mb-5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
-                                    <UserPlus className="w-5 h-5 text-amber-500" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold">Kursant manuell hinzufügen</h3>
-                                    <p className="text-xs text-muted-foreground">Ręczne dopisanie kursanta</p>
-                                </div>
-                            </div>
-                            <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        {/* Tryb */}
-                        <div className="grid grid-cols-2 gap-2 mb-4">
-                            {([
-                                ["calendar", "Termin aus Kalender"],
-                                ["archive", "Archiv (freie Eingabe)"],
-                            ] as const).map(([m, label]) => (
-                                <button key={m} type="button" onClick={() => changeMode(m)}
-                                        className={`text-sm font-medium rounded-lg border-2 py-2 px-3 transition-colors ${
-                                            mode === m ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
-                                        }`}>
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Kursant */}
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div>
-                                <label className={labelCls}>Vorname *</label>
-                                <input type="text" value={form.firstName} placeholder="Jan"
-                                       onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} className={inputCls} />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Nachname *</label>
-                                <input type="text" value={form.lastName} placeholder="Kowalski"
-                                       onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} className={inputCls} />
-                            </div>
-                            <div>
-                                <label className={labelCls}>E-Mail *</label>
-                                <input type="email" value={form.userEmail} placeholder="jan@example.com"
-                                       onChange={e => setForm(f => ({ ...f, userEmail: e.target.value }))} className={inputCls} />
-                            </div>
-                            <div>
-                                <label className={labelCls}>Telefon</label>
-                                <input type="text" value={form.userPhone} placeholder="+48 123 456 789"
-                                       onChange={e => setForm(f => ({ ...f, userPhone: e.target.value }))} className={inputCls} />
-                            </div>
-                        </div>
-
-                        {/* Termin */}
-                        {mode === "calendar" ? (
-                            <div className="grid grid-cols-2 gap-3 mb-3">
-                                <div>
-                                    <label className={labelCls}>Standort *</label>
-                                    <select value={locationId}
-                                            onChange={e => { setLocationId(e.target.value); setDateId(""); setForce(false); }}
-                                            className={inputCls}>
-                                        <option value="">– wählen –</option>
-                                        {locations.map(l => <option key={l._id} value={l._id}>{l.city}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className={labelCls}>Termin *</label>
-                                    <select value={dateId} disabled={!location}
-                                            onChange={e => { setDateId(e.target.value); setForce(false); }}
-                                            className={inputCls}>
-                                        <option value="">– wählen –</option>
-                                        {(location?.dates || [])
-                                            .slice()
-                                            .sort((a, b) => a.startDate.localeCompare(b.startDate))
-                                            .map(d => (
-                                                <option key={d.id} value={d.id}>
-                                                    {fmtDate(d.startDate)} · {d.availableSpots} frei
-                                                </option>
-                                            ))}
-                                    </select>
-                                </div>
-                                {dateFull && (
-                                    <label className="col-span-2 flex items-center gap-2 text-sm p-2.5 rounded-lg bg-red-500/10 text-red-500 cursor-pointer">
-                                        <input type="checkbox" checked={force} onChange={e => setForce(e.target.checked)} className="accent-red-500" />
-                                        Termin ist voll — trotzdem hinzufügen
-                                    </label>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 gap-3 mb-3">
-                                <div>
-                                    <label className={labelCls}>Kursdatum *</label>
-                                    <input type="date" value={form.startDate}
-                                           onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={inputCls} />
-                                </div>
-                                <div>
-                                    <label className={labelCls}>Ausbildungsort</label>
-                                    <input type="text" value={form.locationName} placeholder="Berlin"
-                                           onChange={e => setForm(f => ({ ...f, locationName: e.target.value }))} className={inputCls} />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Zertifikat — nur gdy od razu wystawiamy */}
-                        {form.issueNow && (
-                            <>
-                                <div className="mb-3">
-                                    <label className={labelCls}>Ausbilder</label>
-                                    <input type="text" value={form.instructorName} placeholder="Bohdan Kutko"
-                                           onChange={e => setForm(f => ({ ...f, instructorName: e.target.value }))} className={inputCls} />
-                                </div>
-                                <div className="mb-3">
-                                    <label className={`${labelCls} mb-2`}>Qualifizierungsstufen</label>
-                                    <div className="space-y-1.5">
-                                        {Object.entries(STUFEN_LABELS).map(([key, label]) => (
-                                            <label key={key} className="flex items-center gap-2 cursor-pointer p-2 rounded-lg border border-border hover:bg-muted/40">
-                                                <input type="checkbox" checked={form.stufen.includes(key)}
-                                                       onChange={() => toggleStufe(key)} className="accent-amber-500" />
-                                                <span className="text-sm">{label}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {/* Notes */}
-                        <div className="mb-3">
-                            <label className={labelCls}>Notizen (intern)</label>
-                            <textarea
-                                value={form.notes}
-                                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                                placeholder="Uwagi wewnętrzne..."
-                                rows={2}
-                                className={`${inputCls} resize-none`}
-                            />
-                        </div>
-
-                        {/* Issue now toggle */}
-                        <label className="flex items-center gap-2.5 cursor-pointer mb-4 p-3 rounded-xl bg-muted/30 border border-border">
-                            <input type="checkbox" checked={form.issueNow}
-                                   onChange={e => setForm(f => ({ ...f, issueNow: e.target.checked }))}
-                                   className="accent-amber-500 w-4 h-4" />
-                            <div>
-                                <p className="text-sm font-semibold">Zertifikat sofort ausstellen</p>
-                                <p className="text-xs text-muted-foreground">Kurs als abgeschlossen markieren, Zertifikat per E-Mail senden</p>
-                            </div>
-                        </label>
-
-                        {error && (
-                            <p className="text-red-400 text-xs mb-3 bg-red-500/10 rounded-lg px-3 py-2 flex items-center gap-2">
-                                <AlertCircle className="w-3.5 h-3.5" /> {error}
-                            </p>
-                        )}
-
-                        <div className="flex gap-3">
-                            <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
-                                Abbrechen
-                            </Button>
-                            <Button className="flex-1 bg-amber-500 hover:bg-amber-400 text-black" onClick={submit}
-                                    disabled={loading || (dateFull && !force)}>
-                                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
-                                Hinzufügen
-                            </Button>
-                        </div>
-                    </>
-                )}
-            </div>
-        </div>
-    );
-};
-
 // ── Main component ────────────────────────────────────────────────────────────
 const AdminParticipants = () => {
     const [participants, setParticipants] = useState<Participant[]>([]);
@@ -473,6 +211,7 @@ const AdminParticipants = () => {
     const [total, setTotal]               = useState(0);
     const [completeModal, setCompleteModal] = useState<Participant | null>(null);
     const [addModal, setAddModal]           = useState(false);
+    const [editModal, setEditModal]         = useState<EditableParticipant | null>(null);
     const [resendLoading, setResendLoading] = useState<string | null>(null);
 
     const authH = () => ({
@@ -610,6 +349,12 @@ const AdminParticipants = () => {
                                     className={`border-b border-border last:border-0 hover:bg-muted/20 transition-colors ${i % 2 === 0 ? "" : "bg-muted/10"}`}>
                                     {/* Teilnehmer */}
                                     <td className="px-4 py-3">
+                                        <div className="flex items-start gap-2.5">
+                                        <div className="w-9 h-11 shrink-0 rounded overflow-hidden bg-muted border border-border flex items-center justify-center" title={p.photoUrl ? "Foto vorhanden" : "Kein Foto"}>
+                                            {p.photoUrl
+                                                ? <img src={p.photoUrl} alt="" className="w-full h-full object-cover" />
+                                                : <Camera className="w-4 h-4 text-muted-foreground/40" />}
+                                        </div>
                                         <div>
                                             <p className="font-semibold text-sm">{p.userName}</p>
                                             <p className="text-xs text-muted-foreground">{p.userEmail}</p>
@@ -620,6 +365,7 @@ const AdminParticipants = () => {
                                             {p.isManual && (
                                                 <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">Manuell</span>
                                             )}
+                                        </div>
                                         </div>
                                     </td>
                                     {/* Kurs */}
@@ -650,6 +396,17 @@ const AdminParticipants = () => {
                                     {/* Aktionen */}
                                     <td className="px-4 py-3">
                                         <div className="flex flex-wrap gap-1.5">
+                                            <Button size="sm" variant="outline" className="text-xs h-7 px-2.5" onClick={() => setEditModal(p)}>
+                                                <Pencil className="w-3 h-3 mr-1" />
+                                                Bearbeiten
+                                            </Button>
+                                            {p.status === "confirmed" && (
+                                                <RemoveParticipantButton
+                                                    participantId={p._id}
+                                                    participantName={p.userName}
+                                                    onRemoved={fetchParticipants}
+                                                />
+                                            )}
                                             {p.status === "confirmed" && (
                                                 <Button size="sm"
                                                         className="bg-green-600 hover:bg-green-500 text-white text-xs h-7 px-2.5"
@@ -706,9 +463,16 @@ const AdminParticipants = () => {
                 />
             )}
             {addModal && (
-                <AddManualModal
-                    onClose={() => setAddModal(false)}
-                    onDone={() => { setAddModal(false); fetchParticipants(); }}
+                <AddParticipantModal
+                    onClose={() => { setAddModal(false); fetchParticipants(); }}
+                    onDone={fetchParticipants}
+                />
+            )}
+            {editModal && (
+                <EditParticipantModal
+                    participant={editModal}
+                    onClose={() => setEditModal(null)}
+                    onSaved={fetchParticipants}
                 />
             )}
         </div>

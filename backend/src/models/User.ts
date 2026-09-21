@@ -21,6 +21,9 @@ export interface UserDoc extends Document {
     city?: string;
     postalCode?: string;
     purchasedCourses: PurchasedCourse[];
+    // Reset hasła: w bazie tylko hash SHA-256 tokenu, nigdy sam token
+    passwordResetTokenHash?: string;
+    passwordResetExpires?: Date;
     createdAt: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;
 }
@@ -46,6 +49,8 @@ const UserSchema = new Schema<UserDoc>(
         city: String,
         postalCode: String,
         purchasedCourses: [PurchasedCourseSchema],
+        passwordResetTokenHash: { type: String, index: true, select: false },
+        passwordResetExpires: { type: Date, select: false },
     },
     { timestamps: true }
 );

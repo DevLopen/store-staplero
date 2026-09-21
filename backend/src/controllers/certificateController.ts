@@ -185,6 +185,16 @@ export async function generateCertificatePDF(cert: any): Promise<Buffer> {
             const logoPath = _path.join(__dirname, "../assets/staplero_logo.jpeg");
             const logoBuf: Buffer | null = _fs.existsSync(logoPath) ? _fs.readFileSync(logoPath) : null;
 
+            // Zdjęcie kursanta (opcjonalne): plik z katalogu uploads, tylko JPEG/PNG
+            let photoBuf: Buffer | null = null;
+            if (cert.photoFile && typeof cert.photoFile === "string") {
+                const uploadsDir = process.env.UPLOADS_DIR || _path.join(process.cwd(), "uploads");
+                const photoPath = _path.resolve(uploadsDir, cert.photoFile);
+                if (photoPath.startsWith(_path.resolve(uploadsDir) + _path.sep) && _fs.existsSync(photoPath)) {
+                    photoBuf = _fs.readFileSync(photoPath);
+                }
+            }
+
             const doc = new PDFDocument({ size:"A4", layout:"landscape",
                 margins:{top:0,bottom:0,left:0,right:0} });
             const chunks: Buffer[] = [];
@@ -456,6 +466,18 @@ export async function generateCertificatePDF(cert: any): Promise<Buffer> {
                 .text(code, xR, nrY+14, {width:colR, align:"center", characterSpacing:1});
             doc.fontSize(5).fillColor("rgba(255,255,255,0.25)").font("Helvetica")
                 .text("staplero.com/verify", xR, nrY+nrH-10, {width:colR, align:"center"});
+
+            // Zdjęcie kursanta w formacie paszportowym 35x45 mm (proporcje 7:9), pod numerem certyfikatu
+            if (photoBuf && nrH > 150) {
+                const pw = 72, ph = Math.round(pw * 9 / 7);
+                const px = xR + (colR - pw) / 2, py = nrY + 34;
+                try {
+                    doc.rect(px - 2, py - 2, pw + 4, ph + 4).fill("#ffffff");
+                    doc.image(photoBuf, px, py, { cover: [pw, ph], align: "center", valign: "center" });
+                } catch (imgErr) {
+                    console.error("[Certificate] Foto konnte nicht eingebettet werden:", (imgErr as Error).message);
+                }
+            }
 
             doc.end();
         } catch(e) { reject(e); }

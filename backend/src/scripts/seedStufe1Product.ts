@@ -40,10 +40,10 @@ const data = {
   },
 
   shortDescription: {
-    de: "2 Tage Intensivkurs mit Theorie, Praxis und Prüfungen",
-    en: "2-day intensive course with theory, practice and exams",
-    uk: "Інтенсивний курс на 2 дні: теорія, практика та іспити",
-    pl: "Intensywny kurs 2 dni: teoria, praktyka i egzaminy",
+    de: "In 2 Tagen zum Staplerschein: Theorie, Praxis und Prüfungen",
+    en: "Forklift license in 2 days: theory, practice and exams",
+    uk: "Права на навантажувач за 2 дні: теорія, практика та іспити",
+    pl: "Uprawnienia w 2 dni: teoria, praktyka i egzaminy",
   },
 
   description: {
@@ -82,7 +82,7 @@ const data = {
 
   benefits: {
     de: [
-      "2 Tage Intensivkurs",
+      "Kursdauer: 2 Tage",
       "Theorie und Praxis",
       "Schriftliche Prüfung und Fahrprüfung",
       "Anerkannter Staplerschein nach DGUV Vorschrift 68",
@@ -90,7 +90,7 @@ const data = {
       "Digitales Zertifikat (PDF, Apple Wallet, Google Wallet)",
     ],
     en: [
-      "2-day intensive course",
+      "Course duration: 2 days",
       "Theory and practice",
       "Written exam and driving test",
       "Recognized forklift license per DGUV Regulation 68",
@@ -98,7 +98,7 @@ const data = {
       "Digital certificate (PDF, Apple Wallet, Google Wallet)",
     ],
     uk: [
-      "Інтенсивний курс на 2 дні",
+      "Тривалість курсу: 2 дні",
       "Теорія і практика",
       "Письмовий іспит та іспит з водіння",
       "Визнане посвідчення за DGUV Vorschrift 68",
@@ -106,7 +106,7 @@ const data = {
       "Цифровий сертифікат (PDF, Apple Wallet, Google Wallet)",
     ],
     pl: [
-      "Intensywny kurs 2 dni",
+      "Czas trwania kursu: 2 dni",
       "Teoria i praktyka",
       "Egzamin pisemny i egzamin z jazdy",
       "Uznawane uprawnienia zgodne z DGUV Vorschrift 68",

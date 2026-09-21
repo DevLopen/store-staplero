@@ -69,10 +69,10 @@ export const FAQ: FaqItem[] = [
   },
   {
     q: "Wie lange dauert die Ausbildung?",
-    a: "Der Standard für Gabelstapler sind 2 Tage: Tag 1 Theorie mit schriftlicher Prüfung, Tag 2 Praxis mit Fahrprüfung. Es gibt verkürzte und intensivere Varianten:",
+    a: "Der Standard für Gabelstapler sind 2 Tage: Tag 1 Theorie mit schriftlicher Prüfung, Tag 2 Praxis mit Fahrprüfung. Je nach Vorerfahrung und Gerät gibt es eine verkürzte und eine verlängerte Variante:",
     bullets: [
       "1 Tag: bei mindestens 6 Monaten Praxiserfahrung",
-      "3 Tage (intensiv): z. B. bei Schubmaststaplern",
+      "3 Tage: z. B. bei Schubmaststaplern",
     ],
   },
   {

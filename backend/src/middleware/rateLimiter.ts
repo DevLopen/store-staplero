@@ -50,3 +50,38 @@ export const notifyRequestRateLimiter = rateLimit({
             (req.ip === "127.0.0.1" || req.ip === "::1");
     }
 });
+
+
+// Reset hasła: max 5 próśb o link / godzinę z jednego IP (ochrona przed spamowaniem skrzynek).
+export const forgotPasswordRateLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: {
+        message: "Zu viele Anfragen. Bitte versuchen Sie es später erneut.",
+        retryAfter: "60 Minuten"
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
+    skip: (req) => {
+        return process.env.NODE_ENV === "development" &&
+            (req.ip === "127.0.0.1" || req.ip === "::1");
+    }
+});
+
+// Ustawianie nowego hasła: max 10 prób / godzinę z jednego IP (ochrona przed zgadywaniem tokenów).
+export const resetPasswordRateLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: {
+        message: "Zu viele Versuche. Bitte versuchen Sie es später erneut.",
+        retryAfter: "60 Minuten"
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false },
+    skip: (req) => {
+        return process.env.NODE_ENV === "development" &&
+            (req.ip === "127.0.0.1" || req.ip === "::1");
+    }
+});

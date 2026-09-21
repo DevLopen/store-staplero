@@ -98,7 +98,12 @@ const Login = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Passwort</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Passwort</Label>
+                    <Link to="/forgot-password" className="text-sm text-primary hover:underline font-medium">
+                      Passwort vergessen?
+                    </Link>
+                  </div>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -119,7 +124,7 @@ const Login = () => {
 
               <div className="mt-6 text-center text-sm text-muted-foreground">
                 Noch kein Konto?{" "}
-                <Link to="/practical-course" className="text-primary hover:underline font-medium">
+                <Link to="/kursy" className="text-primary hover:underline font-medium">
                   Jetzt registrieren
                 </Link>
               </div>
