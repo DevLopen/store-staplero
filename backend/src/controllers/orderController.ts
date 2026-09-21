@@ -1,6 +1,55 @@
 import { Request, Response } from "express";
 import Order from "../models/Order";
+import PracticalCourseParticipant from "../models/PracticalCourseParticipant";
 import orderService from "../services/order.service";
+import { resolveName } from "../utils/name";
+
+/**
+ * Ile osób powinno być zapisanych na kurs praktyczny z tego zamówienia
+ * (kupujący + dodatkowi). Źródło prawdy: pozycja "practical" w zamówieniu.
+ */
+const expectedParticipantCount = (order: any): number => {
+    if (order.type !== "practical") return 0;
+    const item = (order.items || []).find((i: any) => i.type === "practical");
+    return item?.quantity || 1 + (order.practicalCourseDetails?.additionalParticipants?.length || 0);
+};
+
+/**
+ * Lista osób z zamówienia (z danych zamówienia) + informacja, czy dana osoba
+ * ma już rekord uczestnika w kursie (czyli faktycznie została zapisana po opłaceniu).
+ */
+const buildParticipantsView = (order: any, registered: any[]) => {
+    const details = order.practicalCourseDetails;
+    if (order.type !== "practical" || !details) return [];
+
+    const buyer = resolveName({
+        firstName: order.userDetails?.firstName,
+        lastName: order.userDetails?.lastName,
+        name: order.userDetails?.name,
+    });
+    const seats = [
+        { seatIndex: 0, ...buyer },
+        ...(details.additionalParticipants || []).map((p: any, i: number) => ({
+            seatIndex: i + 1,
+            ...resolveName(p),
+        })),
+    ];
+    const bySeat = new Map(registered.map((r) => [r.seatIndex ?? 0, r]));
+
+    return seats.map((seat) => {
+        const rec = bySeat.get(seat.seatIndex);
+        return {
+            seatIndex: seat.seatIndex,
+            firstName: seat.firstName,
+            lastName: seat.lastName,
+            name: seat.name,
+            isBuyer: seat.seatIndex === 0,
+            registered: !!rec,
+            participantId: rec?._id,
+            participantStatus: rec?.status,
+        };
+    });
+};
 
 /**
  * GET /api/orders
@@ -36,7 +85,21 @@ export const getAllOrders = async (req: Request, res: Response) => {
             Order.countDocuments(filter),
         ]);
 
-        const formattedOrders = orders.map(order => ({
+        // Faktycznie zapisani uczestnicy dla zamówień z tej strony (jedno zapytanie)
+        const registeredByOrder = new Map<string, any[]>();
+        const practicalIds = orders.filter(o => o.type === "practical").map(o => o._id.toString());
+        if (practicalIds.length > 0) {
+            const registered = await PracticalCourseParticipant.find({ orderId: { $in: practicalIds } }).lean();
+            for (const r of registered) {
+                const list = registeredByOrder.get(r.orderId) || [];
+                list.push(r);
+                registeredByOrder.set(r.orderId, list);
+            }
+        }
+
+        const formattedOrders = orders.map(order => {
+          const participants = buildParticipantsView(order, registeredByOrder.get(order._id.toString()) || []);
+          return {
             id: order._id,
             _id: order._id,
             orderNumber: order.orderNumber,
@@ -49,6 +112,7 @@ export const getAllOrders = async (req: Request, res: Response) => {
                 name: item.courseName,
                 courseName: item.courseName,
                 price: item.price,
+                quantity: item.quantity || 1,
                 courseId: item.courseId,
             })),
             total: order.totalAmount,
@@ -58,16 +122,25 @@ export const getAllOrders = async (req: Request, res: Response) => {
             paidAt: order.paidAt,
             expiresAt: order.expiresAt,
             customerInfo: {
-                firstName: order.userDetails.name.split(" ")[0] || "",
-                lastName: order.userDetails.name.split(" ").slice(1).join(" ") || "",
+                firstName: resolveName(order.userDetails).firstName,
+                lastName: resolveName(order.userDetails).lastName,
                 email: order.userDetails.email,
                 phone: order.userDetails.phone,
                 address: order.userDetails.address,
                 city: order.userDetails.city,
                 postalCode: order.userDetails.postalCode,
             },
+            type: order.type,
+            invoiceNumber: order.invoiceNumber,
+            billingAddressDifferent: order.billingAddressDifferent,
+            billingAddress: order.billingAddress,
             practicalCourseDetails: order.practicalCourseDetails,
-        }));
+            // Kontrola w panelu admina: ile osób powinno być, ile jest faktycznie zapisanych
+            expectedParticipants: expectedParticipantCount(order),
+            registeredParticipants: participants.filter(p => p.registered).length,
+            participants,
+          };
+        });
 
         res.json({
             orders: formattedOrders,
@@ -132,5 +205,36 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     } catch (err) {
         console.error("❌ Error updating order status:", err);
         res.status(500).json({ message: "Server error", error: err });
+    }
+};
+
+/**
+ * POST /api/orders/:id/sync-participants  (Admin only)
+ * Dopisuje na kurs brakujące osoby z opłaconego zamówienia i koryguje liczbę wolnych miejsc.
+ * Idempotentne — służy też do naprawy zamówień opłaconych przed wprowadzeniem wielu uczestników.
+ */
+export const syncOrderParticipants = async (req: Request, res: Response) => {
+    try {
+        if (!req.params.id.match(/^[a-f\d]{24}$/i)) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ message: "Order not found" });
+        if (order.type !== "practical" || !order.practicalCourseDetails) {
+            return res.status(400).json({ message: "Nur Praxiskurs-Bestellungen können synchronisiert werden" });
+        }
+        if (order.status !== "paid") {
+            return res.status(400).json({ message: "Nur bezahlte Bestellungen können synchronisiert werden" });
+        }
+
+        const { created, total } = await orderService.registerPracticalParticipants(order);
+        res.json({
+            message: created > 0 ? `${created} Teilnehmer hinzugefügt` : "Alle Teilnehmer waren bereits eingetragen",
+            created,
+            total,
+        });
+    } catch (err: any) {
+        console.error("❌ Error syncing participants:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
     }
 };

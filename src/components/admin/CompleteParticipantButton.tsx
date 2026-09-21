@@ -3,7 +3,7 @@ import { CheckCircle, Mail, Loader2, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface CompleteParticipantButtonProps {
-    orderNumber: string;
+    participantId: string;
     participantName: string;
     participantEmail: string;
     currentStatus: "confirmed" | "cancelled" | "completed";
@@ -13,7 +13,7 @@ interface CompleteParticipantButtonProps {
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const CompleteParticipantButton = ({
-                                       orderNumber,
+                                       participantId,
                                        participantName,
                                        participantEmail,
                                        currentStatus,
@@ -45,7 +45,7 @@ const CompleteParticipantButton = ({
         setError("");
         try {
             const res = await fetch(
-                `${API_URL}/admin/practical-courses/participants/${orderNumber}/complete`,
+                `${API_URL}/admin/practical-courses/participants/${participantId}/complete`,
                 {
                     method: "POST",
                     headers: authHeaders(),
@@ -68,7 +68,7 @@ const CompleteParticipantButton = ({
         setError("");
         try {
             const res = await fetch(
-                `${API_URL}/admin/practical-courses/participants/${orderNumber}/resend-certificate`,
+                `${API_URL}/admin/practical-courses/participants/${participantId}/resend-certificate`,
                 { method: "POST", headers: authHeaders() }
             );
             const data = await res.json();

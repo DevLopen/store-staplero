@@ -7,10 +7,16 @@ import emailService from "../services/email.service";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { calculateGrossPrice, PRICING } from "../config/pricing.config";
+import Location from "../models/Location";
+import Product from "../models/Product";
+import { findDateIndex } from "../services/practicalCourse.service";
+import { resolveName } from "../utils/name";
 
 interface CheckoutRequest {
-    // User details
-    name: string;
+    // User details — imię i nazwisko jako osobne pola (`name` tylko dla wstecznej zgodności)
+    firstName?: string;
+    lastName?: string;
+    name?: string;
     email: string;
     password: string;
     phone?: string;
@@ -18,8 +24,27 @@ interface CheckoutRequest {
     city?: string;
     postalCode?: string;
 
+    // Adres do faktury, jeśli inny niż powyższy adres konta
+    billingAddressDifferent?: boolean;
+    billingAddress?: {
+        isCompany?: boolean;
+        name?: string;
+        company?: string;
+        vatId?: string;
+        address: string;
+        city: string;
+        postalCode: string;
+    };
+
     // Order details
     type: "online" | "practical";
+
+    // Produkt z panelu (Produkty). To on jest źródłem prawdy dla ceny — cena przysłana
+    // z przeglądarki (`price`, `practicalCourse.basePrice`) jest tylko WERYFIKOWANA.
+    productId?: string;
+
+    // Cena netto widoczna dla klienta w chwili wejścia do checkoutu (do weryfikacji).
+    price?: number;
 
     // For online courses
     courseId?: string;
@@ -36,9 +61,25 @@ interface CheckoutRequest {
         availableSpots: number;
         basePrice: number;
         price: number;
-        wantsPlasticCard: boolean;
+        // Dodatkowe osoby zapisywane razem z główną osobą kupującą (max 5)
+        additionalParticipants?: { firstName?: string; lastName?: string; name?: string }[];
     };
 }
+
+const MAX_ADDITIONAL_PARTICIPANTS = 5;
+const PRICE_TOLERANCE = 0.01; // różnice zaokrągleń netto (€)
+
+const priceChangedResponse = (res: Response) =>
+    res.status(409).json({
+        code: "PRICE_CHANGED",
+        message: "Der Preis hat sich geändert. Bitte laden Sie die Seite neu und starten Sie die Buchung erneut.",
+    });
+
+const pricesMatch = (a: number, b: number) => Math.abs(a - b) <= PRICE_TOLERANCE;
+
+/** Aktualna cena netto produktu: promocyjna (jeśli aktywna) albo regularna. */
+const productNetPrice = (product: { price: number; promoPrice?: number; isPromoActive: boolean }): number =>
+    product.isPromoActive && product.promoPrice != null ? product.promoPrice : product.price;
 
 /**
  * Create checkout session (auto-register user if needed)
@@ -47,18 +88,43 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
     try {
         const data: CheckoutRequest = req.body;
 
-        // Validate required fields
-        if (!data.name || !data.email || !data.password || !data.type) {
+        // Validate required fields (imię i nazwisko są wymagane tylko przy zakładaniu nowego konta —
+        // sprawdzane niżej, po ustaleniu czy użytkownik już istnieje)
+        if (!data.email || !data.password || !data.type) {
             return res.status(400).json({ message: "Missing required fields" });
         }
+
+        if (data.billingAddressDifferent) {
+            const ba = data.billingAddress;
+            if (!ba || !ba.address?.trim() || !ba.city?.trim() || !ba.postalCode?.trim()) {
+                return res.status(400).json({ message: "Rechnungsadresse ist unvollständig" });
+            }
+            if (ba.isCompany) {
+                if (!ba.company?.trim()) {
+                    return res.status(400).json({ message: "Firmenname ist erforderlich" });
+                }
+                if (!ba.vatId?.trim()) {
+                    return res.status(400).json({ message: "USt-IdNr. ist für Firmenkunden erforderlich" });
+                }
+            } else if (!ba.name?.trim()) {
+                return res.status(400).json({ message: "Name ist für die Rechnungsadresse erforderlich" });
+            }
+        }
+
+        const buyerName = resolveName({ firstName: data.firstName, lastName: data.lastName, name: data.name });
 
         let user = await User.findOne({ email: data.email });
         let isNewUser = false;
 
         // Create user if doesn't exist
         if (!user) {
+            if (!buyerName.firstName || !buyerName.lastName) {
+                return res.status(400).json({ message: "Vorname und Nachname sind für ein neues Konto erforderlich" });
+            }
             user = new User({
-                name: data.name,
+                name: buyerName.name,
+                firstName: buyerName.firstName,
+                lastName: buyerName.lastName,
                 email: data.email,
                 password: data.password,
                 phone: data.phone,
@@ -82,12 +148,18 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                     existingAccount: true,
                 });
             }
-            // Update user details if they changed
-            user.name = data.name;
-            user.phone = data.phone;
-            user.address = data.address;
-            user.city = data.city;
-            user.postalCode = data.postalCode;
+            // Zaktualizuj dane usera TYLKO jeśli faktycznie podano nową wartość —
+            // przy logowaniu do checkoutu z pustym formularzem (np. "mam już konto")
+            // nie chcemy nadpisywać zapisanych danych pustymi polami.
+            if (buyerName.name) {
+                user.name = buyerName.name;
+                user.firstName = buyerName.firstName;
+                user.lastName = buyerName.lastName;
+            }
+            if (data.phone) user.phone = data.phone;
+            if (data.address) user.address = data.address;
+            if (data.city) user.city = data.city;
+            if (data.postalCode) user.postalCode = data.postalCode;
             await user.save();
         }
 
@@ -106,13 +178,29 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 return res.status(404).json({ message: "Course not found" });
             }
 
-            // Cena online course z konfiguracji (NETTO + VAT)
-            const coursePrice = PRICING.getOnlineCourseGross();
+            // Cena kursu online pochodzi z Produktu w panelu (z uwzględnieniem promocji).
+            // Bez productId (stary link) stosujemy domyślną cenę globalną z PRICING.
+            let netPrice: number;
+            if (data.productId) {
+                const product = await Product.findById(data.productId).lean();
+                if (!product || product.status !== "active" || product.type !== "online" ||
+                    product.courseId !== course._id.toString()) {
+                    return res.status(400).json({ message: "Produkt nicht verfügbar" });
+                }
+                netPrice = productNetPrice(product);
+            } else {
+                netPrice = PRICING.ONLINE_COURSE_MONTHLY_NET;
+            }
+            if (data.price != null && !pricesMatch(data.price, netPrice)) {
+                return priceChangedResponse(res);
+            }
+            const coursePrice = calculateGrossPrice(netPrice);
             items.push({
                 priceId: process.env.STRIPE_PRICE_ONLINE_COURSE,
                 courseId: course._id.toString(),
                 courseName: course.title,
                 price: coursePrice,
+                quantity: 1,
                 type: "online",
             });
             totalAmount = coursePrice;
@@ -126,43 +214,111 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 return res.status(400).json({ message: "Practical course details required" });
             }
 
-            // Teraz używaj stałej 'pc' zamiast 'data.practicalCourse'
-            const COURSE_NET = pc.basePrice;
-            const CARD_NET = 14.99;
+            // ── Dodatkowi uczestnicy (max 5, tylko dla kursów praktycznych) ────────
+            const additionalParticipants = (pc.additionalParticipants || [])
+                .map((p) => (p ? resolveName(p) : null))
+                .filter((p): p is { firstName: string; lastName: string; name: string } => !!p && !!p.name);
+
+            // Każdy dodatkowy uczestnik musi mieć imię ORAZ nazwisko
+            if (additionalParticipants.some((p) => !p.firstName || !p.lastName)) {
+                return res.status(400).json({
+                    message: "Vor- und Nachname sind für alle weiteren Teilnehmer erforderlich",
+                });
+            }
+
+            if (additionalParticipants.length > MAX_ADDITIONAL_PARTICIPANTS) {
+                return res.status(400).json({
+                    message: `Maximal ${MAX_ADDITIONAL_PARTICIPANTS} zusätzliche Teilnehmer pro Buchung erlaubt`,
+                });
+            }
+
+            const totalParticipants = 1 + additionalParticipants.length;
+
+            // Liczbę wolnych miejsc weryfikujemy w bazie — wartość z przeglądarki (pc.availableSpots)
+            // może być nieaktualna albo podmieniona.
+            if (!pc.locationId || !pc.dateId) {
+                return res.status(400).json({ message: "Standort und Termin sind erforderlich" });
+            }
+            const location = await Location.findById(pc.locationId);
+            if (!location) {
+                return res.status(404).json({ message: "Standort nicht gefunden" });
+            }
+            const dateIdx = findDateIndex(location, pc.dateId);
+            if (dateIdx === -1) {
+                return res.status(404).json({ message: "Termin nicht gefunden" });
+            }
+            if (totalParticipants > location.dates[dateIdx].availableSpots) {
+                return res.status(400).json({
+                    message: "Nicht genügend freie Plätze für die gewählte Teilnehmerzahl",
+                });
+            }
+
+            // Cena netto za osobę: z Produktu w panelu (promocja uwzględniona); dla starego linku
+            // bez productId — z ceny lokalizacji. Wartość z przeglądarki tylko weryfikujemy.
+            let courseNet: number;
+            let linkedCourseId: string | undefined;
+            if (data.productId) {
+                const product = await Product.findById(data.productId).lean();
+                if (!product || product.status !== "active" || product.type !== "normal") {
+                    return res.status(400).json({ message: "Produkt nicht verfügbar" });
+                }
+                if (product.locationIds?.length && !product.locationIds.includes(pc.locationId)) {
+                    return res.status(400).json({ message: "Standort gehört nicht zu diesem Produkt" });
+                }
+                courseNet = productNetPrice(product);
+                // Pakiet z dostępem online — kurs bierzemy z produktu, nie z żądania
+                if (product.includesOnlineAccess && product.linkedCourseId) {
+                    linkedCourseId = product.linkedCourseId;
+                }
+            } else {
+                courseNet = location.price;
+            }
+            if (!pricesMatch(pc.basePrice, courseNet)) {
+                return priceChangedResponse(res);
+            }
+
+            const date = location.dates[dateIdx];
             const VAT_RATE = 1.19;
 
-            const courseGross = Math.round(COURSE_NET * VAT_RATE * 100) / 100;
-            const cardGross = Math.round(CARD_NET * VAT_RATE * 100) / 100;
+            // Cena JEDNOSTKOWA (za jedną osobę) — mnożymy przez quantity, nie przez cenę
+            const courseUnitGross = Math.round(courseNet * VAT_RATE * 100) / 100;
 
             items = [];
             items.push({
-                courseName: `Praktischer Staplerführerschein - ${pc.locationName}`,
-                price: courseGross,
+                courseName: `Praktischer Staplerführerschein - ${location.city}`,
+                price: courseUnitGross,
+                quantity: totalParticipants,
                 type: "practical",
             });
 
-            if (pc.wantsPlasticCard) {
-                items.push({
-                    courseName: "Plastikkarte Staplerführerschein",
-                    price: cardGross,
-                    type: "practical-addon",
-                });
-                totalAmount = Math.round((courseGross + cardGross) * 100) / 100;
-            } else {
-                totalAmount = courseGross;
+            totalAmount = Math.round(courseUnitGross * totalParticipants * 100) / 100;
+
+            // Pakiet: cena już zawiera dostęp online, więc dodatkowa pozycja ma cenę 0 —
+            // służy wyłącznie do nadania dostępu do kursu (courseId) po opłaceniu.
+            if (linkedCourseId) {
+                const linkedCourse = await Course.findById(linkedCourseId);
+                if (linkedCourse) {
+                    items.push({
+                        courseId: linkedCourse._id.toString(),
+                        courseName: `${linkedCourse.title} (Online-Zugang)`,
+                        price: 0,
+                        quantity: 1,
+                        type: "online",
+                    });
+                }
             }
 
+            // Dane terminu z bazy (nie z przeglądarki) — spójne z dateId
             practicalCourseDetails = {
-                locationId: pc.locationId,
-                locationName: pc.locationName,
-                locationAddress: pc.locationAddress,
-                dateId: pc.dateId,
-                startDate: pc.startDate,
-                endDate: pc.endDate,
-                time: pc.time,
-                availableSpots: pc.availableSpots,
-                wantsPlasticCard: pc.wantsPlasticCard,
-                plasticCardPrice: pc.wantsPlasticCard ? cardGross : undefined,
+                locationId: location._id.toString(),
+                locationName: location.city,
+                locationAddress: location.address,
+                dateId: date.id,
+                startDate: date.startDate,
+                endDate: date.endDate,
+                time: date.time,
+                availableSpots: date.availableSpots,
+                additionalParticipants,
             };
         }
 
@@ -175,12 +331,16 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             status: "pending",
             userDetails: {
                 name: user.name,
+                firstName: user.firstName,
+                lastName: user.lastName,
                 email: user.email,
                 phone: user.phone,
                 address: user.address,
                 city: user.city,
                 postalCode: user.postalCode,
             },
+            billingAddressDifferent: !!data.billingAddressDifferent,
+            billingAddress: data.billingAddressDifferent ? data.billingAddress : undefined,
             practicalCourseDetails: practicalCourseDetails || undefined,
         });
 
@@ -188,7 +348,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
         const stripeItems = items.map((item) => ({
             name: item.courseName,
             price: item.price,
-            quantity: 1,
+            quantity: item.quantity ?? 1,
         }));
 
         const session = await stripeService.createCheckoutSession({
@@ -205,6 +365,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                     startDate: practicalCourseDetails.startDate,
                     endDate: practicalCourseDetails.endDate,
                     time: practicalCourseDetails.time,
+                    participants: String(1 + practicalCourseDetails.additionalParticipants.length),
                 }),
             },
         });

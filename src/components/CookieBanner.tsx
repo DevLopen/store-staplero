@@ -4,25 +4,25 @@ import { Link } from "react-router-dom";
 
 const text = {
   de: {
-    message: "Wir verwenden notwendige Cookies für den technischen Betrieb der Website sowie – mit Ihrer Einwilligung – Analyse-Cookies zur Verbesserung unseres Angebots.",
+    message: "Wir verwenden notwendige Cookies für den technischen Betrieb der Website sowie, mit Ihrer Einwilligung, Analyse-Cookies zur Verbesserung unseres Angebots.",
     accept: "Alle akzeptieren",
     necessary: "Nur notwendige",
     privacy: "Datenschutz",
   },
   en: {
-    message: "We use necessary cookies for the technical operation of the website and – with your consent – analytics cookies to improve our services.",
+    message: "We use necessary cookies for the technical operation of the website and, with your consent, analytics cookies to improve our services.",
     accept: "Accept all",
     necessary: "Necessary only",
     privacy: "Privacy Policy",
   },
   uk: {
-    message: "Ми використовуємо необхідні файли cookie для технічної роботи веб-сайту та – за вашою згодою – аналітичні cookie для покращення наших послуг.",
+    message: "Ми використовуємо необхідні файли cookie для технічної роботи веб-сайту та, за вашою згодою, аналітичні cookie для покращення наших послуг.",
     accept: "Прийняти всі",
     necessary: "Лише необхідні",
     privacy: "Конфіденційність",
   },
   pl: {
-    message: "Używamy niezbędnych plików cookie do technicznego działania strony oraz – za Twoją zgodą – analitycznych plików cookie w celu ulepszenia naszych usług.",
+    message: "Używamy niezbędnych plików cookie do technicznego działania strony oraz, za Twoją zgodą, analitycznych plików cookie w celu ulepszenia naszych usług.",
     accept: "Akceptuj wszystkie",
     necessary: "Tylko niezbędne",
     privacy: "Polityka prywatności",

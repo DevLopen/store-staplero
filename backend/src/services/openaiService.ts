@@ -404,12 +404,11 @@ Lokalizacje: Berlin, Görlitz/Zgorzelec, München
    Dzień 1: Teoria + egzamin pisemny
    Dzień 2: Praktyka + egzamin jazdy
    W cenie: teoria, praktyka, egzamin, oficjalny Staplerschein (DGUV)
-   Opcja: STAPLERO ProCard (karta plastikowa) — dopłata 14,99 € netto/os.
    Języki: DE, PL, UK, RU, EN (zależy od lokalizacji)
    Wymagania: min. 18 lat, sprawność fizyczna i psychiczna, dokument tożsamości, obuwie ochronne, zdjęcie paszportowe
    Rejestracja: online na stronie, płatność online (gotówka tylko po uzgodnieniu)
    Anulowanie: bezpłatnie do 7 dni przed kursem
-   Certyfikat: cyfrowy PDF + Apple Wallet + Google Wallet, opcjonalnie ProCard
+   Certyfikat: cyfrowy PDF + Apple Wallet + Google Wallet
 
 2. KURS TEORII ONLINE — coming soon (€49/miesiąc)
 3. KURS TEORII STACJONARNY — coming soon (€99/os.)
@@ -426,7 +425,6 @@ Instruktorzy przywożą wszystkie materiały szkoleniowe.
 Oficjalny Staplerschein zgodny z DGUV Vorschrift 68 i DGUV Grundsatz 308-001.
 Ważny w całych Niemczech.
 Format cyfrowy: PDF do pobrania, Apple Wallet, Google Wallet.
-Karta plastikowa ProCard: opcjonalnie, 14,99 € dopłata.
 NIE przyjmują bonów edukacyjnych (Bildungsgutschein) ani voucherów z Jobcenter.
 
 === FAQ — NAJCZĘSTSZE PYTANIA ===
@@ -444,9 +442,6 @@ O: Dokument tożsamości ze zdjęciem (dowód/paszport), zdjęcie paszportowe, o
 
 P: Czy certyfikat jest uznawany w całych Niemczech?
 O: Tak, DGUV Vorschrift 68 — uznawany w całych Niemczech.
-
-P: Czy karta plastikowa jest obowiązkowa?
-O: Nie, certyfikat cyfrowy w pełni wystarczy. ProCard to opcja za 14,99 €.
 
 P: Czy można kurs po polsku/ukraińsku?
 O: Tak, zależy od lokalizacji. Przy rejestracji wybierz język.

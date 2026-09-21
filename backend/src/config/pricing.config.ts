@@ -45,12 +45,8 @@ export const PRICING = {
     // Online course pricing (NETTO)
     ONLINE_COURSE_MONTHLY_NET: 49.00, // €49/month netto
 
-    // Practical course addons (NETTO)
-    PLASTIC_CARD_NET: 14.99, // Plastikkarte netto
-
     // Apply VAT to get gross prices
     getOnlineCourseGross: () => calculateGrossPrice(PRICING.ONLINE_COURSE_MONTHLY_NET),
-    getPlasticCardGross: () => calculateGrossPrice(PRICING.PLASTIC_CARD_NET),
 } as const;
 
 export default {

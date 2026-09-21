@@ -35,10 +35,16 @@ export const translations = {
     languageBadge:  { de: 'Sprachlich flexibel', en: 'Language flexible', uk: 'Мовна гнучкість', pl: 'Elastyczność językowa' },
     languages:      { de: 'Deutsch, English, Polnisch, Ukrainisch, Russisch und Rumänisch', en: 'German, English, Polish, Ukrainian, Russian and Romanian', uk: 'Німецька, Англійська, Польська, Українська, Російська та Румунська', pl: 'Niemiecki, Angielski, Polski, Ukraiński, Rosyjski i Rumuński' },
     ctaMain:        { de: 'Jetzt starten',   en: 'Get Started Now', uk: 'Розпочати зараз',    pl: 'Zacznij teraz' },
+    ctaCourses:     { de: 'Kurs buchen',    en: 'Book a Course',   uk: 'Забронювати курс',   pl: 'Zarezerwuj kurs' },
     ctaB2B:         { de: 'für Firmen',      en: 'For Companies',   uk: 'Для компаній',       pl: 'Dla firm' },
     stat48h:        { de: '48h zum Schein',  en: '48h to License',  uk: '48 год до прав',     pl: '48h do uprawnień' },
     statValid:      { de: 'Allgemein gültig',en: 'Universally valid',uk: 'Загальновизнаний',  pl: 'Ogólnie uznawany' },
     statStudents:   { de: '1.000+ Absolventen', en: '1,000+ Graduates', uk: '1 000+ випускників', pl: '1 000+ absolwentów' },
+    liveDatesTitle: { de: 'Nächste Termine', en: 'Next dates', uk: 'Найближчі дати', pl: 'Najbliższe terminy' },
+    liveDatesLive:  { de: 'live', en: 'live', uk: 'наживо', pl: 'na żywo' },
+    liveDatesSpots: { de: 'Plätze frei', en: 'spots left', uk: 'вільних місць', pl: 'wolnych miejsc' },
+    liveDatesEmpty: { de: 'Termine folgen in Kürze. Jetzt Wunschtermin anfragen.', en: 'Dates coming soon. Request your preferred date now.', uk: 'Дати з\'являться незабаром. Залиште запит на дату.', pl: 'Terminy pojawią się wkrótce. Zapytaj o wybrany termin.' },
+    liveDatesCta:   { de: 'Alle Termine ansehen', en: 'View all dates', uk: 'Переглянути всі дати', pl: 'Zobacz wszystkie terminy' },
   },
 
   // ─── USŁUGI ──────────────────────────────────────────────────────────────────
@@ -47,7 +53,7 @@ export const translations = {
     titleHighlight: { de: 'Leistungen', en: 'Services', uk: 'Послуги', pl: 'Usługi' },
     subtitle:       { de: 'STAPLERO bietet professionelle Staplerausbildung für Privatpersonen und Unternehmen', en: 'STAPLERO offers professional forklift training for individuals and businesses', uk: 'STAPLERO пропонує професійне навчання на навантажувачі для приватних осіб та підприємств', pl: 'STAPLERO oferuje profesjonalne szkolenia na wózki widłowe dla osób prywatnych i firm' },
     onlineTheory:   { de: 'Online Theorie', en: 'Online Theory', uk: 'Онлайн теорія', pl: 'Teoria online' },
-    onlineTheoryDesc: { de: 'Flexibler Online-Theoriekurs – lernen Sie jederzeit und überall', en: 'Flexible online theory course – learn anytime, anywhere', uk: 'Гнучкий онлайн-теоретичний курс – навчайтесь будь-коли та будь-де', pl: 'Elastyczny kurs teorii online – ucz się kiedy i gdzie chcesz' },
+    onlineTheoryDesc: { de: 'Flexibler Online-Theoriekurs: lernen Sie jederzeit und überall', en: 'Flexible online theory course: learn anytime, anywhere', uk: 'Гнучкий онлайн-теоретичний курс: навчайтесь будь-коли та будь-де', pl: 'Elastyczny kurs teorii online: ucz się kiedy i gdzie chcesz' },
     presenceTheory: { de: 'Präsenz Theorie', en: 'Classroom Theory', uk: 'Очна теорія', pl: 'Teoria stacjonarna' },
     presenceTheoryDesc: { de: 'Theoriekurs vor Ort mit erfahrenen Ausbildern', en: 'On-site theory course with experienced instructors', uk: 'Очний теоретичний курс із досвідченими інструкторами', pl: 'Kurs teorii na miejscu z doświadczonymi instruktorami' },
     practicalTraining: { de: 'Praxisausbildung', en: 'Practical Training', uk: 'Практичне навчання', pl: 'Szkolenie praktyczne' },
@@ -60,7 +66,7 @@ export const translations = {
   why: {
     title:          { de: 'Warum', en: 'Why', uk: 'Чому', pl: 'Dlaczego' },
     titleHighlight: { de: 'STAPLERO', en: 'STAPLERO', uk: 'STAPLERO', pl: 'STAPLERO' },
-    subtitle:       { de: 'Schnell, professionell und anerkannt – Ihre Vorteile auf einen Blick', en: 'Fast, professional and recognized – your advantages at a glance', uk: 'Швидко, професійно та визнано – ваші переваги в одному погляді', pl: 'Szybko, profesjonalnie i uznawane – Twoje zalety na pierwszy rzut oka' },
+    subtitle:       { de: 'Schnell, professionell und anerkannt. Ihre Vorteile auf einen Blick', en: 'Fast, professional and recognized. Your advantages at a glance', uk: 'Швидко, професійно та визнано. Ваші переваги в одному погляді', pl: 'Szybko, profesjonalnie i uznawane. Twoje zalety na pierwszy rzut oka' },
     recognized:     { de: 'Anerkannt', en: 'Recognized', uk: 'Визнаний', pl: 'Uznawany' },
     recognizedDesc: { de: 'Von allen Betrieben und öffentlichen Einrichtungen anerkannt', en: 'Recognized by all businesses and public institutions', uk: 'Визнаний усіма підприємствами та державними установами', pl: 'Uznawany przez wszystkie firmy i instytucje publiczne' },
     professional:   { de: 'Professionell', en: 'Professional', uk: 'Професійний', pl: 'Profesjonalny' },
@@ -93,13 +99,14 @@ export const translations = {
 
   // ─── PROGRAM KURSU ──────────────────────────────────────────────────────────
   curriculum: {
+    eyebrow:        { de: 'Ihr Weg zum Schein', en: 'Your path to the license', uk: 'Ваш шлях до прав', pl: 'Twoja droga do uprawnień' },
     title:          { de: 'Ausbildungsinhalte', en: 'Training Content', uk: 'Зміст навчання', pl: 'Program szkolenia' },
-    subtitle:       { de: 'DGUV 68 Ausbildung für Flurförderzeuge – alle relevanten Themen praxisnah vermittelt.', en: 'DGUV 68 training for industrial trucks – all relevant topics taught in a practical way.', uk: 'Навчання DGUV 68 для промислових навантажувачів – усі відповідні теми викладаються практично.', pl: 'Szkolenie DGUV 68 dla wózków jezdniowych – wszystkie istotne tematy przekazywane w sposób praktyczny.' },
+    subtitle:       { de: 'DGUV 68 Ausbildung für Flurförderzeuge: alle relevanten Themen praxisnah vermittelt.', en: 'DGUV 68 training for industrial trucks: all relevant topics taught in a practical way.', uk: 'Навчання DGUV 68 для промислових навантажувачів: усі відповідні теми викладаються практично.', pl: 'Szkolenie DGUV 68 dla wózków jezdniowych: wszystkie istotne tematy przekazywane w sposób praktyczny.' },
     item1:          { de: 'Rechtsgrundlagen', en: 'Legal Foundations', uk: 'Правові основи', pl: 'Podstawy prawne' },
     item2:          { de: 'Maßnahmen zur Unfallverhütung', en: 'Accident Prevention Measures', uk: 'Заходи з попередження нещасних випадків', pl: 'Środki zapobiegania wypadkom' },
     item3:          { de: 'Einsatzprüfung', en: 'Operational Inspection', uk: 'Перевірка перед використанням', pl: 'Kontrola przed użyciem' },
     item4:          { de: 'Fahrverhalten und Fahrzeugcharakteristik', en: 'Driving Behavior and Vehicle Characteristics', uk: 'Поведінка при їзді та характеристики транспортного засобу', pl: 'Zachowanie podczas jazdy i charakterystyka pojazdu' },
-    item5:          { de: 'Sicherheitsregeln – Wie geht man mit Lasten um?', en: 'Safety Rules – How to Handle Loads?', uk: 'Правила безпеки – як поводитися з вантажами?', pl: 'Zasady bezpieczeństwa – jak obchodzić się z ładunkiem?' },
+    item5:          { de: 'Sicherheitsregeln: Wie geht man mit Lasten um?', en: 'Safety Rules: How to Handle Loads?', uk: 'Правила безпеки: як поводитися з вантажами?', pl: 'Zasady bezpieczeństwa: jak obchodzić się z ładunkiem?' },
     item6:          { de: 'Praktisches Fahren', en: 'Practical Driving', uk: 'Практична їзда', pl: 'Jazda praktyczna' },
     item7:          { de: 'Theoretische und praktische Prüfungen', en: 'Theoretical and Practical Examinations', uk: 'Теоретичні та практичні іспити', pl: 'Egzaminy teoretyczne i praktyczne' },
   },
@@ -115,10 +122,10 @@ export const translations = {
   // ─── B2B ─────────────────────────────────────────────────────────────────────
   b2b: {
     badge:          { de: 'Für Unternehmen', en: 'For Companies', uk: 'Для компаній', pl: 'Dla firm' },
-    title:          { de: 'B2B – Spezielle Konditionen für Ihr Unternehmen', en: 'B2B – Special Conditions for Your Company', uk: 'B2B – Спеціальні умови для вашої компанії', pl: 'B2B – Specjalne warunki dla Twojej firmy' },
+    title:          { de: 'B2B: Spezielle Konditionen für Ihr Unternehmen', en: 'B2B: Special Conditions for Your Company', uk: 'B2B: Спеціальні умови для вашої компанії', pl: 'B2B: Specjalne warunki dla Twojej firmy' },
     subtitle:       { de: 'Sie möchten mehrere Mitarbeiter schnell und unkompliziert zum Staplerfahrer fortbilden? Wir bieten Ihnen maßgeschneiderte Lösungen mit speziellen Konditionen für Unternehmen.', en: 'Do you want to train multiple employees as forklift operators quickly and easily? We offer you tailored solutions with special conditions for companies.', uk: 'Хочете швидко та легко підготувати кількох працівників як операторів навантажувача? Ми пропонуємо вам індивідуальні рішення зі спеціальними умовами для компаній.', pl: 'Chcesz szybko i sprawnie przeszkolić kilku pracowników na operatorów wózków widłowych? Oferujemy rozwiązania szyte na miarę ze specjalnymi warunkami dla firm.' },
     benefit1:       { de: 'Individuelle Preisgestaltung je nach Mitarbeiteranzahl', en: 'Individual pricing depending on the number of employees', uk: 'Індивідуальне ціноутворення залежно від кількості працівників', pl: 'Indywidualna wycena w zależności od liczby pracowników' },
-    benefit2:       { de: 'Inhouse-Schulungen direkt bei Ihnen im Betrieb – deutschlandweit', en: 'In-house training directly at your company – throughout Germany', uk: 'Корпоративне навчання безпосередньо у вашій компанії – по всій Німеччині', pl: 'Szkolenia u klienta bezpośrednio w Twoim zakładzie – na terenie całych Niemiec' },
+    benefit2:       { de: 'Inhouse-Schulungen direkt bei Ihnen im Betrieb, deutschlandweit', en: 'In-house training directly at your company, throughout Germany', uk: 'Корпоративне навчання безпосередньо у вашій компанії, по всій Німеччині', pl: 'Szkolenia u klienta bezpośrednio w Twoim zakładzie, na terenie całych Niemiec' },
     benefit3:       { de: 'Flexible Terminplanung nach Ihren Bedürfnissen', en: 'Flexible scheduling according to your needs', uk: 'Гнучке планування відповідно do ваших потреб', pl: 'Elastyczne planowanie terminów według Twoich potrzeb' },
     benefit4:       { de: 'Jährliche Unterweisungen für Ihre gesamte Belegschaft', en: 'Annual briefings for your entire workforce', uk: 'Щорічні інструктажі для всього персоналу', pl: 'Coroczne pouczenia dla całej załogi' },
     benefit5:       { de: 'Mehrsprachige Ausbildung verfügbar in Deutsch, Englisch, Polnisch, Ukrainisch, Russisch und Rumänisch', en: 'Multilingual training available in German, English, Polish, Ukrainian, Russian and Romanian', uk: 'Багатомовне навчання доступне німецькою, англійською, польською, українською, російською та румунською', pl: 'Szkolenie wielojęzyczne dostępne po niemiecku, angielsku, polsku, ukraińsku, rosyjsku i rumuńsku' },
@@ -139,6 +146,10 @@ export const translations = {
     perPerson:      { de: '/Person', en: '/person', uk: '/особу', pl: '/osobę' },
     perMonth:       { de: '/Monat', en: '/month', uk: '/місяць', pl: '/miesiąc' },
     vatNote:        { de: 'netto (+ 19% MwSt.)', en: 'net (+ 19% VAT)', uk: 'без ПДВ (+ 19% ПДВ)', pl: 'netto (+ 19% VAT)' },
+    promo:          { de: 'Aktion', en: 'Promo', uk: 'Акція', pl: 'Promocja' },
+    onlineLabel:    { de: 'Online-Kurs', en: 'Online course', uk: 'Онлайн курс', pl: 'Kurs online' },
+    practicalLabel: { de: 'Praxiskurs', en: 'Practical course', uk: 'Практичний курс', pl: 'Kurs praktyczny' },
+    viewDetails:    { de: 'Details ansehen', en: 'View details', uk: 'Переглянути деталі', pl: 'Zobacz szczegóły' },
     practicalTitle: { de: 'Praxis-Ausbildung', en: 'Practical Training', uk: 'Практичне навчання', pl: 'Szkolenie praktyczne' },
     practicalDesc:  { de: '16-Stunden Schnellkurs inkl. Prüfung', en: '16-hour intensive course incl. exam', uk: '16-годинний прискорений курс вкл. іспит', pl: '16-godzinny kurs intensywny w tym egzamin' },
     practicalF1:    { de: '2 Tage Ausbildung', en: '2 days training', uk: '2 дні навчання', pl: '2 dni szkolenia' },
@@ -159,6 +170,58 @@ export const translations = {
     presenceF3:     { de: 'Vor-Ort Fragen stellen', en: 'Ask questions on-site', uk: 'Задавати запитання на місці', pl: 'Zadawanie pytań na miejscu' },
     presenceF4:     { de: 'Sofortiges Feedback', en: 'Immediate feedback', uk: 'Миттєвий зворотній зв\'язок', pl: 'Natychmiastowa informacja zwrotna' },
     swipeHint:      { de: 'Wischen um mehr zu sehen →', en: 'Swipe to see more →', uk: 'Свайпніть щоб побачити більше →', pl: 'Przesuń aby zobaczyć więcej →' },
+  },
+
+  // ─── PRODUKTE / KURSÜBERSICHT ─────────────────────────────────────────────────
+  products: {
+    title:            { de: 'Unsere Kurse & Schulungen', en: 'Our Courses & Training', uk: 'Наші курси та навчання', pl: 'Nasze kursy i szkolenia' },
+    subtitle:         { de: 'Finden Sie die passende Staplerausbildung für Sie.', en: 'Find the right forklift training for you.', uk: 'Знайдіть підходяще навчання для вас.', pl: 'Znajdź odpowiednie szkolenie na wózki widłowe dla siebie.' },
+    filterAll:        { de: 'Alle', en: 'All', uk: 'Всі', pl: 'Wszystkie' },
+    filterPractical:  { de: 'Praxiskurse', en: 'Practical courses', uk: 'Практичні курси', pl: 'Kursy praktyczne' },
+    filterOnline:     { de: 'Online-Kurse', en: 'Online courses', uk: 'Онлайн курси', pl: 'Kursy online' },
+    empty:            { de: 'Aktuell sind keine Kurse verfügbar.', en: 'No courses available at the moment.', uk: 'Наразі немає доступних курсів.', pl: 'Aktualnie brak dostępnych kursów.' },
+    backToList:       { de: 'Zurück zur Übersicht', en: 'Back to overview', uk: 'Назад до огляду', pl: 'Powrót do listy' },
+    description:      { de: 'Beschreibung', en: 'Description', uk: 'Опис', pl: 'Opis' },
+    included:         { de: 'Im Preis enthalten', en: 'Included in the price', uk: 'Включено в ціну', pl: 'W cenie' },
+    noLocations:      { de: 'Aktuell sind keine Standorte für diesen Kurs verfügbar.', en: 'No locations available for this course at the moment.', uk: 'Наразі немає доступних локацій для цього курсу.', pl: 'Aktualnie brak dostępnych lokalizacji dla tego kursu.' },
+    noDates:          { de: 'Aktuell sind keine Termine verfügbar.', en: 'No dates available at the moment.', uk: 'Наразі немає доступних дат.', pl: 'Aktualnie brak dostępnych terminów.' },
+    enroll:           { de: 'Jetzt anmelden', en: 'Enroll now', uk: 'Записатися зараз', pl: 'Zapisz się teraz' },
+    includesOnline:   { de: 'Inkl. Zugang zum Online-Kurs', en: 'Incl. access to the online course', uk: 'Включає доступ до онлайн курсу', pl: 'W tym dostęp do kursu online' },
+    viewAll:          { de: 'Alle Kurse ansehen', en: 'View all courses', uk: 'Переглянути всі курси', pl: 'Zobacz wszystkie kursy' },
+
+    howItWorksTitle:  { de: 'So einfach geht\'s', en: 'How it works', uk: 'Як це працює', pl: 'Jak to działa' },
+    step1:            { de: 'Kurs wählen', en: 'Choose a course', uk: 'Виберіть курс', pl: 'Wybierz kurs' },
+    step2:            { de: 'Details prüfen', en: 'Check details', uk: 'Перевірте деталі', pl: 'Sprawdź szczegóły' },
+    step3:            { de: 'Standort wählen', en: 'Choose location', uk: 'Виберіть локацію', pl: 'Wybierz lokalizację' },
+    step4:            { de: 'Termin wählen', en: 'Choose date', uk: 'Виберіть дату', pl: 'Wybierz termin' },
+    step5:            { de: 'Bezahlen', en: 'Pay', uk: 'Оплатіть', pl: 'Opłać' },
+
+    notifyTitle:      { de: 'Kein passender Termin dabei?', en: 'No suitable date available?', uk: 'Немає підходящої дати?', pl: 'Brak odpowiedniego terminu?' },
+    notifyDesc:       { de: 'Hinterlassen Sie Ihre E-Mail und wir informieren Sie, sobald neue Termine verfügbar sind.', en: 'Leave your email and we\'ll notify you as soon as new dates are available.', uk: 'Залиште свою електронну адресу, і ми повідомимо вас, коли з\'являться нові дати.', pl: 'Zostaw swój e-mail, a powiadomimy Cię, gdy pojawią się nowe terminy.' },
+    notifyPlaceholder:{ de: 'ihre@email.de', en: 'your@email.com', uk: 'your@email.com', pl: 'twoj@email.pl' },
+    notifyButton:     { de: 'Benachrichtigen', en: 'Notify me', uk: 'Повідомити мене', pl: 'Powiadom mnie' },
+    notifySuccess:    { de: 'Danke! Wir benachrichtigen Sie, sobald neue Termine verfügbar sind.', en: 'Thanks! We\'ll notify you as soon as new dates are available.', uk: 'Дякуємо! Ми повідомимо вас, коли з\'являться нові дати.', pl: 'Dziękujemy! Powiadomimy Cię, gdy pojawią się nowe terminy.' },
+    notifyError:      { de: 'Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.', en: 'Something went wrong. Please try again.', uk: 'Щось пішло не так. Спробуйте ще раз.', pl: 'Coś poszło nie tak. Spróbuj ponownie.' },
+    notifyInvalidEmail:{ de: 'Bitte geben Sie eine gültige E-Mail-Adresse ein.', en: 'Please enter a valid email address.', uk: 'Будь ласка, введіть дійсну електронну адресу.', pl: 'Podaj prawidłowy adres e-mail.' },
+  },
+
+  // ─── STANDORTE (Berlin / Görlitz / München) — SEO ────────────────────────────
+  locations: {
+    eyebrow:        { de: 'Unsere Standorte', en: 'Our locations', uk: 'Наші локації', pl: 'Nasze lokalizacje' },
+    title:          { de: 'Staplerschein direkt in Ihrer Nähe', en: 'Forklift license close to you', uk: 'Права на навантажувач поруч з вами', pl: 'Uprawnienia na wózek widłowy blisko Ciebie' },
+    subtitle:       { de: 'Praxisausbildung an drei Standorten — Theorie flexibel online oder vor Ort.', en: 'Practical training at three locations — theory flexibly online or on-site.', uk: 'Практичне навчання у трьох локаціях — теорія онлайн або очно.', pl: 'Szkolenie praktyczne w trzech lokalizacjach — teoria elastycznie online lub na miejscu.' },
+    berlinDesc:     { de: 'Staplerschein Berlin: zentral gelegene Praxisplätze, gut erreichbar mit ÖPNV. Theorie auf Deutsch, Englisch oder Polnisch.', en: 'Forklift license Berlin: centrally located practice sites, easily reachable by public transport. Theory in German, English or Polish.', uk: 'Права на навантажувач у Берліні: центральні майданчики, легко дістатися громадським транспортом.', pl: 'Uprawnienia na wózek widłowy w Berlinie: centralnie położone place ćwiczeń, dobry dojazd komunikacją miejską.' },
+    goerlitzDesc:   { de: 'Staplerschein Görlitz / Zgorzelec: ideal für die deutsch-polnische Grenzregion. Ausbildung auf Deutsch oder Polnisch.', en: 'Forklift license Görlitz / Zgorzelec: ideal for the German-Polish border region. Training in German or Polish.', uk: 'Права на навантажувач у Гьорліц / Згожелець: ідеально для німецько-польського прикордоння.', pl: 'Uprawnienia na wózek widłowy w Görlitz / Zgorzelcu: idealne dla pogranicza polsko-niemieckiego. Szkolenie po niemiecku lub polsku.' },
+    munichDesc:     { de: 'Staplerschein München: praxisnahe Ausbildung im Süden Deutschlands, auch für Firmenkunden.', en: 'Forklift license Munich: hands-on training in southern Germany, also for corporate clients.', uk: 'Права на навантажувач у Мюнхені: практичне навчання на півдні Німеччини.', pl: 'Uprawnienia na wózek widłowy w Monachium: praktyczne szkolenie w południowych Niemczech.' },
+    viewCourses:    { de: 'Kurse ansehen', en: 'View courses', uk: 'Переглянути курси', pl: 'Zobacz kursy' },
+  },
+
+  // ─── GALERIA / SOCIAL ─────────────────────────────────────────────────────────
+  gallery: {
+    eyebrow:  { de: 'Einblicke', en: 'Insights', uk: 'Погляд зсередини', pl: 'Zza kulis' },
+    title:    { de: 'So läuft die Ausbildung bei uns ab', en: 'What our training looks like', uk: 'Як проходить наше навчання', pl: 'Jak wygląda nasze szkolenie' },
+    followUs: { de: 'Folgen Sie uns', en: 'Follow us', uk: 'Слідкуйте за нами', pl: 'Śledź nas' },
+    soon:     { de: 'bald verfügbar', en: 'coming soon', uk: 'скоро', pl: 'wkrótce' },
   },
 
   // ─── KONTAKT ─────────────────────────────────────────────────────────────────
@@ -207,7 +270,7 @@ export const translations = {
   // ─── CTA ─────────────────────────────────────────────────────────────────────
   cta: {
     title:          { de: 'Bereit für Ihren Staplerschein?', en: 'Ready for your forklift license?', uk: 'Готові до отримання прав на навантажувач?', pl: 'Gotowy na uprawnienia wózka widłowego?' },
-    subtitle:       { de: 'Starten Sie noch heute und erhalten Sie Ihren Staplerschein in nur 48 Stunden. STAPLERO – schnell, professionell, anerkannt.', en: 'Start today and get your forklift license in just 48 hours. STAPLERO – fast, professional, recognized.', uk: 'Починайте вже сьогодні та отримайте права на навантажувач лише за 48 годин. STAPLERO – швидко, професійно, визнано.', pl: 'Zacznij już dziś i zdobądź uprawnienia na wózek widłowy w zaledwie 48 godzinach. STAPLERO – szybko, profesjonalnie, uznawane.' },
+    subtitle:       { de: 'Starten Sie noch heute und erhalten Sie Ihren Staplerschein in nur 48 Stunden. STAPLERO: schnell, professionell, anerkannt.', en: 'Start today and get your forklift license in just 48 hours. STAPLERO: fast, professional, recognized.', uk: 'Починайте вже сьогодні та отримайте права на навантажувач лише за 48 годин. STAPLERO: швидко, професійно, визнано.', pl: 'Zacznij już dziś i zdobądź uprawnienia na wózek widłowy w zaledwie 48 godzinach. STAPLERO: szybko, profesjonalnie, uznawane.' },
     register:       { de: 'Jetzt registrieren', en: 'Register now', uk: 'Зареєструватися зараз', pl: 'Zarejestruj się teraz' },
     bookPractice:   { de: 'Praxiskurs buchen', en: 'Book Practical Course', uk: 'Забронювати практичний курс', pl: 'Zarezerwuj kurs praktyczny' },
   },
@@ -254,6 +317,11 @@ export const translations = {
     cardGross:      { de: 'Plastikkarte (brutto)', en: 'Plastic card (gross)', uk: 'Пластикова картка (брутто)', pl: 'Karta plastikowa (brutto)' },
     totalInclVat:   { de: 'Gesamt (inkl. MwSt.)', en: 'Total (incl. VAT)', uk: 'Разом (з ПДВ)', pl: 'Łącznie (z VAT)' },
     selectDateWarn: { de: 'Bitte wählen Sie einen Termin', en: 'Please select a date', uk: 'Будь ласка, виберіть дату', pl: 'Proszę wybrać termin' },
+    participantsCountTitle: { de: 'Anzahl der Teilnehmer', en: 'Number of participants', uk: 'Кількість учасників', pl: 'Liczba uczestników' },
+    participantsCountDesc:  { de: 'Die Namen geben Sie im nächsten Schritt an.', en: 'You can also book for colleagues or family members — names are entered in the next step.', uk: 'Ви також можете забронювати для колег чи членів родини — імена вводяться на наступному кроці.', pl: 'Możesz zapisać też kolegów lub rodzinę — imiona podasz w następnym kroku.' },
+    participantsCountHint:  { de: 'Begrenzt durch freie Plätze am gewählten Termin (max. 6 Personen).', en: 'Limited by available spots on the selected date (max. 6 people).', uk: 'Обмежено кількістю вільних місць на обрану дату (макс. 6 осіб).', pl: 'Ograniczone liczbą wolnych miejsc w wybranym terminie (maks. 6 osób).' },
+    participantsCountSubtitle: { de: 'Wählen Sie, wie viele Personen teilnehmen.', en: 'Choose how many people are attending.', uk: 'Виберіть, скільки осіб братиме участь.', pl: 'Wybierz, ile osób będzie uczestniczyć.' },
+    totalForParticipants:   { de: 'Gesamtpreis für alle Teilnehmer', en: 'Total price for all participants', uk: 'Загальна ціна за всіх учасників', pl: 'Cena łączna za wszystkich uczestników' },
     selectLocWarn:  { de: 'Bitte wählen Sie einen Standort', en: 'Please select a location', uk: 'Будь ласка, виберіть локаicю', pl: 'Proszę wybrać lokalizację' },
     inclVatShort:   { de: 'inkl. MwSt.', en: 'incl. VAT', uk: 'з ПДВ', pl: 'z VAT' },
   },

@@ -31,11 +31,12 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
   };
 
   return (
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-b border-border">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
 
-            {/* Logo */}
+            {/* Logo + menu — do lewej */}
+            <div className="flex items-center gap-8 lg:gap-10">
             <Link to="/" className="flex items-center">
               <img
                   src={logo}
@@ -44,8 +45,8 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
               />
             </Link>
 
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center gap-4">
+              {/* Desktop Navigation */}
+              <div className="hidden md:flex items-center gap-5 lg:gap-6">
               <Link
                   to="/"
                   className={`text-sm font-medium transition-colors hover:text-primary ${
@@ -61,17 +62,27 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
                 {t('nav.pricing')}
               </a>
               <Link
-                  to="/practical-course"
+                  to="/kursy"
                   className={`text-sm font-medium transition-colors hover:text-primary ${
-                      location.pathname === "/practical-course" ? "text-primary" : "text-muted-foreground"
+                      location.pathname.startsWith("/kursy") ? "text-primary" : "text-muted-foreground"
                   }`}
               >
-                {t('nav.practicalCourse')}
+                {t('nav.courses')}
               </Link>
-              <a href="/#b2b" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
+              <Link
+                  to="/firmenschulung-berlin"
+                  className={`text-sm font-medium transition-colors hover:text-primary ${
+                      location.pathname === "/firmenschulung-berlin" ? "text-primary" : "text-muted-foreground"
+                  }`}
+              >
                 B2B
-              </a>
+              </Link>
 
+              </div>
+            </div>
+
+            {/* Język + logowanie — po prawej */}
+            <div className="hidden md:flex items-center gap-3">
               <LanguageSwitcher />
 
               {isLoggedIn ? (
@@ -101,11 +112,6 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
                         {t('nav.login')}
                       </Button>
                     </Link>
-                    <Link to="/practical-course">
-                      <Button variant="default" size="sm">
-                        {t('nav.start')}
-                      </Button>
-                    </Link>
                   </>
               )}
             </div>
@@ -132,8 +138,11 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
                   <a href="/#pricing" className="text-sm font-medium text-muted-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>
                     {t('nav.pricing')}
                   </a>
-                  <Link to="/practical-course" className="text-sm font-medium text-muted-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>
-                    {t('nav.practicalCourse')}
+                  <Link to="/kursy" className="text-sm font-medium text-muted-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>
+                    {t('nav.courses')}
+                  </Link>
+                  <Link to="/firmenschulung-berlin" className="text-sm font-medium text-muted-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>
+                    B2B
                   </Link>
 
                   {isLoggedIn ? (
@@ -161,11 +170,6 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
                         <Link to="/login" onClick={() => setIsOpen(false)}>
                           <Button variant="ghost" className="w-full">
                             {t('nav.login')}
-                          </Button>
-                        </Link>
-                        <Link to="/practical-course" onClick={() => setIsOpen(false)}>
-                          <Button variant="default" className="w-full">
-                            {t('nav.start')}
                           </Button>
                         </Link>
                       </>

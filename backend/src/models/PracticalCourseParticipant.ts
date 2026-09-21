@@ -7,11 +7,16 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface PracticalCourseParticipantDoc extends Document {
     // Dane użytkownika
     userId: string;
-    userName: string;
+    userName: string;       // pełne imię i nazwisko
+    firstName?: string;
+    lastName?: string;
     userEmail: string;
     userPhone?: string;
 
     // Dane zamówienia
+    // Jedno zamówienie może mieć kilku uczestników — każdy ma własny dokument.
+    // seatIndex: 0 = osoba kupująca, 1..n = dodatkowe osoby z tego samego zamówienia.
+    seatIndex: number;
     orderId: string;
     orderNumber: string;
     paidAt: Date;
@@ -27,15 +32,16 @@ export interface PracticalCourseParticipantDoc extends Document {
     endDate: string;
     time: string;
 
-    // Dodatki
-    wantsPlasticCard: boolean;
-
     // Status
     status: "confirmed" | "cancelled" | "completed";
 
     // Faktury
     invoiceId?: string;
     invoiceNumber?: string;
+
+    // Wpis dodany ręcznie przez admina (bez zamówienia w sklepie)
+    isManual?: boolean;
+    notes?: string;
 
     createdAt: Date;
     updatedAt: Date;
@@ -46,12 +52,15 @@ const PracticalCourseParticipantSchema = new Schema<PracticalCourseParticipantDo
         // Dane użytkownika
         userId: { type: String, required: true, index: true },
         userName: { type: String, required: true },
+        firstName: { type: String, trim: true },
+        lastName: { type: String, trim: true },
         userEmail: { type: String, required: true },
         userPhone: { type: String },
 
-        // Dane zamówienia
-        orderId: { type: String, required: true, unique: true },
-        orderNumber: { type: String, required: true, unique: true },
+        // Dane zamówienia (orderId/orderNumber NIE są unikalne — patrz indeks orderId+seatIndex)
+        seatIndex: { type: Number, default: 0, min: 0 },
+        orderId: { type: String, required: true, index: true },
+        orderNumber: { type: String, required: true, index: true },
         paidAt: { type: Date, required: true },
 
         // Dane kursu i lokalizacji
@@ -65,9 +74,6 @@ const PracticalCourseParticipantSchema = new Schema<PracticalCourseParticipantDo
         endDate: { type: String, required: true },
         time: { type: String, required: true },
 
-        // Dodatki
-        wantsPlasticCard: { type: Boolean, default: false },
-
         // Status
         status: {
             type: String,
@@ -78,13 +84,18 @@ const PracticalCourseParticipantSchema = new Schema<PracticalCourseParticipantDo
         // Faktury
         invoiceId: { type: String },
         invoiceNumber: { type: String },
+
+        // Wpisy ręczne
+        isManual: { type: Boolean, default: false },
+        notes: { type: String },
     },
     { timestamps: true }
 );
 
-// Compound index - jeden użytkownik nie może być zapisany 2x na ten sam termin
+// Jedno miejsce (seat) w zamówieniu = jeden uczestnik. Chroni przed dublami przy ponownym
+// wywołaniu webhooka, a jednocześnie pozwala na wielu uczestników w jednym zamówieniu.
 PracticalCourseParticipantSchema.index(
-    { userId: 1, locationId: 1, dateId: 1 },
+    { orderId: 1, seatIndex: 1 },
     { unique: true }
 );
 

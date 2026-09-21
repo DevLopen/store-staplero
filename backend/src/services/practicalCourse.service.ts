@@ -1,83 +1,113 @@
 import PracticalCourseParticipant, { PracticalCourseParticipantDoc } from "../models/PracticalCourseParticipant";
 import Location from "../models/Location";
 import { OrderDoc } from "../models/Order";
+import { resolveName } from "../utils/name";
 
 /**
- * Dodaj uczestnika do kursu praktycznego po opłaceniu zamówienia
+ * Zapisz na kurs WSZYSTKIE osoby z opłaconego zamówienia:
+ * kupującego (seatIndex 0) + dodatkowych uczestników (seatIndex 1..n).
+ *
+ * Funkcja jest idempotentna — można ją bezpiecznie wywołać ponownie (retry webhooka,
+ * ręczna synchronizacja z panelu admina). Tworzy tylko brakujące miejsca.
+ *
+ * @returns created — uczestnicy utworzeni w tym wywołaniu (do zmniejszenia liczby wolnych miejsc),
+ *          all     — wszyscy uczestnicy tego zamówienia
  */
-export const addParticipantToCourse = async (
+export const addParticipantsToCourse = async (
     order: OrderDoc,
-    userId: string,
-    userName: string,
-    userEmail: string,
-    userPhone?: string
-): Promise<PracticalCourseParticipantDoc> => {
+    buyer: { userId: string; name: string; firstName?: string; lastName?: string; email: string; phone?: string }
+): Promise<{ created: PracticalCourseParticipantDoc[]; all: PracticalCourseParticipantDoc[] }> => {
 
     if (order.type !== "practical" || !order.practicalCourseDetails) {
         throw new Error("Order is not a practical course");
     }
 
     const details = order.practicalCourseDetails;
+    const orderId = order._id.toString();
+    const dateId = details.dateId || generateDateId(details.startDate, details.endDate);
 
-    // Sprawdź czy uczestnik już nie jest zapisany (na wypadek duplikatu)
-    const existing = await PracticalCourseParticipant.findOne({
-        orderId: order._id.toString()
-    });
+    // Lista osób: kupujący + dodatkowi. Dodatkowi nie mają własnego e-maila ani konta —
+    // dostają dane kontaktowe kupującego (certyfikat trafi na jego adres).
+    const buyerNames = resolveName({ firstName: buyer.firstName, lastName: buyer.lastName, name: buyer.name });
+    const people = [
+        { seatIndex: 0, ...buyerNames },
+        ...(details.additionalParticipants || []).map((p, i) => ({
+            seatIndex: i + 1,
+            ...resolveName({ firstName: p.firstName, lastName: p.lastName, name: p.name }),
+        })),
+    ];
 
-    if (existing) {
-        console.log(`Participant already exists for order ${order.orderNumber}`);
-        return existing;
+    const existing = await PracticalCourseParticipant.find({ orderId });
+    const existingSeats = new Set(existing.map((p) => p.seatIndex ?? 0));
+
+    const created: PracticalCourseParticipantDoc[] = [];
+    for (const person of people) {
+        if (existingSeats.has(person.seatIndex)) continue;
+
+        try {
+            const participant = await PracticalCourseParticipant.create({
+                userId: buyer.userId,
+                userName: person.name,
+                firstName: person.firstName,
+                lastName: person.lastName,
+                userEmail: buyer.email,
+                userPhone: buyer.phone,
+                seatIndex: person.seatIndex,
+                orderId,
+                orderNumber: order.orderNumber,
+                paidAt: order.paidAt || new Date(),
+                locationId: details.locationId,
+                locationName: details.locationName,
+                locationAddress: details.locationAddress,
+                dateId,
+                startDate: details.startDate,
+                endDate: details.endDate,
+                time: details.time,
+                status: "confirmed",
+                invoiceId: order.invoiceId,
+                invoiceNumber: order.invoiceNumber,
+            });
+            created.push(participant);
+            console.log(`✅ Participant added: ${person.name} (seat ${person.seatIndex}) for ${details.locationName} (${details.startDate})`);
+        } catch (err: any) {
+            // 11000 = duplicate key — równoległe wywołanie zdążyło utworzyć to miejsce, pomijamy
+            if (err?.code !== 11000) throw err;
+        }
     }
 
-    // Utwórz uczestnika
-    const participant = new PracticalCourseParticipant({
-        userId,
-        userName,
-        userEmail,
-        userPhone,
-        orderId: order._id.toString(),
-        orderNumber: order.orderNumber,
-        paidAt: order.paidAt || new Date(),
-        locationId: details.locationId,
-        locationName: details.locationName,
-        locationAddress: details.locationAddress,
-        dateId: details.dateId || generateDateId(details.startDate, details.endDate),
-        startDate: details.startDate,
-        endDate: details.endDate,
-        time: details.time,
-        wantsPlasticCard: details.wantsPlasticCard,
-        status: "confirmed",
-        invoiceId: order.invoiceId,
-        invoiceNumber: order.invoiceNumber,
-    });
+    const all = await PracticalCourseParticipant.find({ orderId }).sort({ seatIndex: 1 });
+    return { created, all };
+};
 
-    await participant.save();
-    console.log(`✅ Participant added: ${userName} for ${details.locationName} (${details.startDate})`);
-
-    return participant;
+/**
+ * Znajdź uczestnika po _id (preferowane — jednoznaczne) lub, dla wstecznej zgodności,
+ * po numerze zamówienia (wtedy zwracana jest osoba kupująca, seatIndex 0).
+ */
+export const findParticipantByRef = async (ref: string) => {
+    if (/^[a-f\d]{24}$/i.test(ref)) {
+        const byId = await PracticalCourseParticipant.findById(ref);
+        if (byId) return byId;
+    }
+    return PracticalCourseParticipant.findOne({ orderNumber: ref }).sort({ seatIndex: 1 });
 };
 
 /**
  * Get single participant by order number
  */
-export const getParticipantByOrderNumber = async (orderNumber: string) => {
-    return PracticalCourseParticipant.findOne({ orderNumber }).lean();
+export const getParticipantByOrderNumber = async (ref: string) => {
+    const participant = await findParticipantByRef(ref);
+    return participant ? participant.toObject() : null;
 };
 
 /**
  * Mark participant as completed
  */
-export const completeParticipant = async (orderNumber: string) => {
-    const participant = await PracticalCourseParticipant.findOneAndUpdate(
-        { orderNumber },
-        {
-            status: "completed",
-            completedAt: new Date(),
-        },
-        { new: true }
-    );
-    if (!participant) throw new Error(`Teilnehmer ${orderNumber} nicht gefunden`);
-    return participant;
+export const completeParticipant = async (ref: string) => {
+    const found = await findParticipantByRef(ref);
+    if (!found) throw new Error(`Teilnehmer ${ref} nicht gefunden`);
+    found.status = "completed";
+    await found.save();
+    return found;
 };
 
 /**
@@ -96,7 +126,7 @@ const generateDateId = (startDate: string, endDate: string): string => {
  * - Format timestamp: 'd1770293875752' (id z Location.dates[].id)
  * - Format dat: '20260302_20260303' (generowany ze startDate_endDate)
  */
-const findDateIndex = (location: any, dateId: string): number => {
+export const findDateIndex = (location: any, dateId: string): number => {
     // 1. Szukaj bezpośrednio po id
     let idx = location.dates.findIndex((d: any) => d.id === dateId);
     if (idx !== -1) return idx;
@@ -114,8 +144,10 @@ const findDateIndex = (location: any, dateId: string): number => {
 
 export const decreaseAvailableSpots = async (
     locationId: string,
-    dateId: string
+    dateId: string,
+    count: number = 1
 ): Promise<void> => {
+    if (count <= 0) return;
     try {
         const location = await Location.findById(locationId);
 
@@ -134,10 +166,15 @@ export const decreaseAvailableSpots = async (
         const currentSpots = location.dates[dateIndex].availableSpots;
 
         if (currentSpots > 0) {
-            location.dates[dateIndex].availableSpots = currentSpots - 1;
+            // Nie schodzimy poniżej 0 (schema ma min: 0) — nadwyżkę zgłaszamy w logu
+            const newSpots = Math.max(0, currentSpots - count);
+            location.dates[dateIndex].availableSpots = newSpots;
             await location.save();
 
-            console.log(`✅ Decreased spots for ${location.city} (${dateId}): ${currentSpots} → ${currentSpots - 1}`);
+            console.log(`✅ Decreased spots for ${location.city} (${dateId}): ${currentSpots} → ${newSpots}`);
+            if (currentSpots < count) {
+                console.warn(`⚠️ Overbooked ${location.city} (${dateId}): needed ${count}, had ${currentSpots}`);
+            }
         } else {
             console.warn(`⚠️ No available spots for ${location.city} (${dateId})`);
         }
@@ -241,18 +278,20 @@ export const getParticipantsCount = async (
  * Anuluj uczestnictwo (np. przy storno)
  */
 export const cancelParticipant = async (
-    orderNumber: string
+    ref: string
 ): Promise<void> => {
-    const participant = await PracticalCourseParticipant.findOne({ orderNumber });
+    const participant = await findParticipantByRef(ref);
 
     if (participant && participant.status !== "cancelled") {
         participant.status = "cancelled";
         await participant.save();
 
-        // Zwiększ z powrotem liczbę miejsc
-        await increaseAvailableSpots(participant.locationId, participant.dateId);
+        // Zwiększ z powrotem liczbę miejsc (wpisy ręczne spoza kalendarza nie mają terminu w Location)
+        if (participant.locationId !== "manual") {
+            await increaseAvailableSpots(participant.locationId, participant.dateId);
+        }
 
-        console.log(`✅ Participant cancelled: ${participant.userName} (${orderNumber})`);
+        console.log(`✅ Participant cancelled: ${participant.userName} (${ref})`);
     }
 };
 
@@ -282,7 +321,9 @@ export const increaseAvailableSpots = async (
 };
 
 export default {
-    addParticipantToCourse,
+    addParticipantsToCourse,
+    findParticipantByRef,
+    findDateIndex,
     decreaseAvailableSpots,
     getParticipantsByDate,
     getParticipantsByLocation,

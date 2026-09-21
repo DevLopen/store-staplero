@@ -2,56 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 220 25% 10%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 7%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 25% 10%;
+    --card-foreground: 0 0% 7%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
+    --popover-foreground: 0 0% 7%;
 
     --primary: 28 95% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 94%;
-    --secondary-foreground: 220 25% 15%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 7%;
 
-    --muted: 220 15% 92%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 240 2% 40%;
 
     --accent: 38 95% 55%;
-    --accent-foreground: 220 25% 10%;
+    --accent-foreground: 0 0% 7%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
+    --border: 0 0% 90%;
+    --input: 0 0% 82%;
     --ring: 28 95% 50%;
 
-    --radius: 0.75rem;
+    --radius: 0.25rem;
+
+    /* Tekst na pomarańczowym tle — czarny (~8:1); biały dawał tylko ~2.9:1 */
+    --on-primary: 0 0% 7%;
 
     /* Custom colors */
-    --industrial: 220 25% 18%;
-    --industrial-light: 220 20% 28%;
+    --industrial: 0 0% 7%;
+    --industrial-light: 0 0% 16%;
     --warning-amber: 38 95% 55%;
     --success: 142 76% 36%;
     --success-foreground: 0 0% 100%;
 
     /* Gradients */
-    --gradient-hero: linear-gradient(135deg, hsl(220 25% 12%) 0%, hsl(220 25% 22%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(0 0% 5%) 0%, hsl(0 0% 14%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(28 95% 50%) 0%, hsl(38 95% 55%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(220 20% 98%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(0 0% 98%) 100%);
 
     /* Shadows */
-    --shadow-sm: 0 2px 8px -2px hsl(220 25% 10% / 0.08);
-    --shadow-md: 0 8px 24px -8px hsl(220 25% 10% / 0.12);
-    --shadow-lg: 0 16px 48px -16px hsl(220 25% 10% / 0.16);
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 7% / 0.06);
+    --shadow-md: 0 4px 12px -4px hsl(0 0% 7% / 0.10);
+    --shadow-lg: 0 12px 32px -12px hsl(0 0% 7% / 0.16);
     --shadow-glow: 0 0 40px hsl(28 95% 50% / 0.3);
 
     --sidebar-background: 0 0% 98%;
@@ -65,23 +66,23 @@
   }
 
   .dark {
-    --background: 220 25% 8%;
-    --foreground: 220 10% 95%;
+    --background: 0 0% 7%;
+    --foreground: 0 0% 96%;
 
-    --card: 220 25% 12%;
-    --card-foreground: 220 10% 95%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 96%;
 
-    --popover: 220 25% 12%;
-    --popover-foreground: 220 10% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 96%;
 
     --primary: 28 95% 55%;
     --primary-foreground: 220 25% 10%;
 
-    --secondary: 220 20% 18%;
-    --secondary-foreground: 220 10% 90%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 92%;
 
-    --muted: 220 20% 16%;
-    --muted-foreground: 220 10% 60%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 62%;
 
     --accent: 38 95% 55%;
     --accent-foreground: 220 25% 10%;
@@ -89,12 +90,12 @@
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 20% 20%;
-    --input: 220 20% 20%;
+    --border: 0 0% 20%;
+    --input: 0 0% 24%;
     --ring: 28 95% 55%;
 
-    --industrial: 220 25% 95%;
-    --industrial-light: 220 20% 80%;
+    --industrial: 0 0% 96%;
+    --industrial-light: 0 0% 80%;
   }
 }
 
@@ -109,7 +110,14 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  }
+
+  /* Nagłówki kampanijne: wersaliki, wąski krój, ciasna interlinia */
+  h1, h2 {
+    text-transform: uppercase;
+    line-height: 0.95;
+    letter-spacing: 0.005em;
   }
 }
 

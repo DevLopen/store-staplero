@@ -20,6 +20,7 @@ import AdminCertificates from "@/components/admin/AdminCertificates";
 import AdminParticipants from "@/components/admin/AdminParticipants";
 import AdminOrders from "@/components/admin/AdminOrders";
 import AdminUsers from "@/components/admin/AdminUsers";
+import AdminProducts from "@/components/admin/AdminProducts";
 import {
   Plus,
   Edit,
@@ -45,7 +46,8 @@ import {
   Eye,
   Phone,
   Mail,
-  List
+  List,
+  Package
 } from "lucide-react";
 
 const Admin = () => {
@@ -763,7 +765,11 @@ const Admin = () => {
             </div>
 
             <Tabs defaultValue="courses" className="space-y-6">
-              <TabsList className="grid w-full max-w-5xl grid-cols-9">
+              <TabsList className="grid w-full max-w-5xl grid-cols-10">
+                <TabsTrigger value="products" className="flex items-center gap-2">
+                  <Package className="w-4 h-4" />
+                  <span className="hidden sm:inline">Produkte</span>
+                </TabsTrigger>
                 <TabsTrigger value="courses" className="flex items-center gap-2">
                   <Library className="w-4 h-4" />
                   <span className="hidden sm:inline">Kurse</span>
@@ -801,6 +807,11 @@ const Admin = () => {
                   <span className="hidden sm:inline">Statistiken</span>
                 </TabsTrigger>
               </TabsList>
+
+              {/* Products Tab */}
+              <TabsContent value="products" className="space-y-6">
+                <AdminProducts />
+              </TabsContent>
 
               {/* Courses Tab */}
               <TabsContent value="courses" className="space-y-6">

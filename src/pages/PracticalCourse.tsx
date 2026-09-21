@@ -26,7 +26,6 @@ import {
 const PracticalCourse = () => {
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
   const VAT_RATE = 0.19; // 19% VAT
-  const PLASTIC_CARD_PRICE = 14.99;
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -35,7 +34,6 @@ const PracticalCourse = () => {
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [selectedDate, setSelectedDate] = useState<CourseDate | null>(null);
-  const [wantsPlasticCard, setWantsPlasticCard] = useState(false);
 
   useEffect(() => {
     fetch(`${API_URL}/locations`)
@@ -53,9 +51,7 @@ const PracticalCourse = () => {
 
   const calculateTotal = () => {
     if (!selectedLocation) return 0;
-    const coursePrice = calculatePriceWithVAT(selectedLocation.price);
-    const cardPrice = wantsPlasticCard ? calculatePriceWithVAT(PLASTIC_CARD_PRICE) : 0;
-    return coursePrice + cardPrice;
+    return calculatePriceWithVAT(selectedLocation.price);
   };
 
   const handleLocationSelect = (location: Location) => {
@@ -99,13 +95,13 @@ const PracticalCourse = () => {
           locationId: selectedLocation.id,
           locationName: selectedLocation.city,
           locationAddress: selectedLocation.address,
+          dateId: selectedDate.id,
           startDate: selectedDate.startDate,
           endDate: selectedDate.endDate,
           time: selectedDate.time,
           availableSpots: selectedDate.availableSpots,
           basePrice: selectedLocation.price,
           price: finalPrice,
-          wantsPlasticCard,
         },
       },
     });
@@ -204,10 +200,6 @@ const PracticalCourse = () => {
                       <AccordionItem value="q3">
                         <AccordionTrigger>{t('faq.q3')}</AccordionTrigger>
                         <AccordionContent>{t('faq.a3')}</AccordionContent>
-                      </AccordionItem>
-                      <AccordionItem value="q4">
-                        <AccordionTrigger>{t('faq.q4')}</AccordionTrigger>
-                        <AccordionContent>{t('faq.a4')}</AccordionContent>
                       </AccordionItem>
                     </Accordion>
                   </CardContent>
@@ -341,21 +333,6 @@ const PracticalCourse = () => {
                               </div>
                           )}
 
-                          {/*<div className="flex items-start space-x-3 p-3 border border-border rounded-lg">*/}
-                          {/*  <Checkbox*/}
-                          {/*      id="plasticCard"*/}
-                          {/*      checked={wantsPlasticCard}*/}
-                          {/*      onCheckedChange={(checked) => setWantsPlasticCard(checked === true)}*/}
-                          {/*  />*/}
-                          {/*  <div className="flex-1">*/}
-                          {/*    <Label htmlFor="plasticCard" className="cursor-pointer">*/}
-                          {/*      {t('practical.plasticCard')}*/}
-                          {/*    </Label>*/}
-                          {/*    <p className="text-sm font-medium text-primary">*/}
-                          {/*      {calculatePriceWithVAT(PLASTIC_CARD_PRICE).toFixed(2)} € ({t('practical.inclVatShort')})*/}
-                          {/*    </p>*/}
-                          {/*  </div>*/}
-                          {/*</div>*/}
 
                           <div className="border-t border-border pt-4">
                             <div className="flex justify-between text-sm mb-2">
@@ -370,23 +347,6 @@ const PracticalCourse = () => {
                               <span className="text-muted-foreground">{t('practical.courseGross')}</span>
                               <span>{calculatePriceWithVAT(selectedLocation.price).toFixed(2)} €</span>
                             </div>
-
-                            {wantsPlasticCard && (
-                                <>
-                                  <div className="flex justify-between text-sm mb-2 mt-4 pt-2 border-t border-dashed">
-                                    <span className="text-muted-foreground">{t('practical.cardNet')}</span>
-                                    <span>{PLASTIC_CARD_PRICE.toFixed(2)} €</span>
-                                  </div>
-                                  <div className="flex justify-between text-sm mb-2">
-                                    <span className="text-muted-foreground">{t('practical.vat')}</span>
-                                    <span>{(PLASTIC_CARD_PRICE * VAT_RATE).toFixed(2)} €</span>
-                                  </div>
-                                  <div className="flex justify-between text-sm mb-2">
-                                    <span className="text-muted-foreground">{t('practical.cardGross')}</span>
-                                    <span>{calculatePriceWithVAT(PLASTIC_CARD_PRICE).toFixed(2)} €</span>
-                                  </div>
-                                </>
-                            )}
 
                             <div className="flex justify-between font-bold text-lg mt-3 pt-3 border-t">
                               <span>{t('practical.totalInclVat')}</span>

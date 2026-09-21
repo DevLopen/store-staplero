@@ -18,6 +18,9 @@ import TopicView from "./pages/TopicView";
 import TopicEditor from "./pages/TopicEditor";
 import Admin from "./pages/Admin";
 import PracticalCourse from "./pages/PracticalCourse";
+import FirmenschulungBerlin from "./pages/FirmenschulungBerlin";
+import Products from "./pages/Products";
+import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
 import Checkout from "./pages/Checkout";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
@@ -59,6 +62,9 @@ const AppContent = () => {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/practical-course" element={<PracticalCourse />} />
+          <Route path="/kursy" element={<Products />} />
+          <Route path="/firmenschulung-berlin" element={<FirmenschulungBerlin />} />
+          <Route path="/kursy/:slug" element={<ProductDetail />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/checkout/success" element={<CheckoutSuccess />} />
           <Route path="/checkout/cancel" element={<CheckoutCancel />} />

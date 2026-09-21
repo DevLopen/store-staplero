@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Eye, ShoppingBag, ChevronLeft, ChevronRight, RefreshCw, Filter } from "lucide-react";
+import { Search, Eye, ShoppingBag, ChevronLeft, ChevronRight, RefreshCw, Filter, Users, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,6 +33,8 @@ const AdminOrders = () => {
     const [total,       setTotal]       = useState(0);
     const [detail,      setDetail]      = useState<any | null>(null);
     const [updating,    setUpdating]    = useState<string | null>(null);
+    const [syncing,     setSyncing]     = useState(false);
+    const [syncMsg,     setSyncMsg]     = useState<{ ok: boolean; text: string } | null>(null);
 
     const authH = () => ({
         "Content-Type": "application/json",
@@ -70,6 +72,47 @@ const AdminOrders = () => {
             });
             setOrders(prev => prev.map(o => o._id === id || o.id === id ? { ...o, status: newStatus } : o));
         } catch {} finally { setUpdating(null); }
+    };
+
+    // Dopisuje brakujących uczestników do opłaconego zamówienia (idempotentne) i odświeża listę
+    const syncParticipants = async (order: any) => {
+        setSyncing(true); setSyncMsg(null);
+        try {
+            const res = await fetch(`${API}/orders/${order._id || order.id}/sync-participants`, {
+                method: "POST", headers: authH(),
+            });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.message || "Fehler");
+            setSyncMsg({ ok: true, text: d.message });
+
+            const p = new URLSearchParams({ page: String(page), limit: "20", ...(search && { search }), ...(status && { status }) });
+            const listRes = await fetch(`${API}/orders?${p}`, { headers: authH() });
+            if (listRes.ok) {
+                const list = await listRes.json();
+                setOrders(list.orders || []);
+                const fresh = (list.orders || []).find((o: any) => (o._id || o.id) === (order._id || order.id));
+                if (fresh) setDetail(fresh);
+            }
+        } catch (e: any) {
+            setSyncMsg({ ok: false, text: e.message });
+        } finally { setSyncing(false); }
+    };
+
+    // Kontrola zapisu uczestników: ile powinno być vs ile faktycznie jest w kursie
+    const participantsBadge = (o: any) => {
+        if (o.type !== "practical") return <span className="text-xs text-muted-foreground">–</span>;
+        const expected = o.expectedParticipants || 0;
+        const registered = o.registeredParticipants || 0;
+        const isPaid = o.status === "paid" || o.status === "completed";
+        const missing = isPaid && registered < expected;
+        return (
+            <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${
+                missing ? "bg-red-100 text-red-700" : "bg-muted text-foreground"
+            }`}>
+                <Users className="w-3 h-3" />
+                {isPaid ? `${registered}/${expected}` : expected}
+            </span>
+        );
     };
 
     return (
@@ -127,7 +170,7 @@ const AdminOrders = () => {
                             <table className="w-full">
                                 <thead>
                                 <tr className="border-b border-border bg-muted/30">
-                                    {["Bestellung", "Kunde", "Datum", "Betrag", "Status", "Aktionen"].map(h => (
+                                    {["Bestellung", "Kunde", "Datum", "Teilnehmer", "Betrag", "Status", "Aktionen"].map(h => (
                                         <th key={h} className="text-left text-xs font-bold text-muted-foreground uppercase tracking-wide px-4 py-3">{h}</th>
                                     ))}
                                 </tr>
@@ -150,6 +193,7 @@ const AdminOrders = () => {
                                         <td className="px-4 py-3 text-sm text-muted-foreground">
                                             {fmtDate(o.createdAt)}
                                         </td>
+                                        <td className="px-4 py-3">{participantsBadge(o)}</td>
                                         <td className="px-4 py-3 font-semibold text-sm">
                                             {fmtEur(o.totalAmount || o.total || 0)}
                                         </td>
@@ -204,8 +248,8 @@ const AdminOrders = () => {
 
             {/* Order detail dialog */}
             {detail && (
-                <Dialog open onOpenChange={() => setDetail(null)}>
-                    <DialogContent className="max-w-lg">
+                <Dialog open onOpenChange={() => { setDetail(null); setSyncMsg(null); }}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Bestellung #{detail.orderNumber || detail.id}</DialogTitle>
                         </DialogHeader>
@@ -218,7 +262,8 @@ const AdminOrders = () => {
                                     ["Datum", fmtDate(detail.createdAt)],
                                     ["Betrag", fmtEur(detail.totalAmount || detail.total || 0)],
                                     ["Status", STATUS_LABELS[detail.status] || detail.status],
-                                    ["Zahlungsmethode", detail.paymentMethod || "–"],
+                                    ["Bezahlt am", detail.paidAt ? fmtDate(detail.paidAt) : "–"],
+                                    ["Rechnung", detail.invoiceNumber || "–"],
                                 ].map(([l, v]) => (
                                     <div key={l} className="bg-muted/30 rounded-lg p-3">
                                         <p className="text-xs text-muted-foreground mb-1">{l}</p>
@@ -243,12 +288,93 @@ const AdminOrders = () => {
                             {detail.items?.length > 0 && (
                                 <div>
                                     <p className="font-semibold mb-2">Artikel</p>
-                                    {detail.items.map((item: any, i: number) => (
-                                        <div key={i} className="flex justify-between text-sm py-1.5 border-b border-border last:border-0">
-                                            <span>{item.name || item.courseName}</span>
-                                            <span className="font-semibold">{fmtEur(item.price || 0)}</span>
-                                        </div>
-                                    ))}
+                                    {detail.items.map((item: any, i: number) => {
+                                        const qty = item.quantity || 1;
+                                        return (
+                                            <div key={i} className="flex justify-between gap-3 text-sm py-1.5 border-b border-border last:border-0">
+                                                <span>
+                                                    {item.name || item.courseName}
+                                                    {qty > 1 && <span className="text-muted-foreground"> × {qty}</span>}
+                                                </span>
+                                                <span className="font-semibold whitespace-nowrap">
+                                                    {qty > 1 && (
+                                                        <span className="text-xs text-muted-foreground font-normal mr-2">
+                                                            {qty} × {fmtEur(item.price || 0)}
+                                                        </span>
+                                                    )}
+                                                    {fmtEur((item.price || 0) * qty)}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {detail.type === "practical" && detail.practicalCourseDetails && (
+                                <div className="bg-muted/30 rounded-lg p-3">
+                                    <p className="text-xs text-muted-foreground mb-1">Termin</p>
+                                    <p className="font-semibold">
+                                        {detail.practicalCourseDetails.locationName}
+                                        {detail.practicalCourseDetails.locationAddress && (
+                                            <span className="font-normal text-muted-foreground"> · {detail.practicalCourseDetails.locationAddress}</span>
+                                        )}
+                                    </p>
+                                    <p>
+                                        {fmtDate(detail.practicalCourseDetails.startDate)}
+                                        {detail.practicalCourseDetails.endDate !== detail.practicalCourseDetails.startDate &&
+                                            ` – ${fmtDate(detail.practicalCourseDetails.endDate)}`}
+                                        {detail.practicalCourseDetails.time && ` · ${detail.practicalCourseDetails.time}`}
+                                    </p>
+                                </div>
+                            )}
+
+                            {detail.type === "practical" && (
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <p className="font-semibold flex items-center gap-2">
+                                            <Users className="w-4 h-4" />
+                                            Teilnehmer ({detail.registeredParticipants}/{detail.expectedParticipants} eingetragen)
+                                        </p>
+                                        {(detail.status === "paid" || detail.status === "completed") &&
+                                            detail.registeredParticipants < detail.expectedParticipants && (
+                                            <Button size="sm" variant="outline" onClick={() => syncParticipants(detail)} disabled={syncing}>
+                                                {syncing ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                                                Fehlende eintragen
+                                            </Button>
+                                        )}
+                                    </div>
+                                    {syncMsg && (
+                                        <p className={`text-xs rounded-lg px-3 py-2 mb-2 ${syncMsg.ok ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                            {syncMsg.text}
+                                        </p>
+                                    )}
+                                    {detail.status === "pending" && (
+                                        <p className="text-xs text-muted-foreground mb-2">
+                                            Die Teilnehmer werden nach erfolgreicher Zahlung automatisch in den Kurs eingetragen.
+                                        </p>
+                                    )}
+                                    {(detail.participants || []).map((p: any) => {
+                                        const isPaid = detail.status === "paid" || detail.status === "completed";
+                                        return (
+                                            <div key={p.seatIndex} className="flex items-center justify-between text-sm py-1.5 border-b border-border last:border-0">
+                                                <span>
+                                                    {p.firstName} {p.lastName}
+                                                    {p.isBuyer && <span className="text-xs text-muted-foreground"> (Käufer)</span>}
+                                                </span>
+                                                {p.registered ? (
+                                                    <span className="inline-flex items-center gap-1 text-xs text-green-600">
+                                                        <CheckCircle className="w-3.5 h-3.5" /> Im Kurs eingetragen
+                                                    </span>
+                                                ) : isPaid ? (
+                                                    <span className="inline-flex items-center gap-1 text-xs text-red-600">
+                                                        <AlertTriangle className="w-3.5 h-3.5" /> Nicht eingetragen
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">Ausstehend</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

@@ -108,13 +108,6 @@ const CheckoutSuccess = () => {
                                         </div>
                                     ))}
 
-                                    {order.practicalCourseDetails?.wantsPlasticCard && (
-                                        <div className="flex justify-between mb-2 text-sm text-muted-foreground">
-                                            <span>Plastikkarte</span>
-                                            <span>14,99 €</span>
-                                        </div>
-                                    )}
-
                                     <div className="flex justify-between font-bold text-lg mt-4 pt-4 border-t">
                                         <span>Gesamt</span>
                                         <span className="text-primary">{order.totalAmount.toFixed(2)} €</span>

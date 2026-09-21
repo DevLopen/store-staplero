@@ -6,6 +6,8 @@ import PracticalCourseParticipant from "../models/PracticalCourseParticipant";
 import { generateCertificatePDF } from "./certificateController";
 import { sendCertificateEmail } from "../services/email.service";
 import { AuthRequest } from "../types";
+import User from "../models/User";
+import { resolveName } from "../utils/name";
 
 // ─── existing controllers (keep as-is) ────────────────────────────────────────
 
@@ -98,7 +100,6 @@ export const getParticipantsStats = async (req: Request, res: Response) => {
         const confirmed = allParticipants.filter(p => p.status === "confirmed").length;
         const cancelled = allParticipants.filter(p => p.status === "cancelled").length;
         const completed = allParticipants.filter(p => p.status === "completed").length;
-        const withPlasticCard = allParticipants.filter(p => p.wantsPlasticCard && p.status === "confirmed").length;
         const byLocation: any = {};
         allParticipants.forEach(p => {
             if (p.status !== "cancelled") {
@@ -106,7 +107,7 @@ export const getParticipantsStats = async (req: Request, res: Response) => {
                 byLocation[p.locationName]++;
             }
         });
-        res.json({ success: true, stats: { total: allParticipants.length, confirmed, cancelled, completed, withPlasticCard, byLocation } });
+        res.json({ success: true, stats: { total: allParticipants.length, confirmed, cancelled, completed, byLocation } });
     } catch (error: any) {
         res.status(500).json({ success: false, message: "Failed to get stats", error: error.message });
     }
@@ -232,6 +233,8 @@ export const getAllParticipantsPaginated = async (req: Request, res: Response) =
         if (search) {
             filter.$or = [
                 { userName:    { $regex: search, $options: "i" } },
+                { firstName:   { $regex: search, $options: "i" } },
+                { lastName:    { $regex: search, $options: "i" } },
                 { userEmail:   { $regex: search, $options: "i" } },
                 { orderNumber: { $regex: search, $options: "i" } },
             ];
@@ -249,45 +252,123 @@ export const getAllParticipantsPaginated = async (req: Request, res: Response) =
 };
 
 // ── ADMIN: Manually add participant + optionally issue certificate ────────────
+// Dwa tryby:
+//  1) Z terminu w kalendarzu (locationId + dateId) — kursant trafia na listę tego terminu
+//     w danym mieście i zajmuje miejsce (availableSpots - 1).
+//  2) Wpis archiwalny (bez locationId/dateId) — dawny tryb: wolny tekst miasta + data,
+//     bez wpływu na kalendarz.
 export const addManualParticipant = async (req: AuthRequest, res: Response) => {
     try {
-        const { userName, userEmail, userPhone, locationName, startDate,
-            instructorName, stufen, notes, issueNow } = req.body;
-        if (!userName || !userEmail || !startDate)
-            return res.status(400).json({ message: "userName, userEmail, startDate sind Pflicht." });
+        const { userPhone, instructorName, stufen, notes, issueNow, locationId, dateId, force } = req.body;
+        const userEmail = (req.body.userEmail || "").trim().toLowerCase();
+        const nameParts = resolveName({
+            firstName: req.body.firstName,
+            lastName: req.body.lastName,
+            name: req.body.userName,
+        });
+        const userName = nameParts.name;
 
+        if (!userName || !userEmail)
+            return res.status(400).json({ message: "Vorname, Nachname und E-Mail sind Pflicht." });
+
+        let locationName: string = req.body.locationName?.trim() || "Manuell erfasst";
+        let locationAddress: string = req.body.locationName?.trim() || "";
+        let startDate: string = req.body.startDate;
+        let endDate: string = req.body.startDate;
+        let time = "–";
+        let resolvedLocationId = "manual";
+        let resolvedDateId = "manual";
+        let spotsLocation: any = null;
+
+        if (locationId || dateId) {
+            // Tryb 1: termin z kalendarza
+            if (!locationId || !dateId)
+                return res.status(400).json({ message: "Standort und Termin müssen gemeinsam angegeben werden." });
+
+            const location = await Location.findById(locationId);
+            if (!location) return res.status(404).json({ message: "Standort nicht gefunden." });
+
+            const idx = practicalCourseService.findDateIndex(location, dateId);
+            if (idx === -1) return res.status(404).json({ message: "Termin nicht gefunden." });
+
+            const date = location.dates[idx];
+            if (date.availableSpots <= 0 && !force) {
+                return res.status(409).json({
+                    code: "NO_SPOTS",
+                    message: "Für diesen Termin sind keine Plätze mehr frei.",
+                });
+            }
+
+            const duplicate = await PracticalCourseParticipant.findOne({
+                locationId: location._id.toString(),
+                startDate: date.startDate,
+                userEmail,
+                userName,
+                status: { $ne: "cancelled" },
+            });
+            if (duplicate) {
+                return res.status(409).json({
+                    code: "DUPLICATE",
+                    message: `${userName} ist für diesen Termin bereits eingetragen.`,
+                });
+            }
+
+            locationName = location.city;
+            locationAddress = location.address;
+            startDate = date.startDate;
+            endDate = date.endDate;
+            time = date.time;
+            resolvedLocationId = location._id.toString();
+            resolvedDateId = date.id;
+            spotsLocation = { locationId: resolvedLocationId, dateId: date.id };
+        } else if (!startDate) {
+            return res.status(400).json({ message: "Kursdatum ist Pflicht." });
+        }
+
+        // Jeśli kursant ma konto w sklepie — podepnij wpis pod jego konto
+        const existingUser = await User.findOne({ email: userEmail });
         const orderNumber = `MANUAL-${Date.now()}`;
+
         const participant = await PracticalCourseParticipant.create({
-            userId: "manual", userName: userName.trim(),
-            userEmail: userEmail.trim().toLowerCase(),
+            userId: existingUser?._id?.toString() || "manual",
+            userName,
+            firstName: nameParts.firstName,
+            lastName: nameParts.lastName,
+            userEmail,
             userPhone: userPhone?.trim(),
+            seatIndex: 0,
             orderId: orderNumber, orderNumber,
             paidAt: new Date(),
-            locationId: "manual",
-            locationName: locationName?.trim() || "Manuell erfasst",
-            locationAddress: locationName?.trim() || "",
-            dateId: "manual", startDate, endDate: startDate, time: "–",
-            wantsPlasticCard: false,
+            locationId: resolvedLocationId,
+            locationName,
+            locationAddress,
+            dateId: resolvedDateId, startDate, endDate, time,
             status: issueNow ? "completed" : "confirmed",
+            isManual: true,
+            notes: notes?.trim() || undefined,
         });
+
+        if (spotsLocation) {
+            await practicalCourseService.decreaseAvailableSpots(spotsLocation.locationId, spotsLocation.dateId, 1);
+        }
 
         if (issueNow) {
             const cert = await Certificate.create({
-                userId: "manual",
+                userId: participant.userId,
                 participantId: (participant._id as any).toString(),
                 type: "practical",
-                userName: userName.trim(),
-                userEmail: userEmail.trim().toLowerCase(),
+                userName,
+                userEmail,
                 courseName: "Gabelstapler-Fahrausweis (Praxiskurs)",
                 trainingDate: new Date(startDate),
-                trainingLocation: locationName?.trim(),
+                trainingLocation: locationName,
                 instructorName: instructorName?.trim(),
                 stufen: stufen?.length ? stufen : ["stufe1"],
             });
             const pdfBuffer = await generateCertificatePDF(cert.toObject());
             await sendCertificateEmail({
-                to: userEmail.trim().toLowerCase(),
-                userName: userName.trim(),
+                to: userEmail,
+                userName,
                 certId: (cert._id as any).toString(),
                 verificationCode: cert.verificationCode,
                 certType: "practical",

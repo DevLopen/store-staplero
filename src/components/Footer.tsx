@@ -23,7 +23,7 @@ const Footer = () => {
   const l = legalLinks[lang];
 
   return (
-    <footer className="bg-industrial text-secondary-foreground">
+    <footer className="bg-industrial text-secondary-foreground border-t-4 border-primary">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Logo & Description */}
@@ -43,7 +43,7 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h4 className="font-display font-semibold text-primary-foreground mb-4">
+            <h4 className="font-display text-lg font-bold uppercase tracking-wider text-primary-foreground mb-4">
               {t.quickLinks}
             </h4>
             <ul className="space-y-2">
@@ -62,12 +62,17 @@ const Footer = () => {
                   {t.prices}
                 </a>
               </li>
+              <li>
+                <Link to="/firmenschulung-berlin" className="text-primary-foreground/70 hover:text-primary text-sm transition-colors">
+                  Firmenschulung Berlin
+                </Link>
+              </li>
             </ul>
           </div>
 
           {/* Contact */}
           <div>
-            <h4 className="font-display font-semibold text-primary-foreground mb-4">
+            <h4 className="font-display text-lg font-bold uppercase tracking-wider text-primary-foreground mb-4">
               {t.contact}
             </h4>
             <ul className="space-y-2 text-sm text-primary-foreground/70">

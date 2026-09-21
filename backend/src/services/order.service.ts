@@ -24,41 +24,95 @@ export const findOrderByNumber = async (orderNumber: string): Promise<OrderDoc |
 export const findOrderBySessionId = async (sessionId: string): Promise<OrderDoc | null> =>
   Order.findOne({ stripeSessionId: sessionId });
 
+/**
+ * Zapisuje na kurs praktyczny wszystkie osoby z zamówienia (kupujący + dodatkowi)
+ * i zmniejsza liczbę wolnych miejsc o tyle, ilu uczestników faktycznie dopisano.
+ * Idempotentne — wielokrotne wywołanie nie tworzy duplikatów ani nie zabiera miejsc drugi raz.
+ */
+export const registerPracticalParticipants = async (
+  order: OrderDoc
+): Promise<{ created: number; total: number }> => {
+  const details = order.practicalCourseDetails;
+  if (order.type !== "practical" || !details) return { created: 0, total: 0 };
+
+  const user = await User.findById(order.userId);
+  if (!user) throw new Error(`User ${order.userId} for order ${order.orderNumber} not found`);
+
+  const { created, all } = await practicalCourseService.addParticipantsToCourse(order, {
+    userId: user._id.toString(),
+    name: order.userDetails?.name || user.name,
+    firstName: order.userDetails?.firstName || user.firstName,
+    lastName: order.userDetails?.lastName || user.lastName,
+    email: user.email,
+    phone: user.phone,
+  });
+
+  if (created.length > 0) {
+    const dateId =
+      details.dateId || `${details.startDate}_${details.endDate}`.replace(/-/g, "");
+
+    if (!details.locationId || !dateId) {
+      console.error("❌ Cannot decrease spots: missing locationId or dateId", {
+        locationId: details.locationId,
+        dateId,
+      });
+    } else {
+      await practicalCourseService.decreaseAvailableSpots(details.locationId, dateId, created.length);
+    }
+  }
+
+  return { created: created.length, total: all.length };
+};
+
 export const markOrderAsPaid = async (
   orderNumber: string,
   paymentIntentId: string
 ): Promise<void> => {
-  console.log("🔔 saaaaaaaaaa:");
   const order = await findOrderByNumber(orderNumber);
   if (!order) throw new Error(`Order ${orderNumber} not found`);
+
+  // Stripe potrafi dostarczyć ten sam webhook wielokrotnie. Drugi raz nie generujemy faktury,
+  // nie wysyłamy maili ani nie dublujemy dostępu — tylko dopilnowujemy, żeby uczestnicy
+  // kursu praktycznego byli zapisani (idempotentne, zapisuje tylko brakujących).
+  if (order.status === "paid") {
+    console.log(`ℹ️ Order ${orderNumber} already paid — skipping side effects`);
+    if (order.type === "practical") {
+      await registerPracticalParticipants(order);
+    }
+    return;
+  }
 
   order.status = "paid";
   order.paidAt = new Date();
   order.paymentIntentId = paymentIntentId;
 
-  // ── Online courses ────────────────────────────────────────────────────────
-  if (order.type === "online") {
+  // ── Course access ─────────────────────────────────────────────────────────
+  // Uwaga: nadajemy dostęp do kursu online zawsze, gdy w pozycjach zamówienia
+  // znajduje się courseId — niezależnie od order.type. Dzięki temu pakiety
+  // (kurs praktyczny + dołączony dostęp online) też poprawnie nadają dostęp.
+  const courseItems = order.items.filter(i => !!i.courseId);
+  if (courseItems.length > 0) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
-    order.expiresAt = expiresAt;
+    if (order.type === "online") {
+      order.expiresAt = expiresAt;
+    }
 
-    for (const item of order.items) {
-      if (item.courseId) {
-        await assignCourseToUser(order.userId, item.courseId, order.orderNumber, expiresAt);
-      }
+    for (const item of courseItems) {
+      await assignCourseToUser(order.userId, item.courseId as string, order.orderNumber, expiresAt);
     }
 
     await User.findByIdAndUpdate(order.userId, {
       $push: {
-        purchasedCourses: order.items
-          .filter(i => i.courseId)
-          .map(i => ({
+        purchasedCourses: {
+          $each: courseItems.map(i => ({
             courseId: i.courseId,
             purchaseDate: order.paidAt,
             expiresAt,
             status: "active",
             orderNumber: order.orderNumber,
           })),
+        },
       },
     });
   }
@@ -69,18 +123,22 @@ export const markOrderAsPaid = async (
     if (user) {
       const invoiceItems = order.items.map(item => ({
         name: item.courseName,
-        quantity: 1,
+        quantity: item.quantity || 1,
         unitPrice: item.price,
         vatRate: 19,
       }));
 
+      // Jeśli podano inny adres do faktury, użyj go zamiast danych z konta.
+      const billing = order.billingAddressDifferent ? order.billingAddress : undefined;
+
       const invoice = await lexwareService.createInvoice({
         orderNumber: order.orderNumber,
-        customerName: user.name,
+        customerName: billing?.company || billing?.name || user.name,
         customerEmail: user.email,
-        customerAddress: user.address,
-        customerCity: user.city,
-        customerPostalCode: user.postalCode,
+        customerAddress: billing?.address || user.address,
+        customerCity: billing?.city || user.city,
+        customerPostalCode: billing?.postalCode || user.postalCode,
+        customerVatId: billing?.vatId,
         items: invoiceItems,
         totalAmount: order.totalAmount,
         currency: "EUR",
@@ -109,33 +167,10 @@ export const markOrderAsPaid = async (
   const user = await User.findById(order.userId);
   if (!user) return;
 
-  // ── FIX: Practical course spots decrease ─────────────────────────────────
+  // ── Practical course: zapis WSZYSTKICH uczestników + zmniejszenie liczby miejsc ──
   if (order.type === "practical" && order.practicalCourseDetails) {
     try {
-      await practicalCourseService.addParticipantToCourse(
-        order,
-        user._id.toString(),
-        user.name,
-        user.email,
-        user.phone
-      );
-
-      // FIX: dateId is now guaranteed to come from order.practicalCourseDetails.dateId
-      // which was saved correctly in checkoutController. Fallback only as safety net.
-      const details = order.practicalCourseDetails;
-      const dateId =
-        details.dateId ||
-        `${details.startDate}_${details.endDate}`.replace(/-/g, "");
-
-      if (!details.locationId || !dateId) {
-        console.error("❌ Cannot decrease spots: missing locationId or dateId", {
-          locationId: details.locationId,
-          dateId,
-        });
-      } else {
-        await practicalCourseService.decreaseAvailableSpots(details.locationId, dateId);
-        console.log(`✅ Spots decreased for ${details.locationName} / ${dateId}`);
-      }
+      await registerPracticalParticipants(order);
     } catch (err: any) {
       console.error("❌ Failed to process practical course:", err.message);
     }
@@ -155,7 +190,6 @@ export const markOrderAsPaid = async (
         order.practicalCourseDetails.locationAddress,
         fmt(theoryDate),
         fmt(practiceDate),
-        order.practicalCourseDetails.wantsPlasticCard,
         "https://staplero.de/Hinweis.jpeg"
     );
   }
@@ -232,6 +266,7 @@ export default {
   findOrderByNumber,
   findOrderBySessionId,
   markOrderAsPaid,
+  registerPracticalParticipants,
   assignCourseToUser,
   expireOldCourses,
   getUserOrders,

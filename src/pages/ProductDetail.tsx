@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Loader2, MapPin, Calendar, Clock, Users, CreditCard, Award,
-  CheckCircle, AlertCircle, ArrowLeft, Check, BellRing, Mail,
+  CheckCircle, AlertCircle, ArrowLeft, Check, BellRing, Mail, Plus, Minus,
 } from "lucide-react";
 import { SealBadge, IconCertificate, IconForklift } from "@/components/BrandIcons";
 import { Blob } from "@/components/SectionDecor";
@@ -121,6 +121,9 @@ const ProductDetail = () => {
   const [selectedLocation, setSelectedLocation] = useState<ProductLocation | null>(null);
   const [selectedDate, setSelectedDate] = useState<ProductLocationDate | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [participantCount, setParticipantCount] = useState(1);
+
+  const MAX_ADDITIONAL_PARTICIPANTS = 5;
 
   useEffect(() => {
     if (!slug) return;
@@ -186,6 +189,7 @@ const ProductDetail = () => {
     if (!location.isActive) return;
     setSelectedLocation(location);
     setSelectedDate(null);
+    setParticipantCount(1);
   };
 
   const handleDateSelect = (date: ProductLocationDate) => {
@@ -198,6 +202,20 @@ const ProductDetail = () => {
       return;
     }
     setSelectedDate(date);
+    setParticipantCount(1);
+  };
+
+  // Maksymalna liczba uczestników łącznie: mniejsza z (1 + limit 5) i (dostępnych miejsc)
+  const maxTotalParticipants = selectedDate
+    ? Math.max(1, Math.min(1 + MAX_ADDITIONAL_PARTICIPANTS, selectedDate.availableSpots))
+    : 1;
+
+  const incrementParticipants = () => {
+    setParticipantCount((c) => Math.min(maxTotalParticipants, c + 1));
+  };
+
+  const decrementParticipants = () => {
+    setParticipantCount((c) => Math.max(1, c - 1));
   };
 
   const handleOnlineCheckout = () => {
@@ -205,6 +223,7 @@ const ProductDetail = () => {
     navigate("/checkout", {
       state: {
         type: "online",
+        productId: product._id,
         courseId: product.courseId,
         courseName: title,
         price: grossOf(netPrice),
@@ -223,11 +242,12 @@ const ProductDetail = () => {
       return;
     }
 
-    const finalPrice = grossOf(netPrice);
+    const finalPrice = Math.round(grossOf(netPrice) * participantCount * 100) / 100;
     setIsProcessing(true);
     navigate("/checkout", {
       state: {
         type: "practical",
+        productId: product._id,
         courseName: title,
         price: finalPrice,
         practicalCourse: {
@@ -241,10 +261,7 @@ const ProductDetail = () => {
           availableSpots: selectedDate.availableSpots,
           basePrice: netPrice,
           price: finalPrice,
-          wantsPlasticCard: false,
-          ...(product.includesOnlineAccess && product.linkedCourseId
-            ? { linkedCourseId: product.linkedCourseId }
-            : {}),
+          participantCount,
         },
       },
     });
@@ -441,6 +458,58 @@ const ProductDetail = () => {
                       </CardContent>
                     </Card>
                   )}
+
+                  {selectedDate && selectedDate.availableSpots > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Users className="w-5 h-5 text-primary" />
+                          {t("practical.participantsCountTitle")}
+                        </CardTitle>
+                        <CardDescription>
+                          {t("practical.participantsCountSubtitle")}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center gap-4">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={decrementParticipants}
+                            disabled={participantCount <= 1}
+                            aria-label="-"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </Button>
+                          <span className="font-display text-2xl font-bold text-foreground w-10 text-center">
+                            {participantCount}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={incrementParticipants}
+                            disabled={participantCount >= maxTotalParticipants}
+                            aria-label="+"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        {participantCount > 1 && (
+                          <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                            <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                            <p className="text-xs text-foreground">
+                              {t("practical.participantsCountDesc")}
+                            </p>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {t("practical.participantsCountHint")}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
                 </>
               )}
             </div>
@@ -474,6 +543,22 @@ const ProductDetail = () => {
                   <p className="text-xs text-muted-foreground">
                     {t("practical.courseNet") || "Netto"}: €{netPrice.toFixed(2)} + 19% MwSt.
                   </p>
+
+                  {product.type === "normal" && participantCount > 1 && (
+                    <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          {participantCount} × €{grossOf(netPrice).toFixed(2)}
+                        </span>
+                        <span className="font-semibold text-foreground">
+                          €{(grossOf(netPrice) * participantCount).toFixed(2)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {t("practical.totalForParticipants")}
+                      </p>
+                    </div>
+                  )}
 
                   {product.type === "online" ? (
                     <Button className="w-full" size="lg" onClick={handleOnlineCheckout} disabled={isProcessing}>

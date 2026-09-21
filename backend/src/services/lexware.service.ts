@@ -23,6 +23,10 @@ interface InvoiceData {
     customerAddress?: string;
     customerCity?: string;
     customerPostalCode?: string;
+    // USt-IdNr. klienta firmowego — jeśli podana, drukowana jest jako dodatkowa
+    // linia adresu na fakturze (Lexware nie ma osobnego pola na fakturze bez
+    // pełnej integracji Kontaktów, więc dopisujemy ją do "supplement").
+    customerVatId?: string;
     items: InvoiceItem[];
     totalAmount: number;
     currency: string;
@@ -187,6 +191,7 @@ export const createInvoice = async (
             voucherDate: voucherDate,
             address: {
                 name: invoiceData.customerName,
+                ...(invoiceData.customerVatId ? { supplement: `USt-IdNr.: ${invoiceData.customerVatId}` } : {}),
                 street: invoiceData.customerAddress || "",
                 zip: invoiceData.customerPostalCode || "",
                 city: invoiceData.customerCity || "",

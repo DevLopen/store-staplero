@@ -15,10 +15,13 @@ export interface Participant {
     // Dane użytkownika
     userId: string;
     userName: string;
+    firstName?: string;
+    lastName?: string;
     userEmail: string;
     userPhone?: string;
 
-    // Dane zamówienia
+    // Dane zamówienia (jedno zamówienie może mieć wielu uczestników; seatIndex 0 = kupujący)
+    seatIndex?: number;
     orderId: string;
     orderNumber: string;
     paidAt: string;
@@ -35,7 +38,6 @@ export interface Participant {
     time: string;
 
     // Dodatki
-    wantsPlasticCard: boolean;
 
     // Status
     status: ParticipantStatus;
@@ -76,7 +78,6 @@ export interface ParticipantsStats {
     confirmed: number;
     cancelled: number;
     completed: number;
-    withPlasticCard: number;
 }
 
 /**
@@ -140,7 +141,6 @@ export const calculateStats = (participants: Participant[]): ParticipantsStats =
         confirmed: participants.filter(p => p.status === "confirmed").length,
         cancelled: participants.filter(p => p.status === "cancelled").length,
         completed: participants.filter(p => p.status === "completed").length,
-        withPlasticCard: participants.filter(p => p.wantsPlasticCard && p.status === "confirmed").length,
     };
 };
 

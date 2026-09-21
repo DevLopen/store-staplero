@@ -14,6 +14,7 @@ import courseRoutes      from "./routes/courseRoutes";
 import dashboardRoutes   from "./routes/dashboardRoutes";
 import aiRoutes          from "./routes/aiRoutes";
 import checkoutRoutes    from "./routes/checkout";
+import PracticalCourseParticipant from "./models/PracticalCourseParticipant";
 import webhookRoutes     from "./routes/webhooks";
 import locationRoutes    from "./routes/location.routes";
 import contactRoutes     from "./routes/contact.routes";
@@ -21,6 +22,7 @@ import chatRoutes        from "./routes/chatRoutes";
 import practicalCourseRoutes from "./routes/practicalcourseRoutes";
 import certificateRoutes from "./routes/certificateRoutes";
 import uploadRoutes      from "./routes/uploadRoutes";
+import productRoutes     from "./routes/productRoutes";
 
 import orderService from "./services/order.service";
 
@@ -38,10 +40,13 @@ const allowedOrigins = [
   ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL.trim()] : []),
 ];
 
+const isLocalhostOrigin = (origin: string) => /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) cb(null, true);
-    else {
+    if (!origin || allowedOrigins.includes(origin) || (process.env.NODE_ENV !== "production" && isLocalhostOrigin(origin))) {
+      cb(null, true);
+    } else {
       console.error(`[CORS] Blocked origin: ${origin} | Allowed: ${allowedOrigins.join(", ")}`);
       cb(new Error(`CORS: Unauthorized origin ${origin}`));
     }
@@ -73,12 +78,23 @@ app.use("/api/chat",                   chatRoutes);
 app.use("/api/admin/practical-courses", practicalCourseRoutes);
 app.use("/api/certificates",           certificateRoutes);
 app.use("/api/upload",                 uploadRoutes);
+app.use("/api/products",               productRoutes);
 
 // ── MongoDB ───────────────────────────────────────────────────────────────────
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/staplerschein";
 mongoose
     .connect(MONGO_URI)
-    .then(() => console.log("✅ MongoDB connected"))
+    .then(async () => {
+      console.log("✅ MongoDB connected");
+      // Jedno zamówienie = wielu uczestników: stare unikalne indeksy (orderId, orderNumber,
+      // userId+locationId+dateId) muszą zniknąć, a nowy (orderId+seatIndex) powstać.
+      try {
+        await PracticalCourseParticipant.syncIndexes();
+        console.log("✅ PracticalCourseParticipant indexes synced");
+      } catch (err: any) {
+        console.error("❌ Failed to sync PracticalCourseParticipant indexes:", err.message);
+      }
+    })
     .catch(err => console.error("❌ MongoDB connection error:", err));
 
 // ── Cron jobs ─────────────────────────────────────────────────────────────────

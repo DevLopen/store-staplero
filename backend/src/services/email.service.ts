@@ -1,7 +1,5 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // Zapobiega wstrzyknięciu HTML w treść e-maili budowanych z danych
 // wpisanych przez użytkownika (np. formularz kontaktowy).
 const escapeHtml = (value: string): string =>
@@ -11,6 +9,8 @@ const escapeHtml = (value: string): string =>
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || "STAPLERO <noreply@staplero.com>";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.com";
 
@@ -315,7 +315,6 @@ export const sendPracticalCourseBookingEmail = async (
     locationAddress: string,
     theoryDate: string,
     practiceDate: string,
-    wantsPlasticCard: boolean,
     locationImageUrl?: string
 ): Promise<void> => {
 
@@ -420,8 +419,6 @@ export const sendPracticalCourseBookingEmail = async (
     .tp-name { font-size: 14px; font-weight: 600; color: #2C2416; }
     .tp-addr { font-size: 13px; color: #6B6560; }
     .tp-note { font-size: 11px; color: #B8B4AC; margin-top: 4px; }
-    .procard { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: #F0FDF4; border-left: 2px solid #4ADE80; margin: 24px 0; }
-    .procard-text { font-size: 13px; color: #166534; }
     .storno { padding: 24px; background: #FDF8F0; border: 1px solid #F39200; margin: 36px 0; }
     .storno-title { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #F39200; margin-bottom: 14px; font-family: 'Courier New', Courier, monospace; }
     .storno-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #F5EDD8; }
@@ -594,11 +591,6 @@ export const sendPracticalCourseBookingEmail = async (
       <div class="mit-item">Geeignete Arbeitskleidung (lange Hosen empfohlen)</div>
       <div class="mit-note">Hallentemperatur ca. 18–22 °C</div>
     </div>
-
-    ${wantsPlasticCard ? `
-    <div class="procard">
-      <div class="procard-text"><strong>Staplero ProCard</strong> — Ihre Plastikkarte im Scheckkartenformat wird ausgestellt.</div>
-    </div>` : ''}
 
     <div class="storno">
       <div class="storno-title">Stornierungsbedingungen</div>
