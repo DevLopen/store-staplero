@@ -79,7 +79,7 @@ const getB2cFaqs = (lang: string): { id: string; question: string; answer: JSX.E
         de: [
             { id: 'b2c-1', question: 'Wann findet die Schulung statt?', answer: (<>Alle Schulungstermine werden auf unserer Website veröffentlicht. Wählen Sie „Theorie &amp; Praxis (offline)", dann Termin und Standort.</>) },
             { id: 'b2c-2', question: 'Wie lange dauert die Ausbildung?', answer: (<>In der Regel <strong>2 Tage:</strong><ul className="list-disc ml-6 mt-2 space-y-1"><li>Tag 1: Theorie</li><li>Tag 2: Praxis &amp; Prüfung</li></ul></>) },
-            { id: 'b2c-3', question: 'Was kostet die Schulung?', answer: (<><strong>249,99 € netto</strong> (+ 19% MwSt.), inkl. Theorie, Praxis, Prüfung und offizieller Staplerschein.</>) },
+            { id: 'b2c-3', question: 'Was kostet die Schulung?', answer: (<><strong>279,99 € netto</strong> (+ 19% MwSt.), inkl. Theorie, Praxis, Prüfung und offizieller Staplerschein.</>) },
             { id: 'b2c-4', question: 'Gibt es zusätzliche Kosten?', answer: (<>Nur bei Bedarf: Zusatzqualifikationen (Schubmaststapler, Schnellläufer).</>) },
             { id: 'b2c-5', question: 'In welcher Sprache findet der Kurs statt?', answer: (<>Je nach Standort und Anmeldung. Beispiel: Berlin (Deutsch), empfohlenes Niveau B1.</>) },
             { id: 'b2c-6', question: 'Kann ich den Kurs auf Englisch machen?', answer: (<>Ja. Wählen Sie Berlin (Englisch) bei der Anmeldung.</>) },
@@ -96,7 +96,7 @@ const getB2cFaqs = (lang: string): { id: string; question: string; answer: JSX.E
         en: [
             { id: 'b2c-1', question: 'When does the training take place?', answer: (<>All training dates are published on our website. Select "Theory &amp; Practice (offline)", then choose your date and location.</>) },
             { id: 'b2c-2', question: 'How long does training take?', answer: (<>Usually <strong>2 days:</strong><ul className="list-disc ml-6 mt-2 space-y-1"><li>Day 1: Theory</li><li>Day 2: Practice &amp; Exam</li></ul></>) },
-            { id: 'b2c-3', question: 'How much does training cost?', answer: (<><strong>€249.99 net</strong> (+ 19% VAT), incl. theory, practice, exam and official forklift license.</>) },
+            { id: 'b2c-3', question: 'How much does training cost?', answer: (<><strong>€279.99 net</strong> (+ 19% VAT), incl. theory, practice, exam and official forklift license.</>) },
             { id: 'b2c-4', question: 'Are there additional costs?', answer: (<>Only if needed: additional qualifications (reach truck, powered pallet truck).</>) },
             { id: 'b2c-5', question: 'In what language is the course?', answer: (<>Depends on location and registration. Example: Berlin (German), recommended level B1.</>) },
             { id: 'b2c-6', question: 'Can I do the course in English?', answer: (<>Yes. Select Berlin (English) when registering.</>) },
@@ -113,7 +113,7 @@ const getB2cFaqs = (lang: string): { id: string; question: string; answer: JSX.E
         pl: [
             { id: 'b2c-1', question: 'Kiedy odbywa się szkolenie?', answer: (<>Wszystkie terminy są publikowane na naszej stronie. Wybierz „Teoria i Praktyka (stacjonarnie)", następnie termin i lokalizację.</>) },
             { id: 'b2c-2', question: 'Jak długo trwa szkolenie?', answer: (<>Zazwyczaj <strong>2 dni:</strong><ul className="list-disc ml-6 mt-2 space-y-1"><li>Dzień 1: Teoria</li><li>Dzień 2: Praktyka i egzamin</li></ul></>) },
-            { id: 'b2c-3', question: 'Ile kosztuje szkolenie?', answer: (<><strong>249,99 € netto</strong> (+ 19% VAT), cena obejmuje teorię, praktykę, egzamin i oficjalne uprawnienia.</>) },
+            { id: 'b2c-3', question: 'Ile kosztuje szkolenie?', answer: (<><strong>279,99 € netto</strong> (+ 19% VAT), cena obejmuje teorię, praktykę, egzamin i oficjalne uprawnienia.</>) },
             { id: 'b2c-4', question: 'Czy są dodatkowe koszty?', answer: (<>Tylko w razie potrzeby: dodatkowe kwalifikacje (wózek wysokiego składowania, wózek z platformą).</>) },
             { id: 'b2c-5', question: 'W jakim języku odbywa się kurs?', answer: (<>Zależy od lokalizacji i wyboru przy rejestracji. Przykład: Berlin (po niemiecku), zalecany poziom B1.</>) },
             { id: 'b2c-6', question: 'Czy mogę odbyć kurs po polsku?', answer: (<>Tak. Wybierz odpowiednią lokalizację z językiem polskim przy rejestracji.</>) },
@@ -130,7 +130,7 @@ const getB2cFaqs = (lang: string): { id: string; question: string; answer: JSX.E
         uk: [
             { id: 'b2c-1', question: 'Коли проводиться навчання?', answer: (<>Усі терміни публікуються на нашому сайті. Виберіть «Теорія та Практика (офлайн)», потім дату та локацію.</>) },
             { id: 'b2c-2', question: 'Як довго триває навчання?', answer: (<>Зазвичай <strong>2 дні:</strong><ul className="list-disc ml-6 mt-2 space-y-1"><li>День 1: Теорія</li><li>День 2: Практика та іспит</li></ul></>) },
-            { id: 'b2c-3', question: 'Скільки коштує навчання?', answer: (<><strong>249,99 € нетто</strong> (+ 19% ПДВ), включає теорію, практику, іспит та офіційні права.</>) },
+            { id: 'b2c-3', question: 'Скільки коштує навчання?', answer: (<><strong>279,99 € нетто</strong> (+ 19% ПДВ), включає теорію, практику, іспит та офіційні права.</>) },
             { id: 'b2c-4', question: 'Чи є додаткові витрати?', answer: (<>Лише за потреби: додаткові кваліфікації (штабелеукладач, електровізок).</>) },
             { id: 'b2c-5', question: 'Якою мовою проводиться курс?', answer: (<>Залежить від локації та вибору при реєстрації. Приклад: Берлін (німецькою), рекомендований рівень B1.</>) },
             { id: 'b2c-6', question: 'Чи можу я пройти курс українською?', answer: (<>Так. Оберіть відповідну локацію з українською мовою при реєстрації.</>) },

@@ -53,7 +53,7 @@ async function run() {
         pl: "",
       },
       benefits: {
-        de: ["Theorie inklusive", "Praxis inklusive", "Schriftliche & praktische Prüfung", "Staplero ProCard"],
+        de: ["Theorie inklusive", "Praxis inklusive", "Schriftliche & praktische Prüfung"],
         en: [], uk: [], pl: [],
       },
       price: 279.99,
