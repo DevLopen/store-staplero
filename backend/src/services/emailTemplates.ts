@@ -19,6 +19,8 @@ export const escapeHtml = (value: string): string =>
 const C = {
     orange: "#F97706",
     ink: "#111111",
+    // Ciemne tła (pas nagłówka, stopka, ciemne przyciski) — jaśniejsze niż tekst, jak na stronie
+    dark: "#212121",
     body: "#39393b",
     muted: "#707072",
     hairline: "#e5e5e5",
@@ -55,7 +57,7 @@ export const sectionLabel = (text: string): string => `
 export const button = (href: string, label: string, kind: "primary" | "dark" | "outline" = "primary", fullWidth = false): string => {
     const styles = {
         primary: { bg: C.orange, color: C.ink, border: C.orange },
-        dark: { bg: C.ink, color: C.white, border: C.ink },
+        dark: { bg: C.dark, color: C.white, border: C.dark },
         outline: { bg: C.white, color: C.ink, border: C.ink },
     }[kind];
     return `
@@ -83,7 +85,7 @@ export const callout = (html: string, tone: "orange" | "gray" | "dark" = "orange
     const t = {
         orange: { bg: C.cream, border: C.orange, color: C.body },
         gray: { bg: C.cloud, border: C.ink, color: C.body },
-        dark: { bg: C.ink, border: C.orange, color: "#e5e5e5" },
+        dark: { bg: C.dark, border: C.orange, color: "#e5e5e5" },
     }[tone];
     return `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 24px;">
@@ -179,7 +181,7 @@ export const renderEmail = (o: LayoutOptions): string => `<!DOCTYPE html>
 
           <!-- Czarny pas z nagłówkiem -->
           <tr>
-            <td class="px" style="padding:44px 40px 40px;background:${C.ink};">
+            <td class="px" style="padding:44px 40px 40px;background:${C.dark};">
               ${o.eyebrow ? `<div style="font-family:${BODY_FONT};font-size:12px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${C.orange};margin-bottom:14px;">${o.eyebrow}</div>` : ""}
               <div class="h1" style="font-family:${DISPLAY_FONT};font-size:48px;line-height:.98;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:${C.white};">${o.headline}</div>
             </td>
@@ -194,7 +196,7 @@ export const renderEmail = (o: LayoutOptions): string => `<!DOCTYPE html>
 
           <!-- Stopka -->
           <tr>
-            <td class="px" style="padding:30px 40px;background:${C.ink};border-top:4px solid ${C.orange};font-family:${BODY_FONT};font-size:13px;line-height:1.8;color:#a1a1a1;">
+            <td class="px" style="padding:30px 40px;background:${C.dark};border-top:4px solid ${C.orange};font-family:${BODY_FONT};font-size:13px;line-height:1.8;color:#a1a1a1;">
               <strong style="color:${C.white};">STAPLERO Ausbildungszentrum</strong><br>
               Jakobstr. 13, 02826 G&ouml;rlitz<br>
               <a href="mailto:info@staplero.com" style="color:#d4d4d4;text-decoration:none;">info@staplero.com</a> &middot; +49 176 22067783 &middot; +49 160 92490070<br>

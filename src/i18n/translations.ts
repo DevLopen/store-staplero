@@ -177,7 +177,7 @@ export const translations = {
     title:            { de: 'Unsere Kurse & Schulungen', en: 'Our Courses & Training', uk: 'Наші курси та навчання', pl: 'Nasze kursy i szkolenia' },
     subtitle:         { de: 'Finden Sie die passende Staplerausbildung für Sie.', en: 'Find the right forklift training for you.', uk: 'Знайдіть підходяще навчання для вас.', pl: 'Znajdź odpowiednie szkolenie na wózki widłowe dla siebie.' },
     filterAll:        { de: 'Alle', en: 'All', uk: 'Всі', pl: 'Wszystkie' },
-    filterPractical:  { de: 'Praxiskurse', en: 'Practical courses', uk: 'Практичні курси', pl: 'Kursy praktyczne' },
+    filterPractical:  { de: 'Präsenzkurse', en: 'In-person courses', uk: 'Очні курси', pl: 'Kursy stacjonarne' },
     filterOnline:     { de: 'Online-Kurse', en: 'Online courses', uk: 'Онлайн курси', pl: 'Kursy online' },
     empty:            { de: 'Aktuell sind keine Kurse verfügbar.', en: 'No courses available at the moment.', uk: 'Наразі немає доступних курсів.', pl: 'Aktualnie brak dostępnych kursów.' },
     backToList:       { de: 'Zurück zur Übersicht', en: 'Back to overview', uk: 'Назад до огляду', pl: 'Powrót do listy' },

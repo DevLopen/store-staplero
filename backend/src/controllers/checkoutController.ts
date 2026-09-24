@@ -82,6 +82,22 @@ const productNetPrice = (product: { price: number; promoPrice?: number; isPromoA
     product.isPromoActive && product.promoPrice != null ? product.promoPrice : product.price;
 
 /**
+ * Zalogowany użytkownik wysyła token (Bearer) — wtedy nie wymagamy ponownie hasła.
+ * Akceptujemy oba formaty payloadu: `id` (login) i `_id` (starsze tokeny z checkoutu).
+ */
+const getUserFromAuthHeader = async (req: Request) => {
+    const header = req.headers.authorization;
+    if (!header?.startsWith("Bearer ")) return null;
+    try {
+        const decoded: any = jwt.verify(header.split(" ")[1], process.env.JWT_SECRET || "secret");
+        const id = decoded.id || decoded._id;
+        return id ? await User.findById(id) : null;
+    } catch {
+        return null;
+    }
+};
+
+/**
  * Create checkout session (auto-register user if needed)
  */
 export const createCheckoutSession = async (req: Request, res: Response) => {
@@ -90,7 +106,9 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
 
         // Validate required fields (imię i nazwisko są wymagane tylko przy zakładaniu nowego konta —
         // sprawdzane niżej, po ustaleniu czy użytkownik już istnieje)
-        if (!data.email || !data.password || !data.type) {
+        const authedUser = await getUserFromAuthHeader(req);
+
+        if (!data.type || (!authedUser && (!data.email || !data.password))) {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
@@ -113,7 +131,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
 
         const buyerName = resolveName({ firstName: data.firstName, lastName: data.lastName, name: data.name });
 
-        let user = await User.findOne({ email: data.email });
+        let user = authedUser ?? await User.findOne({ email: data.email });
         let isNewUser = false;
 
         // Create user if doesn't exist
@@ -140,8 +158,8 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             // Send welcome email
             await emailService.sendWelcomeEmail(user.email, user.name);
         } else {
-            // POPRAWKA: Sprawdź hasło dla istniejącego konta
-            const isPasswordCorrect = await bcrypt.compare(data.password, user.password);
+            // Sprawdź hasło dla istniejącego konta (pomijamy, gdy użytkownik jest już zalogowany)
+            const isPasswordCorrect = authedUser ? true : await bcrypt.compare(data.password, user.password);
             if (!isPasswordCorrect) {
                 return res.status(401).json({
                     message: "Ein Konto mit dieser E-Mail-Adresse existiert bereits. Bitte geben Sie das richtige Passwort ein.",
@@ -376,7 +394,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
 
         // Generate JWT token for auto-login
         const token = jwt.sign(
-            { _id: user._id, email: user.email, isAdmin: user.isAdmin },
+            { id: user._id, _id: user._id, email: user.email, isAdmin: user.isAdmin },
             process.env.JWT_SECRET || "your-secret-key",
             { expiresIn: "30d" }
         );

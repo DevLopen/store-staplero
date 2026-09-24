@@ -96,7 +96,7 @@ const Products = () => {
                 {value === "all"
                   ? t("products.filterAll") || "Alle"
                   : value === "normal"
-                  ? t("products.filterPractical") || "Praxiskurse"
+                  ? t("products.filterPractical") || "Präsenzkurse"
                   : t("products.filterOnline") || "Online-Kurse"}
               </Button>
             ))}

@@ -297,15 +297,12 @@ const Index = () => {
                                     <Languages className="w-4 h-4 text-primary" aria-hidden />
                                     {t('hero.languageBadge')}
                                 </p>
-                                {/* Siatka 2 kolumny (mobile) / 3 kolumny (desktop) → zawsze równe rzędy, bez "sierot" */}
-                                <ul className="grid max-w-lg grid-cols-2 gap-2 sm:grid-cols-3">
+                                {/* Zwykła lista informacyjna (bez ramek/tła), żeby nie wyglądała na klikalne przyciski; zawsze po 3 w rzędzie */}
+                                <ul className="grid max-w-lg grid-cols-3 gap-x-4 gap-y-2">
                                     {HERO_LANGUAGES.map((l) => (
-                                        <li
-                                            key={l.code}
-                                            className="flex items-center gap-2.5 rounded-lg border border-primary-foreground/20 bg-primary-foreground/5 px-4 py-2.5"
-                                        >
+                                        <li key={l.code} className="flex min-w-0 items-center gap-2 text-sm text-primary-foreground/75">
                                             <Flag code={l.code} />
-                                            <span lang={l.code.toLowerCase()} className="truncate text-sm font-medium text-primary-foreground">{l.name}</span>
+                                            <span lang={l.code.toLowerCase()} className="truncate">{l.name}</span>
                                         </li>
                                     ))}
                                 </ul>

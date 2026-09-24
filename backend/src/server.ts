@@ -40,7 +40,9 @@ const allowedOrigins = [
   ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL.trim()] : []),
 ];
 
-const isLocalhostOrigin = (origin: string) => /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+// Dev only: localhost plus private network addresses (LAN / VPN, e.g. 10.8.0.1)
+const isLocalhostOrigin = (origin: string) =>
+  /^https?:\/\/(localhost|127\.0\.0\.1|10(\.\d{1,3}){3}|192\.168(\.\d{1,3}){2}|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2}):\d+$/.test(origin);
 
 app.use(cors({
   origin: (origin, cb) => {

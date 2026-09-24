@@ -85,7 +85,6 @@ const YOU_PROVIDE = [
 
 const PARTICIPANTS_BRING = [
     "Gültiger Ausweis (Personalausweis oder Reisepass)",
-    "Passfoto (für den Fahrausweis)",
     "Sicherheitsschuhe (Pflicht für den praktischen Teil)",
 ];
 
@@ -146,7 +145,7 @@ const FirmenschulungBerlin = () => {
 
             // Der Kontakt-Endpoint kennt nur "message" — Zusatzangaben hängen wir als Block an.
             const details = [
-                form.employees && `Anzahl Mitarbeitende: ${form.employees}`,
+                form.employees && `Anzahl Teilnehmende (zu schulen): ${form.employees}`,
                 form.equipment && `Geräteart: ${form.equipment}`,
                 form.venue && `Gewünschter Ort der Schulung: ${form.venue}`,
                 form.location && `Stadt: ${form.location}`,
@@ -286,7 +285,7 @@ const FirmenschulungBerlin = () => {
                             <div className="mt-8 grid gap-px border border-border bg-border sm:grid-cols-2">
                                 {[
                                     { Icon: Building2, title: "Bei Ihnen im Betrieb", text: "Wir kommen in Ihr Lager, Ihre Produktionshalle oder auf Ihren Betriebshof. Ihr Team bleibt vor Ort und übt an Ihren eigenen Geräten." },
-                                    { Icon: Warehouse, title: "In unserer Schulungshalle in Berlin", text: "Ihr Team trainiert in unserer eigenen Halle, an klassischen Frontstaplern und Seitenstaplern. Sie müssen weder Raum noch Übungsbereich noch Stapler bereitstellen." },
+                                    { Icon: Warehouse, title: "In unserer Schulungshalle in Berlin", text: "Ihr Team trainiert in unserer eigenen Halle, an klassischen Frontstaplern und Schubmaststaplern (Hochregalstaplern). Sie müssen weder Raum noch Übungsbereich noch Stapler bereitstellen." },
                                 ].map(({ Icon, title, text }) => (
                                     <div key={title} className="bg-background p-5 md:p-6">
                                         <span className="mb-4 flex h-11 w-11 items-center justify-center bg-primary text-[hsl(var(--on-primary))]">
@@ -406,7 +405,7 @@ const FirmenschulungBerlin = () => {
                                 Wer bringt was mit?
                             </h2>
                             <p className="mt-4 text-lg text-muted-foreground">
-                                Bei einer Schulung in unserer Schulungshalle in Berlin entfällt die Bereitstellung von Raum, Übungsbereich und Stapler. Wir schulen an klassischen Frontstaplern und Seitenstaplern.
+                                Bei einer Schulung in unserer Schulungshalle in Berlin entfällt die Bereitstellung von Raum, Übungsbereich und Stapler. Wir schulen an klassischen Frontstaplern und Schubmaststaplern (Hochregalstaplern).
                             </p>
                         </div>
                         <div className="grid gap-6 lg:grid-cols-3">
@@ -437,11 +436,14 @@ const FirmenschulungBerlin = () => {
                                 vollständig in der Sprache Ihrer Mitarbeitenden durch. Für Schulungen in rumänischer Sprache
                                 fällt ein Dolmetscherzuschlag von 179,99 € netto pro Tag an.
                             </p>
-                            <ul className="grid max-w-xl grid-cols-2 gap-2 sm:grid-cols-3">
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                                Verfügbare Sprachen
+                            </p>
+                            <ul className="grid max-w-xl grid-cols-3 gap-x-4 gap-y-3 border-t border-border pt-4">
                                 {LANGUAGES.map((l) => (
-                                    <li key={l.code} className="flex items-center gap-3 border border-border bg-background px-4 py-3">
+                                    <li key={l.code} className="flex min-w-0 items-center gap-2 text-muted-foreground">
                                         <Flag code={l.code} />
-                                        <span lang={l.code.toLowerCase()} className="font-medium text-foreground">{l.name}</span>
+                                        <span lang={l.code.toLowerCase()} className="truncate">{l.name}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -571,8 +573,8 @@ const FirmenschulungBerlin = () => {
                                     <Input id="b2b-phone" type="tel" autoComplete="tel" value={form.phone} onChange={set("phone")} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="b2b-employees">Anzahl Mitarbeitende</Label>
-                                    <Input id="b2b-employees" inputMode="numeric" value={form.employees} onChange={set("employees")} placeholder="z. B. 8" />
+                                    <Label htmlFor="b2b-employees">Anzahl Teilnehmende</Label>
+                                    <Input id="b2b-employees" inputMode="numeric" value={form.employees} onChange={set("employees")} placeholder="Wie viele Personen sollen geschult werden?" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="b2b-equipment">Geräteart</Label>

@@ -51,7 +51,7 @@ export const FAQ: FaqItem[] = [
   },
   {
     q: "Schulen Sie im Betrieb oder in einer eigenen Halle?",
-    a: "Beides ist möglich. Wir kommen zu Ihnen in den Betrieb, oder Ihre Mitarbeitenden trainieren in unserer eigenen Schulungshalle in Berlin, an klassischen Frontstaplern und Seitenstaplern. Welche Variante passt, hängt von Teilnehmerzahl, Terminwunsch und Ihren Räumlichkeiten ab. Wir beraten Sie gern.",
+    a: "Beides ist möglich. Wir kommen zu Ihnen in den Betrieb, oder Ihre Mitarbeitenden trainieren in unserer eigenen Schulungshalle in Berlin, an klassischen Frontstaplern und Schubmaststaplern (Hochregalstaplern). Welche Variante passt, hängt von Teilnehmerzahl, Terminwunsch und Ihren Räumlichkeiten ab. Wir beraten Sie gern.",
   },
   {
     q: "Wie hoch sind die Kosten für eine Firmenschulung?",
@@ -89,7 +89,6 @@ export const FAQ: FaqItem[] = [
     a: "Jede teilnehmende Person bringt Folgendes mit:",
     bullets: [
       "gültigen Ausweis (Personalausweis oder Reisepass)",
-      "Passfoto (für den Fahrausweis)",
       "Sicherheitsschuhe (Pflicht für den praktischen Teil)",
     ],
   },
