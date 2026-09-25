@@ -175,27 +175,19 @@ export const markOrderAsPaid = async (
       console.error("❌ Failed to process practical course:", err.message);
     }
 
-    const theoryDate = new Date(order.practicalCourseDetails.startDate);
-    const practiceDate = new Date(theoryDate);
-    practiceDate.setDate(practiceDate.getDate() + 1);
-    const fmt = (d: Date) => d.toLocaleDateString("de-DE", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric"
-    });
     console.log("🔔 sendPracticalCourseBookingEmail wywołane dla:", user.email);
-    await emailService.sendPracticalCourseBookingEmail(
-        user.email,
-        user.name,
-        order.orderNumber,
-        order.practicalCourseDetails.locationName,
-        order.practicalCourseDetails.locationAddress,
-        fmt(theoryDate),
-        fmt(practiceDate),
-        "https://staplero.de/Hinweis.jpeg",
-        [
+    await emailService.sendPracticalCourseBookingEmail({
+        to: user.email,
+        name: user.name,
+        orderNumber: order.orderNumber,
+        locationName: order.practicalCourseDetails.locationName,
+        locationAddress: order.practicalCourseDetails.locationAddress,
+        startDate: order.practicalCourseDetails.startDate,
+        participants: [
           user.name,
           ...(order.practicalCourseDetails.additionalParticipants || []).map((p) => p.name),
-        ]
-    );
+        ],
+    });
   }
 
   if (order.type === "online") {

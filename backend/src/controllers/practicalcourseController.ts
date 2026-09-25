@@ -364,14 +364,10 @@ export const addManualParticipant = async (req: AuthRequest, res: Response) => {
         let confirmationSent: boolean | undefined;
         if (sendConfirmation && spotsLocation) {
             try {
-                const theory = new Date(startDate);
-                const practice = new Date(theory);
-                practice.setDate(practice.getDate() + 1);
-                const fmt = (d: Date) => d.toLocaleDateString("de-DE", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-                await sendPracticalCourseBookingEmail(
-                    userEmail, userName, orderNumber, locationName, locationAddress,
-                    fmt(theory), fmt(practice), "https://staplero.de/Hinweis.jpeg", [userName]
-                );
+                await sendPracticalCourseBookingEmail({
+                    to: userEmail, name: userName, orderNumber, locationName, locationAddress,
+                    startDate, participants: [userName],
+                });
                 confirmationSent = true;
             } catch (mailErr: any) {
                 console.error("[Manual participant] Bestätigungs-E-Mail fehlgeschlagen:", mailErr.message);

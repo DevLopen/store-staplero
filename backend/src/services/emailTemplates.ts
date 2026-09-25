@@ -27,6 +27,10 @@ const C = {
     cloud: "#f5f5f5",
     white: "#ffffff",
     cream: "#fff7ed",
+    creamLine: "#fde7cf",
+    // Jaśniejszy odcień ciemnego tła (jak --industrial-light na stronie): panele na ciemnym pasie
+    darkSoft: "#363636",
+    success: "#15803d",
 };
 
 const DISPLAY_FONT = "'Barlow Condensed','Arial Narrow','Helvetica Neue Condensed',Arial,sans-serif";
@@ -80,20 +84,100 @@ export const infoTable = (rows: Array<[string, string]>, labelWidth = 190): stri
   </tr>`).join("")}
 </table>`;
 
-/** Wyróżniony blok (lewa pomarańczowa krawędź) */
+/** Wyróżniony blok: zaokrąglone pole z tłem i cienką ramką (bez pionowej kreski z lewej) */
 export const callout = (html: string, tone: "orange" | "gray" | "dark" = "orange"): string => {
     const t = {
-        orange: { bg: C.cream, border: C.orange, color: C.body },
-        gray: { bg: C.cloud, border: C.ink, color: C.body },
-        dark: { bg: C.dark, border: C.orange, color: "#e5e5e5" },
+        orange: { bg: C.cream, border: C.creamLine, color: C.body },
+        gray: { bg: C.cloud, border: C.hairline, color: C.body },
+        dark: { bg: C.dark, border: C.dark, color: "#e5e5e5" },
     }[tone];
     return `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 24px;">
   <tr>
-    <td style="background:${t.bg};border-left:4px solid ${t.border};padding:18px 22px;font-family:${BODY_FONT};font-size:15px;line-height:1.7;color:${t.color};">${html}</td>
+    <td style="background:${t.bg};border:1px solid ${t.border};border-radius:6px;padding:18px 22px;font-family:${BODY_FONT};font-size:15px;line-height:1.7;color:${t.color};">${html}</td>
   </tr>
 </table>`;
 };
+
+/** Duży nagłówek sekcji (wersaliki) z opcjonalnym opisem pod spodem */
+export const sectionTitle = (text: string, lead?: string, opts: { first?: boolean } = {}): string => `
+<div style="margin:${opts.first ? 0 : 40}px 0 ${lead ? 6 : 16}px;font-family:${DISPLAY_FONT};font-size:28px;line-height:1;font-weight:800;text-transform:uppercase;color:${C.ink};">${text}</div>
+${lead ? `<p style="margin:0 0 18px;font-family:${BODY_FONT};font-size:15px;line-height:1.6;color:${C.muted};">${lead}</p>` : ""}`;
+
+/** Mała etykieta w kształcie pigułki (np. „Pflicht”) */
+export const badge = (text: string, tone: "orange" | "gray" = "orange"): string => {
+    const t = tone === "orange" ? { bg: "#fde7cf", color: "#9a4a00" } : { bg: "#e9e9e9", color: C.body };
+    return `<span style="display:inline-block;background:${t.bg};color:${t.color};font-family:${BODY_FONT};font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 9px;border-radius:12px;white-space:nowrap;">${text}</span>`;
+};
+
+/** Lista kontrolna w ramce: ptaszek, tytuł, opis i opcjonalna etykieta po prawej */
+export const checklist = (items: Array<{ title: string; note?: string; tag?: string; strong?: boolean }>): string => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;border:1px solid ${C.hairline};border-radius:6px;">
+  ${items.map((item, i) => {
+      const line = i < items.length - 1 ? `border-bottom:1px solid ${C.hairline};` : "";
+      const box = item.strong
+          ? `background:${C.dark};color:${C.white};line-height:22px;`
+          : `border:2px solid ${C.dark};color:${C.dark};line-height:18px;box-sizing:border-box;`;
+      return `
+  <tr>
+    <td width="44" valign="top" style="padding:16px 0 16px 18px;${line}"><div style="width:22px;height:22px;text-align:center;font-family:Arial,sans-serif;font-size:13px;font-weight:700;border-radius:4px;${box}">&#10003;</div></td>
+    <td valign="top" style="padding:16px 12px 16px 6px;${line}font-family:${BODY_FONT};font-size:15px;line-height:1.5;color:${C.ink};"><strong>${item.title}</strong>${item.note ? `<br><span style="color:${C.muted};font-size:13px;">${item.note}</span>` : ""}</td>
+    <td align="right" valign="top" style="padding:16px 18px 16px 0;${line}">${item.tag ? badge(item.tag) : ""}</td>
+  </tr>`;
+  }).join("")}
+</table>`;
+
+/** Kroki z miniaturą zdjęcia (np. dojazd). Numeracja „Schritt 1”, „Schritt 2”… */
+export const photoSteps = (steps: Array<{ imageUrl: string; alt: string; title: string; text: string }>): string => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
+  ${steps.map((s, i) => `
+  <tr>
+    <td width="130" valign="top" style="padding:0 16px 16px 0;"><img class="step-img" src="${s.imageUrl}" alt="${escapeHtml(s.alt)}" width="114" height="114" style="display:block;width:114px;height:114px;border-radius:6px;"></td>
+    <td valign="top" style="padding:4px 0 16px;${i < steps.length - 1 ? `border-bottom:1px solid ${C.cloud};` : ""}font-family:${BODY_FONT};">
+      <div style="font-family:${DISPLAY_FONT};font-size:14px;font-weight:800;letter-spacing:1.5px;color:${C.orange};text-transform:uppercase;">Schritt ${i + 1}</div>
+      <div style="font-size:16px;font-weight:700;color:${C.ink};margin:4px 0;">${s.title}</div>
+      <div style="font-size:14px;line-height:1.5;color:#555555;">${s.text}</div>
+    </td>
+  </tr>`).join("")}
+</table>`;
+
+/** Numerowana lista na jasnym tle: 1. 2. 3. */
+export const numberedList = (items: string[]): string => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.cloud};border-radius:6px;">
+  ${items.map((item, i) => {
+      const line = i < items.length - 1 ? `border-bottom:1px solid ${C.hairline};` : "";
+      return `
+  <tr>
+    <td width="36" valign="top" style="padding:13px 0 13px 18px;${line}font-family:${BODY_FONT};font-size:15px;font-weight:700;color:${C.orange};">${i + 1}.</td>
+    <td valign="top" style="padding:13px 18px 13px 0;${line}font-family:${BODY_FONT};font-size:15px;font-weight:600;color:${C.ink};">${item}</td>
+  </tr>`;
+  }).join("")}
+</table>`;
+
+/** Pigułka z etykietą i tekstem obok (np. „Prüfung · Fahrprüfung…”) */
+export const labeledPill = (label: string, text: string, tone: "orange" | "gray" = "gray"): string => {
+    const t = tone === "orange" ? { bg: C.orange, color: C.ink } : { bg: "#e9e9e9", color: C.body };
+    return `
+<table role="presentation" cellpadding="0" cellspacing="0" style="border:1px solid ${C.hairline};border-radius:24px;">
+  <tr>
+    <td style="padding:5px;"><span style="display:inline-block;background:${t.bg};color:${t.color};border-radius:20px;padding:5px 12px;font-family:${BODY_FONT};font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">${label}</span></td>
+    <td style="padding:5px 16px 5px 6px;font-family:${BODY_FONT};font-size:14px;font-weight:600;color:${C.ink};">${text}</td>
+  </tr>
+</table>`;
+};
+
+/** Punkt osi czasu: kropka, tytuł z datą, opis i dodatek (np. pigułka z egzaminem) */
+export const timelineItem = (o: { title: string; meta: string; text: string; extraHtml?: string; accent?: "orange" | "dark"; last?: boolean }): string => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="28" valign="top" style="padding-top:4px;"><div style="width:14px;height:14px;background:${o.accent === "orange" ? C.orange : C.darkSoft};border-radius:7px;"></div></td>
+    <td valign="top" style="padding:0 0 ${o.last ? 8 : 26}px;">
+      <div style="font-family:${DISPLAY_FONT};font-size:22px;line-height:1;font-weight:800;text-transform:uppercase;color:${C.ink};">${o.title} <span style="font-family:${BODY_FONT};font-size:13px;font-weight:600;text-transform:none;color:${C.muted};">&nbsp;${o.meta}</span></div>
+      <p style="margin:10px 0 12px;font-family:${BODY_FONT};font-size:14px;line-height:1.65;color:${C.body};">${o.text}</p>
+      ${o.extraHtml || ""}
+    </td>
+  </tr>
+</table>`;
 
 /** Lista z małymi pomarańczowymi kwadratami */
 export const bullets = (items: string[]): string => `
@@ -127,6 +211,46 @@ export const tile = (opts: { label: string; title: string; value: string; note?:
   </tr>
 </table>`;
 
+// ─── Klocki do ciemnego pasa nagłówka (LayoutOptions.heroHtml) ────────────────
+
+/** Akapit na ciemnym tle */
+export const heroText = (html: string): string =>
+    `<p style="margin:18px 0 30px;font-family:${BODY_FONT};font-size:16px;line-height:1.6;color:#d4d4d4;">${html}</p>`;
+
+/** „Bilet” z dwiema kolumnami (np. dzień 1 i dzień 2) i wierszem pod spodem */
+export const heroTicket = (cols: Array<{ label: string; title: string; note?: string }>, footerHtml?: string): string => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.darkSoft};border:1px solid #474747;border-radius:6px;">
+  <tr>
+    ${cols.map((c, i) => `
+    <td class="stack${i > 0 ? " stack-rule" : ""}" width="${Math.floor(100 / cols.length)}%" valign="top" style="padding:22px 24px;${i > 0 ? "border-left:1px dashed #5a5a5a;" : ""}">
+      <div style="font-family:${BODY_FONT};font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${C.orange};margin-bottom:6px;">${c.label}</div>
+      <div style="font-family:${DISPLAY_FONT};font-size:30px;line-height:1;font-weight:800;text-transform:uppercase;color:${C.white};">${c.title}</div>
+      ${c.note ? `<div style="font-family:${BODY_FONT};font-size:14px;color:#b5b5b5;margin-top:6px;">${c.note}</div>` : ""}
+    </td>`).join("")}
+  </tr>
+  ${footerHtml ? `
+  <tr>
+    <td colspan="${cols.length}" style="padding:16px 24px;border-top:1px solid #474747;font-family:${BODY_FONT};font-size:14px;line-height:1.5;color:#d4d4d4;">${footerHtml}</td>
+  </tr>` : ""}
+</table>`;
+
+/** Dwa przyciski obok siebie na ciemnym tle (na telefonie jeden pod drugim) */
+export const heroButtons = (primary: { href: string; label: string }, secondary: { href: string; label: string }): string => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 0;">
+  <tr>
+    <td class="stack" width="50%" style="padding:0 6px 0 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" bgcolor="${C.orange}" style="background:${C.orange};border-radius:4px;">
+        <a href="${primary.href}" target="_blank" style="display:block;padding:15px 20px;font-family:${BODY_FONT};font-size:15px;font-weight:700;color:${C.ink};text-decoration:none;">${primary.label}</a>
+      </td></tr></table>
+    </td>
+    <td class="stack" width="50%" style="padding:0 0 0 6px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="border:2px solid ${C.white};border-radius:4px;">
+        <a href="${secondary.href}" target="_blank" style="display:block;padding:13px 20px;font-family:${BODY_FONT};font-size:15px;font-weight:700;color:${C.white};text-decoration:none;">${secondary.label}</a>
+      </td></tr></table>
+    </td>
+  </tr>
+</table>`;
+
 // ─── Layout ────────────────────────────────────────────────────────────────────
 
 export interface LayoutOptions {
@@ -134,7 +258,9 @@ export interface LayoutOptions {
     title: string; // <title>
     preheader: string; // tekst podglądu w skrzynce
     eyebrow?: string; // mała pomarańczowa etykieta nad nagłówkiem
+    eyebrowTone?: "orange" | "success"; // "success": zielona plakietka z ptaszkiem (np. potwierdzenie)
     headline: string; // duży nagłówek (wersaliki)
+    heroHtml?: string; // dodatkowa treść w ciemnym pasie pod nagłówkiem (np. terminy, przyciski)
     bodyHtml: string;
 }
 
@@ -154,7 +280,9 @@ export const renderEmail = (o: LayoutOptions): string => `<!DOCTYPE html>
       .px { padding-left:20px !important; padding-right:20px !important; }
       .h1 { font-size:36px !important; }
       .hide-sm { display:none !important; }
-      .stack { display:block !important; width:100% !important; padding:0 0 8px 0 !important; }
+      .stack { display:block !important; width:100% !important; padding:0 0 8px 0 !important; box-sizing:border-box; }
+      .stack-rule { border-left:0 !important; border-top:1px dashed #5a5a5a !important; }
+      .step-img { width:96px !important; height:96px !important; }
     }
   </style>
 </head>
@@ -182,8 +310,11 @@ export const renderEmail = (o: LayoutOptions): string => `<!DOCTYPE html>
           <!-- Czarny pas z nagłówkiem -->
           <tr>
             <td class="px" style="padding:44px 40px 40px;background:${C.dark};">
-              ${o.eyebrow ? `<div style="font-family:${BODY_FONT};font-size:12px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${C.orange};margin-bottom:14px;">${o.eyebrow}</div>` : ""}
+              ${o.eyebrow && o.eyebrowTone === "success"
+                  ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px;"><tr><td style="background:${C.success};border-radius:4px;padding:6px 12px;font-family:${BODY_FONT};font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${C.white};">&#10003;&nbsp; ${o.eyebrow}</td></tr></table>`
+                  : o.eyebrow ? `<div style="font-family:${BODY_FONT};font-size:12px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:${C.orange};margin-bottom:14px;">${o.eyebrow}</div>` : ""}
               <div class="h1" style="font-family:${DISPLAY_FONT};font-size:48px;line-height:.98;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:${C.white};">${o.headline}</div>
+              ${o.heroHtml || ""}
             </td>
           </tr>
 

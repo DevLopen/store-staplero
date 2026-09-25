@@ -2,16 +2,23 @@ import { Resend } from "resend";
 import {
     escapeHtml,
     renderEmail,
+    LayoutOptions,
     p,
     strong,
-    h2,
     sectionLabel,
     button,
     infoTable,
     callout,
-    bullets,
     twoColumns,
-    tile,
+    sectionTitle,
+    checklist,
+    photoSteps,
+    numberedList,
+    labeledPill,
+    timelineItem,
+    heroText,
+    heroTicket,
+    heroButtons,
 } from "./emailTemplates";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -19,7 +26,7 @@ const FROM_EMAIL = process.env.FROM_EMAIL || "STAPLERO <noreply@staplero.com>";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.com";
 const API_URL = process.env.API_URL || "https://api.staplero.com";
 
-const layout = (o: { title: string; preheader: string; eyebrow?: string; headline: string; bodyHtml: string }) =>
+const layout = (o: Omit<LayoutOptions, "baseUrl">) =>
     renderEmail({ baseUrl: FRONTEND_URL, ...o });
 
 const deDate = (d: Date | string, opts: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" }) =>
@@ -260,130 +267,148 @@ export const sendOnlineCoursePurchaseEmail = async (
     });
 };
 
-export const sendPracticalCourseBookingEmail = async (
-    to: string,
-    name: string,
-    orderNumber: string,
-    locationName: string,
-    locationAddress: string,
-    theoryDate: string,
-    practiceDate: string,
-    locationImageUrl?: string,
-    participants?: string[]
-): Promise<void> => {
+interface PracticalCourseBookingEmailOptions {
+    to: string;
+    name: string;
+    orderNumber: string;
+    locationName: string; // miasto, np. "Berlin"
+    locationAddress: string;
+    startDate: Date | string; // 1. dzień (teoria); praktyka jest dzień później
+    participants?: string[]; // pierwsza osoba to zamawiający
+}
 
-    const theoryItems = [
-        "Rechtliche Grundlagen und Unfallverhütungsvorschriften",
-        "Rechte und Pflichten des Staplerfahrers",
-        "Aufbau und Funktion von Flurförderzeugen",
-        "Standsicherheit und Tragfähigkeit",
-        "Lastschwerpunkt und Lastdiagramme",
-        "Tägliche Sicht- und Funktionskontrolle",
-        "Sicheres Arbeiten mit dem Gabelstapler",
-        "Verkehrsregeln im Betrieb",
-        "Verhalten in Gefahrensituationen",
-        "Vorbereitung auf die theoretische Prüfung",
-    ];
+const BERLIN_TZ = "Europe/Berlin";
+const COURSE_HOURS = { from: "09:00", to: "17:00" };
 
-    const practiceItems = [
-        "Tägliche Fahrzeugkontrolle",
-        "Einweisung am Gabelstapler",
-        "Sicheres Anfahren, Lenken und Bremsen",
-        "Lasten sicher aufnehmen und transportieren",
-        "Rangieren auf engem Raum",
-        "Stapeln und Einlagern von Lasten",
-        "Arbeiten unter realistischen Einsatzbedingungen",
-        "Vorbereitung auf die praktische Prüfung",
-    ];
+// Zdjęcia kolejnych kroków dojazdu do NLND Berlin (public/)
+const berlinArrivalSteps = [
+    { image: "anfahrt-berlin-1.jpg", alt: "Neuköllnische Allee", title: "Über die Neuköllnische Allee", text: "Fahren Sie bis zur Hausnummer 80." },
+    { image: "anfahrt-berlin-2.jpg", alt: "Gebäude NLND Berlin", title: "Zum Haupteingang NLND Berlin", text: "Das Gebäude mit dem NLND-Schriftzug." },
+    { image: "anfahrt-berlin-3.jpg", alt: "Tor mit Hausnummer 80", title: "An der Wache melden", text: "Am Tor mit der Nummer 80 bzw. am Empfang." },
+    { image: "anfahrt-berlin-4.jpg", alt: "Wartebereich am Eingang", title: "Im Eingangsbereich warten", text: `Ein Ausbilder holt Sie ab. Verspätet? Rufen Sie uns an: <a href="tel:+4917622067783" style="color:#111111;font-weight:700;">+49 176 22067783</a>` },
+];
 
-    // Die Anfahrtsbeschreibung gilt nur für den Standort Berlin (NLND).
-    const isBerlin = /berlin/i.test(locationName);
-    const berlinSteps = [
-        "Fahren Sie über die Neuköllnische Allee bis zur Hausnummer 80.",
-        "Nutzen Sie den Haupteingang des NLND Berlin.",
-        "Melden Sie sich bitte an der Wache bzw. am Empfang.",
-        "Warten Sie im Eingangsbereich, ein STAPLERO-Ausbilder holt Sie ab.",
-    ];
+const addDays = (d: Date, days: number) => {
+    const copy = new Date(d);
+    copy.setDate(copy.getDate() + days);
+    return copy;
+};
+
+const berlinDate = (d: Date, opts: Intl.DateTimeFormatOptions) =>
+    d.toLocaleDateString("de-DE", { timeZone: BERLIN_TZ, ...opts });
+
+// yyyymmdd w strefie Berlina (do linku Google Kalendarza)
+const calendarDay = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: BERLIN_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d).replace(/-/g, "");
+
+export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBookingEmailOptions): Promise<void> => {
+    const { to, name, orderNumber, locationName, locationAddress, participants = [] } = opts;
+
+    const theory = new Date(opts.startDate);
+    const practice = addDays(theory, 1);
+    const cancelUntil = addDays(theory, -7);
+
+    const longDate = (d: Date) => berlinDate(d, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const shortDate = (d: Date) => berlinDate(d, { weekday: "short", day: "numeric", month: "short" });
+    const numericDate = (d: Date) => berlinDate(d, { day: "2-digit", month: "2-digit" }); // "12.10."
+    // "12.–13.10." albo "31.10.–01.11." przy zmianie miesiąca
+    const dateRange = berlinDate(theory, { month: "2-digit" }) === berlinDate(practice, { month: "2-digit" })
+        ? `${berlinDate(theory, { day: "2-digit" })}.–${numericDate(practice)}`
+        : `${numericDate(theory)}–${numericDate(practice)}`;
+    const hours = `${COURSE_HOURS.from} – ca. ${COURSE_HOURS.to} Uhr`;
 
     const loc = escapeHtml(locationName);
     const addr = escapeHtml(locationAddress);
-    const hours = "09:00 Uhr bis ca. 17:00 Uhr";
+    const isBerlin = /berlin/i.test(locationName);
+
+    // Oba dni jako wydarzenie powtarzane codziennie x2
+    const from = COURSE_HOURS.from.replace(":", "") + "00";
+    const until = COURSE_HOURS.to.replace(":", "") + "00";
+    const calendarUrl = "https://calendar.google.com/calendar/render?action=TEMPLATE"
+        + `&text=${encodeURIComponent("STAPLERO Gabelstaplerausbildung")}`
+        + `&dates=${calendarDay(theory)}T${from}/${calendarDay(theory)}T${until}`
+        + `&ctz=${encodeURIComponent(BERLIN_TZ)}`
+        + `&recur=${encodeURIComponent("RRULE:FREQ=DAILY;COUNT=2")}`
+        + `&location=${encodeURIComponent(locationAddress)}`
+        + `&details=${encodeURIComponent(`Bestellnummer ${orderNumber}`)}`;
+    const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(locationAddress)}`;
+
+    const people = participants.length ? participants : [name];
+
+    const heroHtml = `
+      ${heroText(`Hallo ${escapeHtml(name)}, wir freuen uns auf Sie. Hier finden Sie alles, was Sie für die <strong style="color:#ffffff;">Gabelstaplerausbildung Stufe&nbsp;1</strong> brauchen.`)}
+      ${heroTicket(
+          [
+              { label: "Tag 1 &middot; Theorie", title: shortDate(theory), note: hours },
+              { label: "Tag 2 &middot; Praxis &amp; Prüfung", title: shortDate(practice), note: hours },
+          ],
+          `<strong style="color:#ffffff;">${loc}</strong> &middot; ${addr}<br><span style="color:#b5b5b5;">${people.length} Teilnehmer &middot; Bitte 10 bis 15 Minuten vor Kursbeginn da sein</span>`,
+      )}
+      ${heroButtons({ href: calendarUrl, label: "In den Kalender eintragen" }, { href: routeUrl, label: "Route planen" })}
+    `;
 
     const arrivalHtml = isBerlin
         ? `
-      ${p(`Bitte erscheinen Sie ${strong("10 bis 15 Minuten vor Kursbeginn")}. Melden Sie sich an der ${strong("Wache bzw. am Empfang")}, ein STAPLERO-Ausbilder holt Sie dort ab und begleitet Sie zum Schulungsraum.`)}
-      ${callout(`${strong("Hinweis:")} Bitte betreten Sie das Betriebsgelände nicht selbstständig.`)}
-      ${bullets(berlinSteps)}`
+      ${sectionTitle("So finden Sie uns", "Bitte betreten Sie das Betriebsgelände nicht selbstständig. Ein STAPLERO-Ausbilder holt Sie am Eingang ab, an beiden Tagen.")}
+      ${photoSteps(berlinArrivalSteps.map((s) => ({ imageUrl: `${FRONTEND_URL}/${s.image}`, alt: s.alt, title: s.title, text: s.text })))}`
         : `
+      ${sectionTitle("Anreise &amp; Treffpunkt")}
       ${p(`Bitte erscheinen Sie ${strong("10 bis 15 Minuten vor Kursbeginn")} am Schulungsort. Ein STAPLERO-Ausbilder empfängt Sie dort und begleitet Sie zum Schulungsraum.`)}`;
 
-    const participantsHtml = participants && participants.length > 1
-        ? `${sectionLabel("Angemeldete Teilnehmer")}${bullets(participants.map((n) => escapeHtml(n)))}`
+    const participantsHtml = people.length > 1
+        ? `
+      ${sectionTitle("Angemeldete Teilnehmer")}
+      ${numberedList(people.map((n, i) => i === 0 ? `${escapeHtml(n)} <span style="font-weight:400;color:#707072;font-size:13px;">&middot; Besteller</span>` : escapeHtml(n)))}
+      ${p("Bitte leiten Sie diese E-Mail an alle Teilnehmer weiter. Jede Person braucht einen eigenen Ausweis und Sicherheitsschuhe.", { small: true, muted: true })}`
         : "";
 
     const bodyHtml = `
-      ${p(`Sehr geehrte/r ${strong(escapeHtml(name))},`)}
-      ${p(`vielen Dank für Ihre Anmeldung. Hiermit bestätigen wir die Reservierung Ihres Platzes für die ${strong("Gabelstaplerausbildung Stufe&nbsp;1 (Frontstapler)")} nach DGUV Grundsatz 308-001 und DGUV Vorschrift 68.`)}
+      ${sectionTitle("Bitte mitbringen", undefined, { first: true })}
+      ${checklist([
+          { title: "Personalausweis oder Reisepass", note: "an beiden Tagen", tag: "Pflicht", strong: true },
+          { title: "Arbeitssicherheitsschuhe", note: "an beiden Tagen, am Praxistag Pflicht", tag: "Pflicht", strong: true },
+          { title: "Geeignete Arbeitskleidung", note: "am Praxistag, lange Hose empfohlen. Hallentemperatur ca. 18 bis 22 °C" },
+      ])}
 
-      ${sectionLabel("Schulungstermine")}
-      ${twoColumns(
-          tile({ label: "1. Schulungstag", title: "Theorie", value: theoryDate, note: hours, accent: "ink" }),
-          tile({ label: "2. Schulungstag", title: "Praxis &amp; Prüfung", value: practiceDate, note: hours, accent: "orange" }),
-      )}
+      ${arrivalHtml}
 
       ${participantsHtml}
 
-      ${sectionLabel("Schulungsort")}
-      ${infoTable([
-          ["Standort", loc],
-          ["Adresse", addr],
-          ["Bestellnummer", escapeHtml(orderNumber)],
-      ])}
+      ${sectionTitle("Ablauf der Ausbildung", "Nach DGUV Grundsatz 308-001 und DGUV Vorschrift 68.")}
+      ${timelineItem({
+          title: "Tag 1 &middot; Theorie",
+          meta: `${shortDate(theory)} &middot; ${COURSE_HOURS.from}–${COURSE_HOURS.to}`,
+          text: "Rechtliche Grundlagen, Rechte und Pflichten, Aufbau des Staplers, Standsicherheit und Tragfähigkeit, Lastdiagramme, tägliche Kontrolle, Verkehrsregeln im Betrieb, Verhalten in Gefahrensituationen.",
+          extraHtml: labeledPill("Prüfung", "Schriftlicher Test am Ende des Tages"),
+      })}
+      ${timelineItem({
+          title: "Tag 2 &middot; Praxis",
+          meta: `${shortDate(practice)} &middot; ${COURSE_HOURS.from}–${COURSE_HOURS.to}`,
+          text: `Fahrzeugkontrolle, Einweisung am Gabelstapler, Anfahren, Lenken und Bremsen, Lasten aufnehmen und transportieren, Rangieren auf engem Raum, Stapeln und Einlagern.${isBerlin ? " Treffpunkt wie am ersten Tag, bitte erneut an der Wache melden." : ""}`,
+          extraHtml: labeledPill("Prüfung", "Fahrprüfung, danach Ihr Staplerschein", "orange"),
+          accent: "orange",
+          last: true,
+      })}
 
-      ${sectionLabel("Anreise &amp; Treffpunkt")}
-      ${arrivalHtml}
-      ${locationImageUrl ? `<img src="${escapeHtml(locationImageUrl)}" alt="Anfahrt ${loc}" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:1px solid #e5e5e5;margin:8px 0 20px;">` : ""}
       ${twoColumns(
-          infoTable([["Telefon 1", "+49 176 22067783"]], 100),
-          infoTable([["Telefon 2", "+49 160 92490070"]], 100),
+          callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#707072;">Stornierung</span><br>Kostenfrei bis<br>${strong(longDate(cancelUntil))}<br><span style="font-size:13px;color:#707072;">Danach fällt eine Stornogebühr von 100&nbsp;% an.</span>`, "gray"),
+          callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c25e00;">Fragen? Wir helfen</span><br>${strong(`<a href="tel:+4917622067783" style="color:#111111;text-decoration:none;">+49 176 22067783</a>`)}<br>${strong(`<a href="tel:+4916092490070" style="color:#111111;text-decoration:none;">+49 160 92490070</a>`)}<br><a href="https://wa.me/4917622067783" target="_blank" style="color:#111111;font-weight:700;">Per WhatsApp schreiben</a>`, "orange"),
       )}
-      ${p("Wir sind auch per WhatsApp erreichbar.", { small: true, muted: true })}
 
-      ${sectionLabel("Ablauf")}
-      ${h2("1. Tag: Theorie")}
-      ${p(hours, { small: true, muted: true })}
-      ${p("Inhalte gemäß DGUV Grundsatz 308-001 und DGUV Vorschrift 68:")}
-      ${bullets(theoryItems)}
-      ${callout(`Am Ende des Schulungstages: ${strong("schriftliche Theorieprüfung")}`, "gray")}
-      ${infoTable([["Bitte mitbringen", "Personalausweis oder Reisepass<br>Passbild<br>Arbeitssicherheitsschuhe"]])}
-
-      ${h2("2. Tag: Praxis")}
-      ${p(hours, { small: true, muted: true })}
-      ${infoTable([["Treffpunkt", `${strong(loc)}<br><span style="font-weight:400;">${addr}</span><br><span style="font-weight:400;font-size:13px;color:#707072;">Bitte erneut an der Wache melden.</span>`]])}
-      ${bullets(practiceItems)}
-      ${callout(`Zum Abschluss: ${strong("praktische Fahrprüfung")}`, "gray")}
-      ${infoTable([["Bitte mitbringen", `Personalausweis oder Reisepass<br>${strong("Arbeitssicherheitsschuhe (Pflicht)")}<br>Geeignete Arbeitskleidung (lange Hosen empfohlen)<br><span style="font-weight:400;font-size:13px;color:#707072;">Hallentemperatur ca. 18 bis 22 °C</span>`]])}
-
-      ${sectionLabel("Stornierungsbedingungen")}
-      ${infoTable([
-          ["Kostenfreie Stornierung", "bis 7 Kalendertage vor dem Termin"],
-          ["Bei späterer Absage", "100 % Stornogebühr"],
-      ])}
-
-      ${p("Für Rückfragen stehen wir Ihnen jederzeit zur Verfügung.", { muted: true })}
-      ${p("Mit freundlichen Grüßen")}
-      ${p(strong("Ihr STAPLERO Team"))}
+      ${p(`Bis bald in ${loc}!<br>${strong("Ihr STAPLERO Team")}`)}
     `;
 
     await resend.emails.send({
         from: FROM_EMAIL,
         to,
-        subject: `Anmeldebestätigung: Gabelstaplerausbildung ${theoryDate} / ${practiceDate}`,
+        subject: `Platz reserviert: Staplerschein ${dateRange} in ${locationName}`,
         html: layout({
             title: "Anmeldebestätigung",
-            preheader: `Ihr Platz ist reserviert: ${theoryDate} und ${practiceDate}, ${locationName}.`,
-            eyebrow: "Schulungsbestätigung",
+            preheader: `Ihr Platz ist reserviert: ${longDate(theory)} und ${longDate(practice)}, ${locationName}. Bitte Ausweis und Sicherheitsschuhe mitbringen.`,
+            eyebrow: "Anmeldung bestätigt",
+            eyebrowTone: "success",
             headline: "Ihr Platz ist reserviert",
+            heroHtml,
             bodyHtml,
         }),
     });
