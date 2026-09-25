@@ -7,6 +7,8 @@ import Course from "../models/Course";
 import QuizResult from "../models/QuizResult";
 import PracticalCourseParticipant from "../models/PracticalCourseParticipant";
 import { AuthRequest } from "../types";
+import { Jimp } from "jimp";
+import { assetPath, readAsset, loadCertificatePhoto, buildWalletBanner } from "../services/walletBanner.service";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:8080";
 
@@ -155,7 +157,7 @@ export const downloadCertificate = async (req: AuthRequest, res: Response) => {
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader(
             "Content-Disposition",
-            `attachment; filename="Staplerschein-${cert.verificationCode}.pdf"`
+            `attachment; filename="${cert.type === "practical" ? "Staplerschein" : "Theorienachweis"}-${cert.verificationCode}.pdf"`
         );
         res.send(pdfBuffer);
     } catch (err) {
@@ -165,324 +167,304 @@ export const downloadCertificate = async (req: AuthRequest, res: Response) => {
 
 // ─── PDF GENERATOR ────────────────────────────────────────────────────────────
 
+// Kolory i fonty jak na stronie i w mailach
+const CERT = {
+    dark: "#212121", ink: "#111111", body: "#39393b", muted: "#707072",
+    line: "#e5e5e5", orange: "#F97706", red: "#7f1d1d", redBg: "#fdf2f2", redLine: "#f5c2c2", alert: "#b91c1c",
+};
+
+const siteHost = () => {
+    try { return new URL(FRONTEND_URL).host.replace(/^www\./, ""); } catch { return "staplero.de"; }
+};
+
+const qualificationShort = (stufen: string[]) =>
+    stufen.some((s) => s.startsWith("stufe2")) ? "Stufe 1 + 2" : "Stufe 1";
+
+// Zdjęcie z uploadu bywa duże (kilka MB), a PDF idzie mailem: zmniejszamy do ~600 px JPEG
+const shrinkPhoto = async (buf: Buffer | null): Promise<Buffer | null> => {
+    if (!buf) return null;
+    try {
+        const img = await Jimp.read(buf);
+        img.cover({ w: 420, h: 540 });
+        return await img.getBuffer("image/jpeg", { quality: 85 });
+    } catch {
+        return buf;
+    }
+};
+
 export async function generateCertificatePDF(cert: any): Promise<Buffer> {
-    return new Promise(async (resolve, reject) => {
+    const isP = cert.type === "practical";
+    const verifyUrl = `${FRONTEND_URL}/verify/${cert.verificationCode}`;
+    const fmtD = (d: any) => new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
+        margin: 0, width: 360, color: { dark: CERT.ink, light: "#ffffff" }, errorCorrectionLevel: "M",
+    });
+    const qrBuf = Buffer.from(qrDataUrl.split(",")[1], "base64");
+    const logoBuf = readAsset("staplero-logo.png");
+    const photoBuf = isP ? await shrinkPhoto(loadCertificatePhoto(cert)) : null;
+
+    return new Promise((resolve, reject) => {
         try {
-            const isP = cert.type === "practical";
-            const verifyUrl = `${FRONTEND_URL}/verify/${cert.verificationCode}`;
-            const fmtD = (d: any) => new Date(d).toLocaleDateString("de-DE",
-                {day:"2-digit", month:"2-digit", year:"numeric"});
-
-            const qrDataUrl = await QRCode.toDataURL(verifyUrl, {
-                margin:1, width:200,
-                color:{ dark: isP ? "#1e3a5f" : "#1e3a7f", light:"#ffffff" },
-                errorCorrectionLevel:"M",
-            });
-            const qrBuf = Buffer.from(qrDataUrl.split(",")[1], "base64");
-
-            const _fs   = require("fs");
-            const _path = require("path");
-            const logoPath = _path.join(__dirname, "../assets/staplero_logo.jpeg");
-            const logoBuf: Buffer | null = _fs.existsSync(logoPath) ? _fs.readFileSync(logoPath) : null;
-
-            // Zdjęcie kursanta (opcjonalne): plik z katalogu uploads, tylko JPEG/PNG
-            let photoBuf: Buffer | null = null;
-            if (cert.photoFile && typeof cert.photoFile === "string") {
-                const uploadsDir = process.env.UPLOADS_DIR || _path.join(process.cwd(), "uploads");
-                const photoPath = _path.resolve(uploadsDir, cert.photoFile);
-                if (photoPath.startsWith(_path.resolve(uploadsDir) + _path.sep) && _fs.existsSync(photoPath)) {
-                    photoBuf = _fs.readFileSync(photoPath);
-                }
-            }
-
-            const doc = new PDFDocument({ size:"A4", layout:"landscape",
-                margins:{top:0,bottom:0,left:0,right:0} });
+            const doc = new PDFDocument({ size: "A4", layout: "landscape", margins: { top: 0, bottom: 0, left: 0, right: 0 } });
             const chunks: Buffer[] = [];
             doc.on("data", (c: Buffer) => chunks.push(c));
-            doc.on("end",  () => resolve(Buffer.concat(chunks)));
+            doc.on("end", () => resolve(Buffer.concat(chunks)));
             doc.on("error", reject);
+
+            // Fonty (fallback na Helvetica, gdyby plików nie było)
+            const font = (name: string, file: string, fallback: string) => {
+                const p = assetPath("fonts", file);
+                if (p) doc.registerFont(name, p); else doc.registerFont(name, fallback);
+            };
+            font("display", "BarlowCondensed-ExtraBold.ttf", "Helvetica-Bold");
+            font("reg", "Inter-Regular.ttf", "Helvetica");
+            font("semi", "Inter-SemiBold.ttf", "Helvetica-Bold");
+            font("bold", "Inter-Bold.ttf", "Helvetica-Bold");
+            font("mono", "JetBrainsMono-Bold.ttf", "Courier-Bold");
 
             const W = doc.page.width;   // 841.89
             const H = doc.page.height;  // 595.28
-            const bm = 16;
+            const M = 35;               // margines boczny
+            const sideW = 147;
+            const xSide = W - M - sideW;
+            const mainW = xSide - 30 - M;
 
-            // Palette
-            const navy  = "#1e3a5f";
-            const acc   = isP ? "#f59e0b" : "#2563eb";
-            const accBg = isP ? "#FEFCE8" : "#EFF6FF";
-            const bg    = isP ? "#FAFAF7" : "#F5F8FF";
-            const dark  = "#1f2937";
-            const mid   = "#4b5563";
-            const muted = "#9ca3af";
+            // ── Pas z logo ──────────────────────────────────────────────────
+            const bandH = 77;
+            doc.rect(0, 0, W, bandH).fill(CERT.dark);
+            if (logoBuf) doc.image(logoBuf, M, (bandH - 34) / 2, { height: 34 });
+            doc.font("semi").fontSize(8).fillColor("#ffffff")
+                .text("STAPLERO Ausbildungszentrum", M, 28, { width: W - 2 * M, align: "right" });
+            doc.font("reg").fontSize(8).fillColor("#bdbdbd")
+                .text(`Jakobstr. 13 · 02826 Görlitz · ${siteHost()}`, M, 40, { width: W - 2 * M, align: "right" });
+            doc.rect(0, bandH, W, 3.8).fill(isP ? CERT.orange : CERT.alert);
 
-            // Background + frame
-            doc.rect(0,0,W,H).fill(bg);
-            doc.rect(bm,bm,W-bm*2,H-bm*2).lineWidth(2.2).strokeColor(navy).stroke();
-            doc.rect(bm+4,bm+4,W-(bm+4)*2,H-(bm+4)*2).lineWidth(0.5).strokeColor(acc).stroke();
-            [[bm+20,bm+20],[W-bm-20,bm+20],[bm+20,H-bm-20],[W-bm-20,H-bm-20]].forEach(([cx,cy])=>{
-                doc.save().translate(cx,cy).rotate(45).rect(-3,-3,6,6).fill(acc).restore();
-            });
+            let y = bandH + 28;
+            if (!isP) {
+                // Znak wodny na całej kartce: dokumentu nie da się pokazać jako uprawnienia
+                doc.save().rotate(-24, { origin: [W / 2, H / 2 + 20] }).fillOpacity(0.06).fillColor(CERT.alert).font("display").fontSize(64);
+                ["NUR THEORIE", "KEINE FAHRBERECHTIGUNG"].forEach((line, i) =>
+                    doc.text(line, -60, H / 2 - 50 + i * 70, { width: W + 120, align: "center", lineBreak: false }));
+                doc.restore().fillOpacity(1);
 
-            const CX = W/2;
-            const pad = 14;
-
-            // ════════════════════════════════════════════════════════════════
-            // ZONE A — TOP BANNER
-            // logo left | ZERTIFIKAT + title centre | org right
-            // ════════════════════════════════════════════════════════════════
-            const aY = bm + pad;
-
-            if (logoBuf) {
-                doc.image(logoBuf, bm+pad, aY, {width:100, height:40, fit:[100,40]});
+                // Czerwony pas na całą szerokość, zanim ktokolwiek zobaczy nazwisko
+                const aH = 46;
+                doc.rect(0, bandH + 3.8, W, aH).fill(CERT.alert);
+                doc.font("display").fontSize(22).fillColor("#ffffff")
+                    .text("KEINE FAHRBERECHTIGUNG", M, bandH + 3.8 + 12, { lineBreak: false });
+                doc.font("semi").fontSize(9).fillColor("#ffffff")
+                    .text("Dieser Nachweis berechtigt NICHT zum Führen von Gabelstaplern oder anderen Flurförderzeugen.", M + 230, bandH + 3.8 + 12, { width: W - 2 * M - 230, lineGap: 1 });
+                y = bandH + 3.8 + aH + 22;
             }
 
-            // Titles centred
-            doc.fontSize(7.5).fillColor(acc).font("Helvetica-Bold")
-                .text("ZERTIFIKAT", 0, aY+2, {width:W, align:"center", characterSpacing:3});
-            doc.fontSize(15).fillColor(navy).font("Helvetica-Bold")
-                .text("BEFÄHIGUNGSNACHWEIS", 0, aY+13, {width:W, align:"center"});
-            doc.fontSize(7.5).fillColor(mid).font("Helvetica")
-                .text(isP ? "GABELSTAPLER · THEORIE & PRAXIS" : "GABELSTAPLER · THEORIEKURS",
-                    0, aY+32, {width:W, align:"center"});
+            // ── Nagłówek i imię ─────────────────────────────────────────────
+            doc.font("bold").fontSize(8.4).fillColor(isP ? CERT.orange : CERT.alert)
+                .text(isP ? "ZERTIFIKAT · DGUV VORSCHRIFT 68" : "NUR THEORIETEIL · KEIN FAHRAUSWEIS", M, y, { characterSpacing: 2.2 });
+            y += 14;
+            doc.font("display").fontSize(33).fillColor(CERT.ink).text(isP ? "BEFÄHIGUNGSNACHWEIS" : "THEORIENACHWEIS", M, y, { lineBreak: false });
+            y += 40;
+            doc.font("semi").fontSize(9.5).fillColor(CERT.muted)
+                .text(isP ? "GABELSTAPLER · THEORIE & PRAXIS" : "GABELSTAPLER · THEORETISCHER TEIL DER AUSBILDUNG (ONLINE)", M, y, { characterSpacing: 1 });
+            y += 26;
+            doc.font("reg").fontSize(10).fillColor(CERT.muted).text("Hiermit wird bestätigt, dass", M, y);
+            y += 14;
 
-            // Org right
-            doc.fontSize(6.5).fillColor(muted).font("Helvetica")
-                .text("STAPLERO Ausbildungszentrum", W-bm-pad-115, aY+4, {width:115, align:"right"});
-            doc.fontSize(6.5).fillColor(muted).font("Helvetica")
-                .text("Jakobstr. 13 · 02826 Görlitz", W-bm-pad-115, aY+13, {width:115, align:"right"});
-            doc.fontSize(6.5).fillColor(navy).font("Helvetica-Bold")
-                .text("staplero.com", W-bm-pad-115, aY+22, {width:115, align:"right"});
+            const name = String(cert.userName || "").toUpperCase();
+            let nfs = 47;
+            doc.font("display");
+            while (nfs > 24 && doc.fontSize(nfs).widthOfString(name) > mainW) nfs -= 1;
+            doc.fontSize(nfs).fillColor(CERT.ink).text(name, M, y, { width: mainW, lineBreak: false });
+            y += nfs + 10;
 
-            // Rule
-            const rY = aY + 46;
-            doc.moveTo(bm+pad, rY).lineTo(CX-16, rY).lineWidth(1).strokeColor(acc).stroke();
-            doc.moveTo(CX+16, rY).lineTo(W-bm-pad, rY).lineWidth(1).strokeColor(acc).stroke();
-            doc.circle(CX, rY, 3.5).fill(acc);
-
-            // ════════════════════════════════════════════════════════════════
-            // ZONE B — NAME + QUALIFICATION (full width, centred)
-            // ════════════════════════════════════════════════════════════════
-            let y = rY + 10;
-
-            doc.fontSize(8.5).fillColor(mid).font("Helvetica")
-                .text("Hiermit wird bestätigt, dass", 0, y, {width:W, align:"center"});
-            y += 12;
-
-            const nl  = cert.userName.length;
-            const nfs = nl>28?24:nl>22?28:nl>16?33:38;
-            doc.fontSize(nfs).fillColor(dark).font("Helvetica-Bold")
-                .text(cert.userName, 60, y, {width:W-120, align:"center"});
-            y += nfs + 4;
-
-            // Underline
-            const ulw = Math.min(nl*nfs*0.43, W-180);
-            doc.moveTo(CX-ulw/2, y).lineTo(CX+ulw/2, y).lineWidth(2.5).strokeColor(acc).stroke();
-            y += 9;
-
-            doc.fontSize(9).fillColor(mid).font("Helvetica")
-                .text("die Ausbildung zum Führen von Gabelstaplern gemäß", 0, y, {width:W, align:"center"});
-            y += 12;
-            doc.fontSize(10.5).fillColor(navy).font("Helvetica-Bold")
-                .text("DGUV Vorschrift 68  ·  DGUV Grundsatz 308-001", 0, y, {width:W, align:"center"});
-            y += 12;
-
+            // Oświadczenie z pogrubieniami
+            const rich = (parts: Array<[string, boolean]>) => {
+                doc.fontSize(10.8).fillColor(CERT.body);
+                parts.forEach(([txt, b], i) => {
+                    const opts = { width: mainW - 60, continued: i < parts.length - 1, lineGap: 3 };
+                    doc.font(b ? "bold" : "reg").fillColor(b ? CERT.ink : CERT.body);
+                    if (i === 0) doc.text(txt, M, y, opts); else doc.text(txt, opts);
+                });
+            };
             if (isP) {
-                // Authorisation text
-                doc.fontSize(9).fillColor(mid).font("Helvetica")
-                    .text("erfolgreich abgeschlossen hat und ist berechtigt,", 0, y, {width:W, align:"center"});
-                y += 11;
-                doc.fontSize(10).fillColor(navy).font("Helvetica-Bold")
-                    .text("Flurförderzeuge (Gabelstapler) selbstständig zu führen.", 0, y, {width:W, align:"center"});
-                y += 13;
+                rich([
+                    ["die Ausbildung zum Führen von Gabelstaplern gemäß ", false], ["DGUV Vorschrift 68", true], [" und ", false],
+                    ["DGUV Grundsatz 308-001", true], [" erfolgreich abgeschlossen hat und berechtigt ist, ", false],
+                    ["Flurförderzeuge (Gabelstapler) selbstständig zu führen.", true],
+                ]);
             } else {
-                // Warning — compact, readable
-                const wW=460, wH=24, wX=CX-wW/2;
-                // Subtle warning — no bold bar, just a clean framed note
-                doc.rect(wX, y, wW, wH).fill("#FFF5F5");
-                doc.rect(wX, y, wW, wH).lineWidth(0.6).strokeColor("#fca5a5").stroke();
-                doc.fontSize(7.5).fillColor("#991b1b").font("Helvetica-Bold")
-                    .text("Dieser Nachweis berechtigt NICHT zum selbstständigen Führen eines Flurförderzeugs.", wX+12, y+5, {width:wW-24, align:"center"});
-                doc.fontSize(6.5).fillColor("#b91c1c").font("Helvetica")
-                    .text("Für die Fahrberechtigung ist eine zusätzliche praktische Ausbildung nach DGUV Grundsatz 308-001 erforderlich.",
-                        wX+12, y+14, {width:wW-24, align:"center"});
-                y += wH + 6;
+                rich([
+                    ["die theoretische Ausbildung zum Führen von Gabelstaplern gemäß ", false], ["DGUV Vorschrift 68", true],
+                    [" und ", false], ["DGUV Grundsatz 308-001", true], [" erfolgreich abgeschlossen hat.", false],
+                ]);
             }
+            y = doc.y + 16;
 
-            if (cert.score !== undefined) {
-                doc.fontSize(8).fillColor(muted).font("Helvetica")
-                    .text(`Prüfungsergebnis Theorie: ${cert.score} %`, 0, y, {width:W, align:"center"});
-                y += 11;
-            }
+            // ── Rząd danych ─────────────────────────────────────────────────
+            const stufen: string[] = cert.stufen || (isP ? ["stufe1"] : []);
+            const facts: Array<[string, string]> = isP
+                ? [
+                    ["KURSDATUM", fmtD(cert.trainingDate)],
+                    ...(cert.trainingLocation ? [["AUSBILDUNGSORT", String(cert.trainingLocation).split("–")[0].trim()] as [string, string]] : []),
+                    ...(cert.instructorName ? [["AUSBILDER", String(cert.instructorName)] as [string, string]] : []),
+                    ["QUALIFIZIERUNG", qualificationShort(stufen)],
+                ]
+                : [
+                    ["PRÜFUNGSDATUM", fmtD(cert.trainingDate)],
+                    ...(cert.score !== undefined && cert.score !== null ? [["PRÜFUNGSERGEBNIS", `${cert.score} %`] as [string, string]] : []),
+                    ["AUSBILDUNGSFORM", "Online"],
+                    ["FAHRBERECHTIGUNG", "NEIN"],
+                ];
+            const factH = 38;
+            doc.moveTo(M, y).lineTo(M + mainW, y).lineWidth(0.8).strokeColor(CERT.line).stroke();
+            doc.moveTo(M, y + factH).lineTo(M + mainW, y + factH).stroke();
+            const colW = mainW / facts.length;
+            facts.forEach(([label, value], i) => {
+                const x = M + i * colW;
+                if (i > 0) doc.moveTo(x, y).lineTo(x, y + factH).stroke();
+                const px = i > 0 ? x + 10 : x;
+                doc.font("bold").fontSize(6.7).fillColor(CERT.muted).text(label, px, y + 8, { width: colW - 14, characterSpacing: 1.1, lineBreak: false });
+                doc.font("bold").fontSize(11.2).fillColor(value === "NEIN" ? CERT.alert : CERT.ink).text(value, px, y + 19, { width: colW - 14, lineBreak: false, ellipsis: true });
+            });
+            y += factH + 7;
 
-            // Dashed separator
-            const sepY = y + 3;
-            doc.moveTo(bm+pad, sepY).lineTo(W-bm-pad, sepY)
-                .lineWidth(0.4).strokeColor(muted).dash(2,{space:3}).stroke();
-            doc.undash();
-            y = sepY + 8;
-
-            // ════════════════════════════════════════════════════════════════
-            // ZONE C — 3 COLUMNS: data+sigs | curriculum | QR+nr
-            // ════════════════════════════════════════════════════════════════
-            const zC  = y;
-            const colL = 185;
-            const colR = 96;
-            const colM = W - bm*2 - pad*2 - colL - colR - 16;
-            const xL   = bm + pad;
-            const xM   = xL + colL + 8;
-            const xR   = xM + colM + 8;
-
-            // ── LEFT col: date box + stufen + forklift + sigs ────────────────
-            let ly = zC;
-
-            // Single date box — Kursdatum only
-            const dateLabel = isP ? "KURSDATUM" : "AUSBILDUNGSDATUM";
-            const dateVal   = fmtD(cert.trainingDate);
-            const dbH = 34;
-            doc.rect(xL, ly, colL, dbH).fill(accBg);
-            doc.rect(xL, ly, colL, 2.5).fill(acc);
-            doc.fontSize(6).fillColor(muted).font("Helvetica-Bold")
-                .text(dateLabel, xL+6, ly+5, {width:colL-12});
-            doc.fontSize(13).fillColor(dark).font("Helvetica-Bold")
-                .text(dateVal, xL+6, ly+14, {width:colL-12});
-            ly += dbH + 6;
-
-            // Location + instructor in smaller boxes side by side
-            const smallBoxes = [
-                ...(cert.trainingLocation?[{l:"AUSBILDUNGSORT",v:cert.trainingLocation.split("–")[0].trim()}]:[]),
-                ...(cert.instructorName  ?[{l:"AUSBILDER",     v:cert.instructorName}]:[]),
-            ];
-            if (smallBoxes.length > 0) {
-                const sbW = smallBoxes.length===1 ? colL : Math.floor((colL-6)/2);
-                let sx = xL;
-                smallBoxes.forEach(b => {
-                    doc.rect(sx, ly, sbW, 28).fill(accBg);
-                    doc.rect(sx, ly, sbW, 2).fill(acc);
-                    doc.fontSize(5.5).fillColor(muted).font("Helvetica-Bold")
-                        .text(b.l, sx+5, ly+4, {width:sbW-10});
-                    doc.fontSize(b.v.length>16?7.5:8.5).fillColor(dark).font("Helvetica-Bold")
-                        .text(b.v, sx+5, ly+13, {width:sbW-10});
-                    sx += sbW + 6;
-                });
-                ly += 34;
-            }
-
-            // Stufen / Fahrzeugklassen
-            const stufen = cert.stufen || (isP ? ["stufe1"] : []);
-            if (stufen.length > 0) {
-                ly += 3;
-                doc.fontSize(6).fillColor(muted).font("Helvetica-Bold")
-                    .text("QUALIFIZIERUNGSSTUFEN:", xL, ly, {characterSpacing:0.5});
-                ly += 9;
-                stufen.forEach((s: string) => {
-                    const label = STUFEN[s] || s;
-                    doc.circle(xL+4, ly+3.5, 2).fill(acc);
-                    doc.fontSize(7).fillColor(dark).font("Helvetica")
-                        .text(label, xL+11, ly, {width:colL-14});
-                    ly += 11;
+            // Pełne opisy stopni (treść prawna jak dotąd)
+            if (stufen.length) {
+                doc.font("reg").fontSize(7.4).fillColor(CERT.muted);
+                stufen.forEach((s) => {
+                    doc.text(STUFEN[s] || s, M, y, { width: mainW });
+                    y = doc.y + 1;
                 });
             }
+            y += 10;
 
-            // Sig lines pinned to bottom of left col
-            const sigY = H - bm - pad - 14;
-            const sw   = (colL-6)/2;
-            [xL, xL+sw+6].forEach((sx,i) => {
-                doc.moveTo(sx, sigY).lineTo(sx+sw, sigY).lineWidth(0.4).strokeColor("#cbd5e1").stroke();
-                doc.fontSize(5.5).fillColor(muted).font("Helvetica")
-                    .text(i===0?"Unterschrift Ausbilder":"Stempel / Siegel",
-                        sx, sigY+4, {width:sw, align:"center"});
-            });
-
-            // ── CENTRE col: curriculum ───────────────────────────────────────
-            let ry = zC;
-            const rowH = 11;
-
-            // Theorie band
-            doc.rect(xM, ry, colM, 13).fill(navy);
-            doc.fontSize(6.5).fillColor("#fff").font("Helvetica-Bold")
-                .text("THEORIE  –  Ausbildungsinhalte", xM+6, ry+3, {characterSpacing:0.5});
-            ry += 15;
-
-            TH.forEach(t => {
-                doc.fontSize(6.5).fillColor(acc).font("Helvetica-Bold")
-                    .text(t.n+".", xM, ry, {width:13});
-                doc.fontSize(7).fillColor(dark).font("Helvetica")
-                    .text(t.t, xM+13, ry, {width:colM-55, lineBreak:false});
-                if (t.p) doc.fontSize(6.5).fillColor(muted).font("Helvetica-Bold")
-                    .text(t.p, xM+colM-40, ry, {width:40, align:"right"});
-                ry += rowH;
-            });
-
+            // ── Program szkolenia (bez procentów) ───────────────────────────
+            const rowH = 12.6;
+            const list = (title: string, items: typeof TH, x: number, w: number, top: number, perCol = items.length, cols = 1) => {
+                doc.font("bold").fontSize(7.2).fillColor(CERT.ink).text(title, x, top, { characterSpacing: 1.4, lineBreak: false });
+                doc.font("semi").fontSize(7.2).fillColor(CERT.muted)
+                    .text(`${items.length} THEMEN`, x, top, { width: cols * w + (cols - 1) * 22, align: "right", characterSpacing: 0.4 });
+                items.forEach((it, i) => {
+                    const c = Math.floor(i / perCol);
+                    const cx = x + c * (w + 22);
+                    const ry = top + 13 + (i % perCol) * rowH;
+                    doc.font("bold").fontSize(7.7).fillColor(CERT.orange).text(`${it.n}.`, cx, ry + 2.5, { width: 14, lineBreak: false });
+                    doc.font("reg").fontSize(7.7).fillColor(CERT.body).text(it.t, cx + 15, ry + 2.5, { width: w - 15, lineBreak: false, ellipsis: true });
+                    doc.moveTo(cx, ry + rowH).lineTo(cx + w, ry + rowH).lineWidth(0.5).strokeColor("#efefef").stroke();
+                });
+            };
+            const colGap = 22;
+            const half = (mainW - colGap) / 2;
             if (isP) {
-                ry += 4;
-                doc.rect(xM, ry, colM, 13).fill(acc);
-                doc.fontSize(6.5).fillColor("#000").font("Helvetica-Bold")
-                    .text("PRAXIS  –  Ausbildungsinhalte", xM+6, ry+3, {characterSpacing:0.5});
-                ry += 15;
-
-                PR.forEach(t => {
-                    doc.fontSize(6.5).fillColor(acc).font("Helvetica-Bold")
-                        .text(t.n+".", xM, ry, {width:13});
-                    doc.fontSize(7).fillColor(dark).font("Helvetica")
-                        .text(t.t, xM+13, ry, {width:colM-55, lineBreak:false});
-                    if (t.p) doc.fontSize(6.5).fillColor(muted).font("Helvetica-Bold")
-                        .text(t.p, xM+colM-40, ry, {width:40, align:"right"});
-                    ry += rowH;
-                });
+                list("THEORIE", TH, M, half, y);
+                list("PRAXIS", PR, M + half + colGap, half, y);
+            } else {
+                list("THEORIE", TH, M, half, y, Math.ceil(TH.length / 2), 2);
             }
 
-            // DGUV note bottom of centre col
-            const noteY = H - bm - pad - 18;
-            doc.rect(xM, noteY, colM, 16).fill(accBg);
-            doc.rect(xM, noteY, 2.5, 16).fill(acc);
-            doc.fontSize(5.5).fillColor(mid).font("Helvetica")
-                .text("DGUV Vorschrift 68 · DGUV Grundsatz 308-001",
-                    xM+7, noteY+3, {width:colM-10});
-            doc.fontSize(5.5).fillColor(muted).font("Helvetica")
-                .text("Ausgestellt von STAPLERO Ausbildungszentrum Görlitz",
-                    xM+7, noteY+10, {width:colM-10});
-
-            // ── RIGHT col: QR + cert number ──────────────────────────────────
-            const qs  = 76;
-            const qrx = xR + (colR-qs)/2;
-            const qry = zC + 4;
-            doc.rect(qrx-4, qry-4, qs+8, qs+8).fill("#fff");
-            doc.rect(qrx-4, qry-4, qs+8, qs+8).lineWidth(1).strokeColor(acc).stroke();
-            doc.image(qrBuf, qrx, qry, {width:qs, height:qs});
-
-            doc.fontSize(5.5).fillColor(acc).font("Helvetica-Bold")
-                .text("QR · ECHTHEIT PRÜFEN", xR, qry+qs+5,
-                    {width:colR, align:"center", characterSpacing:0.5});
-
-            // Cert nr pill
-            const nrY = qry + qs + 16;
-            const nrH = H - bm - pad - 8 - nrY;
-            doc.rect(xR, nrY, colR, nrH).fill(navy);
-            doc.fontSize(5.5).fillColor("rgba(255,255,255,0.45)").font("Helvetica-Bold")
-                .text("ZERTIFIKAT-NR.", xR, nrY+5, {width:colR, align:"center", characterSpacing:0.5});
-            const code = cert.verificationCode;
-            const cfs  = code.length>14 ? 7 : 8.5;
-            doc.fontSize(cfs).fillColor(acc).font("Helvetica-Bold")
-                .text(code, xR, nrY+14, {width:colR, align:"center", characterSpacing:1});
-            doc.fontSize(5).fillColor("rgba(255,255,255,0.25)").font("Helvetica")
-                .text("staplero.com/verify", xR, nrY+nrH-10, {width:colR, align:"center"});
-
-            // Zdjęcie kursanta w formacie paszportowym 35x45 mm (proporcje 7:9), pod numerem certyfikatu
-            if (photoBuf && nrH > 150) {
-                const pw = 72, ph = Math.round(pw * 9 / 7);
-                const px = xR + (colR - pw) / 2, py = nrY + 34;
-                try {
-                    doc.rect(px - 2, py - 2, pw + 4, ph + 4).fill("#ffffff");
-                    doc.image(photoBuf, px, py, { cover: [pw, ph], align: "center", valign: "center" });
-                } catch (imgErr) {
-                    console.error("[Certificate] Foto konnte nicht eingebettet werden:", (imgErr as Error).message);
+            // ── Kolumna boczna: zdjęcie + QR ────────────────────────────────
+            let sy = isP ? bandH + 28 : bandH + 3.8 + 46 + 22;
+            if (isP) {
+                const pw = 97, ph = Math.round(pw * 45 / 35);
+                const px = xSide + (sideW - pw) / 2;
+                doc.save().roundedRect(px, sy, pw, ph, 4).clip();
+                if (photoBuf) {
+                    try { doc.image(photoBuf, px, sy, { cover: [pw, ph], align: "center", valign: "center" }); }
+                    catch (e) { console.error("[Certificate] Foto konnte nicht eingebettet werden:", (e as Error).message); doc.rect(px, sy, pw, ph).fill("#eceae6"); }
+                } else {
+                    doc.rect(px, sy, pw, ph).fill("#eceae6");
                 }
+                doc.restore();
+                sy += ph + 12;
             }
+            const boxH = 148;
+            doc.roundedRect(xSide, sy, sideW, boxH, 5).lineWidth(0.8).strokeColor(CERT.line).stroke();
+            const qs = 88;
+            doc.image(qrBuf, xSide + (sideW - qs) / 2, sy + 12, { width: qs, height: qs });
+            doc.font("bold").fontSize(6.6).fillColor(CERT.muted)
+                .text("ECHTHEIT PRÜFEN", xSide, sy + qs + 20, { width: sideW, align: "center", characterSpacing: 1.2 });
+            const code = String(cert.verificationCode);
+            doc.font("mono").fontSize(code.length > 14 ? 8.5 : 10.5).fillColor(CERT.ink)
+                .text(code, xSide, sy + qs + 31, { width: sideW, align: "center", characterSpacing: 1 });
+            doc.font("reg").fontSize(6.9).fillColor(CERT.muted)
+                .text(`${siteHost()}/verify`, xSide, sy + qs + 45, { width: sideW, align: "center" });
+
+            // ── Online: pasek „Hinweis” ─────────────────────────────────────
+            const footY = H - 22;
+            if (!isP) {
+                const hY = H - 62 - 34, hH = 34;
+                doc.roundedRect(M, hY, W - 2 * M, hH, 5).fillAndStroke(CERT.redBg, CERT.redLine);
+                doc.roundedRect(M + 12, hY + 10, 52, 14, 7).fill("#b91c1c");
+                doc.font("bold").fontSize(6.7).fillColor("#ffffff").text("HINWEIS", M + 12, hY + 13.5, { width: 52, align: "center", characterSpacing: 1 });
+                doc.font("bold").fontSize(8.6).fillColor(CERT.red)
+                    .text("Kein Fahrausweis. Dieser Nachweis berechtigt nicht zum selbstständigen Führen eines Flurförderzeugs. ", M + 76, hY + 7, { width: W - 2 * M - 90, continued: true, lineGap: 2 })
+                    .font("reg").text("Für die Fahrberechtigung ist zusätzlich eine praktische Ausbildung mit Prüfung nach DGUV Grundsatz 308-001 erforderlich.");
+            }
+
+            // ── Stopka: podpisy + podstawa prawna ───────────────────────────
+            const sigW = 143;
+            [["Unterschrift Ausbilder", M], ["Stempel / Siegel", M + sigW + 25]].forEach(([label, x]) => {
+                doc.moveTo(x as number, footY - 12).lineTo((x as number) + sigW, footY - 12).lineWidth(0.8).strokeColor("#bdbdbd").stroke();
+                doc.font("reg").fontSize(6.7).fillColor(CERT.muted).text(label as string, x as number, footY - 8, { width: sigW, lineBreak: false });
+            });
+            doc.font("semi").fontSize(6.9).fillColor(CERT.ink)
+                .text("DGUV Vorschrift 68 · DGUV Grundsatz 308-001", M, footY - 22, { width: W - 2 * M, align: "right" });
+            doc.font("reg").fontSize(6.9).fillColor(CERT.muted)
+                .text(`Ausgestellt am ${fmtD(cert.issuedAt || new Date())} · STAPLERO Ausbildungszentrum Görlitz`, M, footY - 11, { width: W - 2 * M, align: "right" });
 
             doc.end();
-        } catch(e) { reject(e); }
+        } catch (e) { reject(e); }
     });
 }
+
+// ─── WALLET: wspólne dane obu kart ────────────────────────────────────────────
+
+const API_URL = process.env.API_URL || "https://api.staplero.com";
+
+const walletData = (cert: any) => {
+    const isP = cert.type === "practical";
+    const stufen: string[] = cert.stufen || (isP ? ["stufe1"] : []);
+    return {
+        verifyUrl: `${FRONTEND_URL}/verify/${cert.verificationCode}`,
+        bannerUrl: `${API_URL}/api/certificates/wallet-banner/${cert.verificationCode}.png`,
+        title: isP ? "Staplerschein" : "Theorienachweis",
+        front: [
+            { key: "certId", label: "Zertifikat-Nr.", value: cert.verificationCode },
+            { key: "issued", label: "Ausgestellt", value: formatDateShort(cert.issuedAt) },
+            isP
+                ? { key: "location", label: "Ort", value: cert.trainingLocation ? String(cert.trainingLocation).split("–")[0].trim() : "STAPLERO" }
+                : { key: "driving", label: "Fahrberechtigung", value: "NEIN – nur Theorie" },
+            { key: "regulation", label: "Grundlage", value: "DGUV V68" },
+        ],
+        details: [
+            { key: "courseName", label: "Kurs", value: cert.courseName },
+            { key: "trainingDate", label: isP ? "Kursdatum" : "Prüfungsdatum", value: formatDateShort(cert.trainingDate) },
+            ...(isP ? [{ key: "qualification", label: "Qualifizierung", value: stufen.map((s) => STUFEN[s] || s).join("\n") }] : []),
+            ...(cert.instructorName ? [{ key: "instructor", label: "Ausbilder", value: cert.instructorName }] : []),
+            ...(!isP ? [{ key: "notice", label: "KEINE FAHRBERECHTIGUNG", value: "Kein Fahrausweis. Dieser Nachweis berechtigt nicht zum Führen von Gabelstaplern oder anderen Flurförderzeugen. Dafür ist zusätzlich eine praktische Ausbildung mit Prüfung nach DGUV Grundsatz 308-001 nötig." }] : []),
+            { key: "legal", label: "Rechtsgrundlage", value: "DGUV Vorschrift 68 · DGUV Grundsatz 308-001" },
+            { key: "verify", label: "Echtheit prüfen", value: `${FRONTEND_URL}/verify/${cert.verificationCode}` },
+            { key: "issuer", label: "Aussteller", value: "STAPLERO Ausbildungszentrum · Jakobstr. 13 · 02826 Görlitz" },
+        ],
+    };
+};
+
+// ─── WALLET BANNER (publiczny, pobiera go Google) ─────────────────────────────
+
+export const getWalletBanner = async (req: Request, res: Response) => {
+    try {
+        const code = String(req.params.code || "").replace(/\.png$/i, "");
+        const cert = await Certificate.findOne({ verificationCode: code }).lean();
+        if (!cert || cert.revokedAt) return res.status(404).send("Nicht gefunden");
+        const png = await buildWalletBanner(cert);
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        res.send(png);
+    } catch (err: any) {
+        console.error("Wallet banner error:", err);
+        res.status(500).send("Fehler");
+    }
+};
 
 // ─── APPLE WALLET ─────────────────────────────────────────────────────────────
 
@@ -496,9 +478,9 @@ export const getAppleWalletPass = async (req: AuthRequest, res: Response) => {
         if (!cert) return res.status(404).json({ message: "Zertifikat nicht gefunden" });
         if (cert.revokedAt) return res.status(410).json({ message: "Zertifikat widerrufen" });
 
-        // Check required env vars
         const certBase64 = process.env.APPLE_PASS_CERTIFICATE;
         const certPassword = process.env.APPLE_PASS_CERTIFICATE_PASSWORD || "";
+        const keyBase64 = process.env.APPLE_PASS_KEY || certBase64;
         const wwdrBase64 = process.env.APPLE_WWDR_CERTIFICATE;
         const passTypeId = process.env.APPLE_PASS_TYPE_ID;
         const teamId = process.env.APPLE_TEAM_ID;
@@ -506,129 +488,59 @@ export const getAppleWalletPass = async (req: AuthRequest, res: Response) => {
         if (!certBase64 || !wwdrBase64 || !passTypeId || !teamId) {
             return res.status(503).json({
                 message: "Apple Wallet noch nicht konfiguriert.",
-                setup: "Setzen Sie APPLE_PASS_CERTIFICATE, APPLE_WWDR_CERTIFICATE, APPLE_PASS_TYPE_ID und APPLE_TEAM_ID in .env",
+                setup: "Setzen Sie APPLE_PASS_CERTIFICATE, APPLE_PASS_KEY, APPLE_WWDR_CERTIFICATE, APPLE_PASS_TYPE_ID und APPLE_TEAM_ID in .env",
             });
         }
 
-        // Dynamic require to avoid TS error when package not yet installed
-        let PKPass: any;
-        try {
-            // eslint-disable-next-line @typescript-eslint/no-var-requires
-            const pkg = require("passkit-generator") as any;
-            PKPass = pkg.PKPass;
-        } catch {
-            return res.status(503).json({
-                message: "passkit-generator nicht installiert.",
-                setup: "npm install passkit-generator",
-            });
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { PKPass } = require("passkit-generator");
+        const d = walletData(cert);
+
+        // storeCard: jedyny typ z banerem (strip) pod logo
+        const passJson = {
+            formatVersion: 1,
+            passTypeIdentifier: passTypeId,
+            serialNumber: cert.verificationCode,
+            teamIdentifier: teamId,
+            organizationName: "STAPLERO",
+            description: `${d.title} – Befähigungsnachweis Gabelstapler`,
+            logoText: "STAPLERO",
+            backgroundColor: "rgb(33, 33, 33)",
+            foregroundColor: "rgb(255, 255, 255)",
+            labelColor: "rgb(168, 168, 168)",
+            storeCard: {
+                // Apple pozwala na maks. 4 pola secondary + auxiliary razem
+                secondaryFields: [
+                    { key: "holder", label: "INHABER", value: cert.userName },
+                ],
+                auxiliaryFields: d.front.slice(0, 3).map((f) => ({ key: f.key, label: f.label.toUpperCase(), value: f.value })),
+                backFields: [
+                    { key: "regulationFront", label: "Grundlage", value: "DGUV V68" },
+                    ...d.details.map((f) => ({ key: f.key, label: f.label, value: f.value })),
+                ],
+            },
+            barcodes: [{ message: d.verifyUrl, format: "PKBarcodeFormatQR", messageEncoding: "iso-8859-1", altText: cert.verificationCode }],
+        };
+
+        const stripSizes: Array<[string, number]> = [["strip.png", 375], ["strip@2x.png", 750], ["strip@3x.png", 1125]];
+        const strips = await Promise.all(stripSizes.map(async ([n, w]) => [n, await buildWalletBanner(cert, w)] as const));
+        const files: Record<string, Buffer> = { "pass.json": Buffer.from(JSON.stringify(passJson)) };
+        for (const n of ["icon.png", "icon@2x.png", "icon@3x.png", "logo.png", "logo@2x.png", "logo@3x.png"]) {
+            const b = readAsset("wallet", n);
+            if (b) files[n] = b;
         }
+        strips.forEach(([n, b]) => { files[n] = b; });
 
-        const verifyUrl = `${FRONTEND_URL}/verify/${cert.verificationCode}`;
-        const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 300, margin: 1 });
-        const qrBuffer = Buffer.from(qrDataUrl.split(",")[1], "base64");
+        const pass = new PKPass(files, {
+            wwdr: Buffer.from(wwdrBase64, "base64"),
+            signerCert: Buffer.from(certBase64, "base64"),
+            signerKey: Buffer.from(keyBase64!, "base64"),
+            signerKeyPassphrase: certPassword,
+        });
 
-        const pass = await PKPass.from(
-            {
-                model: {
-                    "pass.json": Buffer.from(
-                        JSON.stringify({
-                            formatVersion: 1,
-                            passTypeIdentifier: passTypeId,
-                            serialNumber: cert.verificationCode,
-                            teamIdentifier: teamId,
-                            organizationName: "STAPLERO",
-                            description: "Staplerschein – Gabelstapler-Fahrausweis",
-                            backgroundColor: "rgb(15, 23, 42)",
-                            foregroundColor: "rgb(255, 255, 255)",
-                            labelColor: "rgb(245, 158, 11)",
-                            generic: {
-                                primaryFields: [
-                                    {
-                                        key: "name",
-                                        label: "INHABER",
-                                        value: cert.userName,
-                                    },
-                                ],
-                                secondaryFields: [
-                                    {
-                                        key: "certId",
-                                        label: "ZERTIFIKAT-NR.",
-                                        value: cert.verificationCode,
-                                    },
-                                    {
-                                        key: "issued",
-                                        label: "AUSGESTELLT AM",
-                                        value: formatDateShort(cert.issuedAt),
-                                    },
-                                ],
-                                auxiliaryFields: [
-                                    {
-                                        key: "regulation",
-                                        label: "GRUNDLAGE",
-                                        value: "DGUV V68 · GS 308-001",
-                                    },
-                                    {
-                                        key: "location",
-                                        label: "ORT",
-                                        value: cert.trainingLocation || "STAPLERO Ausbildungszentrum",
-                                    },
-                                ],
-                                backFields: [
-                                    {
-                                        key: "courseName",
-                                        label: "Kurs",
-                                        value: cert.courseName,
-                                    },
-                                    {
-                                        key: "trainingDate",
-                                        label: "Ausbildungsdatum",
-                                        value: formatDateShort(cert.trainingDate),
-                                    },
-                                    {
-                                        key: "dguv1",
-                                        label: "Rechtsgrundlage",
-                                        value: "DGUV Vorschrift 68 – Flurförderzeuge",
-                                    },
-                                    {
-                                        key: "dguv2",
-                                        label: "Durchführung",
-                                        value: "DGUV Grundsatz 308-001",
-                                    },
-                                    {
-                                        key: "verify",
-                                        label: "Echtheit prüfen",
-                                        value: verifyUrl,
-                                    },
-                                ],
-                            },
-                            barcode: {
-                                message: verifyUrl,
-                                format: "PKBarcodeFormatQR",
-                                messageEncoding: "iso-8859-1",
-                                altText: cert.verificationCode,
-                            },
-                        })
-                    ),
-                    "icon.png": Buffer.alloc(0),   // Replace with real icon
-                    "icon@2x.png": Buffer.alloc(0),
-                    "logo.png": Buffer.alloc(0),    // Replace with real logo
-                    "logo@2x.png": Buffer.alloc(0),
-                },
-                certificates: {
-                    wwdr: Buffer.from(wwdrBase64, "base64"),
-                    signerCert: Buffer.from(certBase64, "base64"),
-                    signerKey: Buffer.from(certBase64, "base64"),
-                    signerKeyPassphrase: certPassword,
-                },
-            }
-        );
-
-        const passBuffer = await pass.getAsBuffer();
+        const passBuffer = pass.getAsBuffer();
         res.setHeader("Content-Type", "application/vnd.apple.pkpass");
-        res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="Staplerschein-${cert.verificationCode}.pkpass"`
-        );
+        res.setHeader("Content-Disposition", `attachment; filename="Staplerschein-${cert.verificationCode}.pkpass"`);
         res.send(passBuffer);
     } catch (err: any) {
         console.error("Apple Wallet error:", err);
@@ -637,6 +549,30 @@ export const getAppleWalletPass = async (req: AuthRequest, res: Response) => {
 };
 
 // ─── GOOGLE WALLET ────────────────────────────────────────────────────────────
+
+export const buildGoogleGenericObject = (cert: any) => {
+    const d = walletData(cert);
+    const lang = (value: string) => ({ defaultValue: { language: "de-DE", value } });
+    return {
+        id: `${GOOGLE_ISSUER_ID}.${cert.verificationCode}`,
+        classId: GOOGLE_CLASS_ID,
+        genericType: "GENERIC_TYPE_UNSPECIFIED",
+        hexBackgroundColor: "#212121",
+        logo: { sourceUri: { uri: `${FRONTEND_URL}/logo-wallet.png` }, contentDescription: lang("STAPLERO") },
+        cardTitle: lang("STAPLERO"),
+        subheader: lang(cert.type === "practical" ? "Inhaber" : "Inhaber · keine Fahrberechtigung"),
+        header: lang(cert.userName),
+        // Pierwsze 4 moduły to siatka 2×2 na przodzie karty, reszta trafia do szczegółów
+        textModulesData: [
+            ...d.front.map((f) => ({ id: f.key, header: f.label, body: f.value })),
+            ...d.details.filter((f) => f.key !== "verify").map((f) => ({ id: f.key, header: f.label, body: f.value })),
+        ],
+        heroImage: { sourceUri: { uri: d.bannerUrl }, contentDescription: lang(`${d.title} · ${cert.userName}`) },
+        linksModuleData: { uris: [{ uri: d.verifyUrl, description: "Echtheit prüfen", id: "verify" }] },
+        barcode: { type: "QR_CODE", value: d.verifyUrl, alternateText: cert.verificationCode },
+        state: "ACTIVE",
+    };
+};
 
 export const getGoogleWalletUrl = async (req: AuthRequest, res: Response) => {
     try {
@@ -655,92 +591,15 @@ export const getGoogleWalletUrl = async (req: AuthRequest, res: Response) => {
             });
         }
 
-        const verifyUrl = `${FRONTEND_URL}/verify/${cert.verificationCode}`;
-
-        const genericObject = {
-            id: `${GOOGLE_ISSUER_ID}.${cert.verificationCode}`,
-            classId: GOOGLE_CLASS_ID,
-            genericType: "GENERIC_TYPE_UNSPECIFIED",
-            hexBackgroundColor: "#0f172a",
-            logo: {
-                sourceUri: {
-                    uri: `${FRONTEND_URL}/logo-wallet.png`,
-                },
-                contentDescription: {
-                    defaultValue: { language: "de-DE", value: "STAPLERO Logo" },
-                },
-            },
-            cardTitle: {
-                defaultValue: { language: "de-DE", value: "STAPLERO" },
-            },
-            subheader: {
-                defaultValue: { language: "de-DE", value: "Befähigungsnachweis" },
-            },
-            header: {
-                defaultValue: { language: "de-DE", value: cert.userName },
-            },
-            textModulesData: [
-                {
-                    id: "certId",
-                    header: "Zertifikat-Nr.",
-                    body: cert.verificationCode,
-                },
-                {
-                    id: "regulation",
-                    header: "Rechtsgrundlage",
-                    body: "DGUV Vorschrift 68 · DGUV Grundsatz 308-001",
-                },
-                {
-                    id: "trainingDate",
-                    header: "Ausbildungsdatum",
-                    body: formatDateShort(cert.trainingDate),
-                },
-                {
-                    id: "issued",
-                    header: "Ausgestellt am",
-                    body: formatDateShort(cert.issuedAt),
-                },
-                {
-                    id: "location",
-                    header: "Ausbildungsort",
-                    body: cert.trainingLocation || "STAPLERO Ausbildungszentrum",
-                },
-            ],
-            linksModuleData: {
-                uris: [
-                    {
-                        uri: verifyUrl,
-                        description: "Zertifikat verifizieren",
-                        id: "verify",
-                    },
-                ],
-            },
-            barcode: {
-                type: "QR_CODE",
-                value: verifyUrl,
-                alternateText: cert.verificationCode,
-            },
-            state: "ACTIVE",
-        };
-
-        // Sign JWT
-        const serviceAccountEmail = GOOGLE_SERVICE_ACCOUNT.client_email;
-        const serviceAccountKey = GOOGLE_SERVICE_ACCOUNT.private_key;
-
         const claims = {
-            iss: serviceAccountEmail,
+            iss: GOOGLE_SERVICE_ACCOUNT.client_email,
             aud: "google",
             origins: [FRONTEND_URL],
             typ: "savetowallet",
-            payload: {
-                genericObjects: [genericObject],
-            },
+            payload: { genericObjects: [buildGoogleGenericObject(cert)] },
         };
-
-        const token = jwt.sign(claims, serviceAccountKey, { algorithm: "RS256" });
-        const saveUrl = `https://pay.google.com/gp/v/save/${token}`;
-
-        res.json({ url: saveUrl });
+        const token = jwt.sign(claims, GOOGLE_SERVICE_ACCOUNT.private_key, { algorithm: "RS256" });
+        res.json({ url: `https://pay.google.com/gp/v/save/${token}` });
     } catch (err: any) {
         console.error("Google Wallet error:", err);
         res.status(500).json({ message: "Fehler beim Erstellen des Google Wallet Passes", error: err.message });
@@ -889,7 +748,7 @@ export const adminDownloadCertificate = async (req: AuthRequest, res: Response) 
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader(
             "Content-Disposition",
-            `attachment; filename="Staplerschein-${cert.verificationCode}.pdf"`
+            `attachment; filename="${cert.type === "practical" ? "Staplerschein" : "Theorienachweis"}-${cert.verificationCode}.pdf"`
         );
         res.send(pdfBuffer);
     } catch (err) {

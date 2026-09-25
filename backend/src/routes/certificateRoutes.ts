@@ -8,6 +8,7 @@ import {
     getAppleWalletPass,
     getGoogleWalletUrl,
     verifyCertificate,
+    getWalletBanner,
     adminGetAllCertificates,
     adminRevokeCertificate,
     adminRestoreCertificate,
@@ -20,6 +21,9 @@ const router = express.Router();
 // ── PUBLIC ────────────────────────────────────────────────────────────────────
 // GET /api/certificates/verify/:code
 router.get("/verify/:code", verifyCertificate);
+
+// GET /api/certificates/wallet-banner/:code.png  – wspólny baner kart Wallet (Google pobiera go publicznie)
+router.get("/wallet-banner/:code", getWalletBanner);
 
 // ── USER ──────────────────────────────────────────────────────────────────────
 // GET /api/certificates/my             – all my certificates

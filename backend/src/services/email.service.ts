@@ -24,7 +24,6 @@ import {
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || "STAPLERO <noreply@staplero.com>";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.com";
-const API_URL = process.env.API_URL || "https://api.staplero.com";
 
 const layout = (o: Omit<LayoutOptions, "baseUrl">) =>
     renderEmail({ baseUrl: FRONTEND_URL, ...o });
@@ -53,9 +52,8 @@ export const sendCertificateEmail = async (opts: CertificateEmailOptions): Promi
     } = opts;
 
     const verifyUrl = `${FRONTEND_URL}/verify/${verificationCode}`;
-    const downloadUrl = `${FRONTEND_URL}/dashboard`;
-    const appleWalletUrl = `${API_URL}/api/certificates/${certId}/wallet/apple`;
-    const googleWalletUrl = `${API_URL}/api/certificates/${certId}/wallet/google`;
+    // Trasy Wallet wymagają zalogowania, więc z maila prowadzimy do zakładki z certyfikatem w panelu
+    const certTabUrl = `${FRONTEND_URL}/dashboard#zertifikate`;
 
     const typeLabel = certType === "practical"
         ? "Praxiskurs: Gabelstapler-Fahrausweis"
@@ -76,11 +74,8 @@ export const sendCertificateEmail = async (opts: CertificateEmailOptions): Promi
       ${infoTable(rows)}
       ${callout(`${strong("DGUV Vorschrift 68")} für Flurförderzeuge<br>${strong("DGUV Grundsatz 308-001")} für Ausbildung und Beauftragung`, "gray")}
       ${sectionLabel("Zertifikat speichern")}
-      ${button(downloadUrl, "PDF im Dashboard öffnen", "primary")}
-      ${twoColumns(
-          button(appleWalletUrl, "Zu Apple Wallet hinzufügen", "dark", true),
-          button(`${googleWalletUrl}/redirect`, "Zu Google Wallet hinzufügen", "outline", true),
-      )}
+      ${button(certTabUrl, "Zertifikat im Kundenbereich öffnen", "primary")}
+      ${p("Dort können Sie das PDF herunterladen und den Staplerschein zu Apple Wallet oder Google Wallet hinzufügen.", { small: true, muted: true })}
       ${sectionLabel("Echtheitsprüfung für Arbeitgeber")}
       ${p(`Der Code ${strong(escapeHtml(verificationCode))} kann von jedem Arbeitgeber ohne Anmeldung geprüft werden unter:<br><a href="${verifyUrl}" style="color:#111111;">${verifyUrl}</a>`)}
       ${callout(`${strong("Wichtig:")} Bitte bewahren Sie dieses Zertifikat sorgfältig auf.`)}
@@ -106,57 +101,6 @@ export const sendCertificateEmail = async (opts: CertificateEmailOptions): Promi
             },
         ],
     });
-};
-
-export const handleGoogleWalletRedirect = async (req: any, res: any) => {
-    try {
-        const { code } = req.params;
-        const cert = await (await import("../models/Certificate")).default
-            .findOne({ verificationCode: code }).lean();
-
-        if (!cert) return res.status(404).send("Zertifikat nicht gefunden");
-
-        const GOOGLE_SERVICE_ACCOUNT = process.env.GOOGLE_WALLET_SERVICE_ACCOUNT
-            ? JSON.parse(process.env.GOOGLE_WALLET_SERVICE_ACCOUNT)
-            : null;
-        const GOOGLE_ISSUER_ID = process.env.GOOGLE_WALLET_ISSUER_ID || "";
-        const GOOGLE_CLASS_ID = `${GOOGLE_ISSUER_ID}.staplero_certificate`;
-
-        if (!GOOGLE_SERVICE_ACCOUNT || !GOOGLE_ISSUER_ID) {
-            return res.redirect(`${process.env.FRONTEND_URL}/verify/${code}`);
-        }
-
-        const { default: jwt } = await import("jsonwebtoken");
-        const dateShort = new Date(cert.trainingDate).toLocaleDateString("de-DE");
-        const verifyUrl = `${process.env.FRONTEND_URL}/verify/${cert.verificationCode}`;
-
-        const genericObject = {
-            id: `${GOOGLE_ISSUER_ID}.${cert.verificationCode}`,
-            classId: GOOGLE_CLASS_ID,
-            genericType: "GENERIC_TYPE_UNSPECIFIED",
-            hexBackgroundColor: "#0f172a",
-            cardTitle: { defaultValue: { language: "de-DE", value: "STAPLERO" } },
-            subheader: { defaultValue: { language: "de-DE", value: "Befähigungsnachweis" } },
-            header: { defaultValue: { language: "de-DE", value: cert.userName } },
-            textModulesData: [
-                { id: "certId", header: "Zertifikat-Nr.", body: cert.verificationCode },
-                { id: "regulation", header: "Rechtsgrundlage", body: "DGUV Vorschrift 68 · GS 308-001" },
-                { id: "date", header: "Ausbildungsdatum", body: dateShort },
-            ],
-            barcode: { type: "QR_CODE", value: verifyUrl, alternateText: cert.verificationCode },
-            state: "ACTIVE",
-        };
-
-        const token = jwt.sign(
-            { iss: GOOGLE_SERVICE_ACCOUNT.client_email, aud: "google", origins: [], typ: "savetowallet", payload: { genericObjects: [genericObject] } },
-            GOOGLE_SERVICE_ACCOUNT.private_key,
-            { algorithm: "RS256" }
-        );
-
-        res.redirect(`https://pay.google.com/gp/v/save/${token}`);
-    } catch (err) {
-        res.status(500).send("Fehler");
-    }
 };
 
 // ─── Konto: Willkommen, Passwort zurücksetzen ──────────────────────────────────

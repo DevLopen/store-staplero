@@ -11,7 +11,7 @@
 export const SITE_URL = "https://staplero.de";
 export const PAGE_PATH = "/firmenschulung-berlin";
 export const PAGE_URL = `${SITE_URL}${PAGE_PATH}`;
-export const OG_IMAGE = `${SITE_URL}/staplero.jpeg`;
+export const OG_IMAGE = `${SITE_URL}/og-image.jpg`;
 
 export const CONTACT = {
   email: "info@staplero.com",

@@ -4,6 +4,8 @@ import { AuthRequest } from "../types";
 
 const ADMIN_EMAILS = ["info@staplero.com", "k.lopuch@satisfly.co"];
 
+const demoCodeFor = (userId: unknown) => `DEMO${String(userId).slice(-8).toUpperCase()}`;
+
 /**
  * POST /api/certificates/admin/seed-demo
  * Creates a demo certificate for the admin user so they can preview the UI.
@@ -19,10 +21,12 @@ export const seedDemoCertificate = async (req: AuthRequest, res: Response) => {
         const isAdmin = ADMIN_EMAILS.includes(userEmail) || user.isAdmin === true;
         if (!isAdmin) return res.status(403).json({ message: "Nur für Admins" });
 
-        // Check if demo cert already exists
+        // Numer demo unikalny dla każdego admina (verificationCode ma indeks unique,
+        // więc wspólny "DEMO000ADMIN" dawał błąd E11000 u drugiego admina)
+        const demoCode = demoCodeFor(user._id);
         const existing = await Certificate.findOne({
             userId: user._id,
-            verificationCode: "DEMO000ADMIN",
+            verificationCode: { $in: [demoCode, "DEMO000ADMIN"] },
         }).lean();
 
         if (existing) {
@@ -42,7 +46,7 @@ export const seedDemoCertificate = async (req: AuthRequest, res: Response) => {
             trainingLocation: "Görlitz – Jakobstr. 13, 02826 Görlitz",
             instructorName: "Bohdan Kutko",
             issuedAt: new Date("2025-03-15"),
-            verificationCode: "DEMO000ADMIN",
+            verificationCode: demoCode,
         });
 
         // Create demo online cert
@@ -84,7 +88,7 @@ export const deleteDemoCertificates = async (req: AuthRequest, res: Response) =>
         await Certificate.deleteMany({
             userId: user._id,
             $or: [
-                { verificationCode: "DEMO000ADMIN" },
+                { verificationCode: { $in: [demoCodeFor(user._id), "DEMO000ADMIN"] } },
                 { courseId: "demo-course-001" },
                 { participantId: "demo-participant-001" },
             ],

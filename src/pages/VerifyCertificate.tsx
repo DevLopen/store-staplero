@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { CheckCircle, XCircle, AlertTriangle, Loader2, Search, Shield, ChevronDown, ChevronUp } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { Loader2, Search, ShieldCheck, ShieldAlert, ShieldX, Phone, Mail } from "lucide-react";
+import WalletCard from "@/components/dashboard/WalletCard";
+import { PanelCertificate, THEORY_TOPICS, PRACTICE_TOPICS } from "@/components/dashboard/panelUtils";
+import logo from "@/assets/staplero-white-cropped.svg";
+
+/**
+ * Publiczna strona weryfikacji (link z kodu QR na certyfikacie i w Wallet).
+ * Czyta ją najczęściej pracodawca: status musi być jednoznaczny w kilka sekund,
+ * a certyfikat online musi wyraźnie mówić, że nie daje uprawnień do jazdy.
+ */
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 interface VerifyResult {
     valid: boolean;
     revoked?: boolean;
+    revokedAt?: string;
     type?: "online" | "practical";
     userName?: string;
     courseName?: string;
@@ -18,368 +28,265 @@ interface VerifyResult {
     instructorName?: string;
     stufen?: string[];
     message?: string;
+    networkError?: boolean;
 }
 
 const STUFEN_LABELS: Record<string, string> = {
-    stufe1:       "Stufe 1 – Frontgabelstapler / Mitgänger-Flurförderzeuge",
-    stufe2:       "Stufe 2 – Schubmaststapler / Teleskopstapler / Containerstapler",
+    stufe1: "Stufe 1 – Frontgabelstapler / Mitgänger-Flurförderzeuge",
+    stufe2: "Stufe 2 – Schubmaststapler / Teleskopstapler / Containerstapler",
     stufe2_anbau: "Stufe 2 – Zusatzqualifizierung Anbaugeräte",
 };
 
-const TH = [
-    { n:"1",  t:"Rechtliche Grundlagen",                             p:"10–15%" },
-    { n:"2",  t:"Unfallgeschehen",                                   p:"5%"     },
-    { n:"3",  t:"Aufbau/Funktion von Flurförderzeugen/Anbaugeräten", p:"5–10%"  },
-    { n:"4",  t:"Antriebsarten",                                     p:"5–10%"  },
-    { n:"5",  t:"Standsicherheit",                                   p:"10–15%" },
-    { n:"6",  t:"Betrieb allgemein",                                 p:"15–20%" },
-    { n:"7",  t:"Regelmäßige Prüfung",                               p:"5%"     },
-    { n:"8",  t:"Umgang mit Last",                                   p:"10–15%" },
-    { n:"9",  t:"Sondereinsätze",                                    p:"10–15%" },
-    { n:"10", t:"Verkehrsregeln / Verkehrswege",                     p:""       },
-];
-const PR = [
-    { n:"1",  t:"Einweisung am Flurförderzeug",                      p:"10–20%" },
-    { n:"2",  t:"Tägliche Einsatzprüfung",                           p:""       },
-    { n:"3",  t:"Lastschwerpunkt, Gewichtsverteilung, zul. Lasten",  p:""       },
-    { n:"4",  t:"Gefahrstellen am Flurförderzeug",                   p:""       },
-    { n:"5",  t:"Gewöhnung an das Flurförderzeug",                   p:"5%"     },
-    { n:"6",  t:"Verlassen des Flurförderzeugs",                     p:""       },
-    { n:"7",  t:"Fahr- und Stapelübungen",                           p:"55–65%" },
-    { n:"8",  t:"Abschlussprüfung (15–20 min/Teilnehmer)",           p:"20%"    },
-];
+const fmt = (d?: string) => (d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Berlin" }) : "—");
 
-const fmtLong = (d: string) =>
-    new Date(d).toLocaleDateString("de-DE", { year:"numeric", month:"long", day:"numeric" });
-
-const TopicList = ({ topics, acc }: { topics: typeof TH; acc: string }) => (
-    <div style={{ border:"1px solid #e5e7eb", borderTop:"none", borderRadius:"0 0 6px 6px", overflow:"hidden" }}>
-        {topics.map((t, i) => (
-            <div key={t.n} style={{
-                display:"flex", alignItems:"center", gap:8, padding:"5px 10px",
-                background: i%2===0?"#fff":"#f9fafb",
-                borderTop: i>0?"1px solid #f3f4f6":"none",
-            }}>
-                <span style={{ fontSize:9, fontWeight:800, color:acc, width:16, flexShrink:0 }}>{t.n}.</span>
-                <span style={{ fontSize:10, color:"#374151", flex:1 }}>{t.t}</span>
-                {t.p && <span style={{ fontSize:9, color:"#9ca3af", fontWeight:600, flexShrink:0 }}>{t.p}</span>}
-            </div>
-        ))}
+const Row = ({ label, children, alert }: { label: string; children: React.ReactNode; alert?: boolean }) => (
+    <div className="grid grid-cols-1 gap-0.5 border-b border-border py-3 sm:grid-cols-[190px_1fr] sm:gap-4">
+        <dt className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground sm:pt-0.5">{label}</dt>
+        <dd className={`text-[15px] font-semibold ${alert ? "text-[#b91c1c]" : "text-foreground"}`}>{children}</dd>
     </div>
 );
 
+const Status = ({ result }: { result: VerifyResult }) => {
+    const theory = result.valid && result.type === "online";
+
+    if (result.valid && !theory) {
+        return (
+            <div role="status" className="flex items-start gap-4 rounded-md bg-[#15803d] p-5 text-white sm:p-6">
+                <ShieldCheck className="h-10 w-10 flex-shrink-0" aria-hidden="true" />
+                <div>
+                    <p className="font-display text-[34px] font-extrabold uppercase leading-none">Echt und gültig</p>
+                    <p className="mt-2 text-[15px] text-white/90">
+                        Befähigungsnachweis Gabelstapler nach DGUV Grundsatz 308-001. Der Inhaber ist berechtigt, Flurförderzeuge (Gabelstapler) selbstständig zu führen.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (theory) {
+        return (
+            <div role="status" className="overflow-hidden rounded-md">
+                <div className="flex items-center gap-3 bg-[#15803d] px-5 py-3 text-white sm:px-6">
+                    <ShieldCheck className="h-6 w-6 flex-shrink-0" aria-hidden="true" />
+                    <p className="font-semibold">Echt: Dieser Theorienachweis wurde von STAPLERO ausgestellt.</p>
+                </div>
+                <div className="flex items-start gap-4 bg-[#b91c1c] p-5 text-white sm:p-6">
+                    <ShieldX className="h-10 w-10 flex-shrink-0" aria-hidden="true" />
+                    <div>
+                        <p className="font-display text-[34px] font-extrabold uppercase leading-none">Keine Fahrberechtigung</p>
+                        <p className="mt-2 text-[15px] text-white/95">
+                            <b>Nur Theorieteil, kein Fahrausweis.</b> Dieser Nachweis berechtigt nicht zum Führen von Gabelstaplern oder anderen Flurförderzeugen. Dafür ist zusätzlich eine praktische Ausbildung mit Prüfung nach DGUV Grundsatz 308-001 nötig.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (result.revoked) {
+        return (
+            <div role="alert" className="flex items-start gap-4 rounded-md bg-[#b91c1c] p-5 text-white sm:p-6">
+                <ShieldAlert className="h-10 w-10 flex-shrink-0" aria-hidden="true" />
+                <div>
+                    <p className="font-display text-[34px] font-extrabold uppercase leading-none">Widerrufen</p>
+                    <p className="mt-2 text-[15px] text-white/95">
+                        Dieses Zertifikat ist nicht mehr gültig{result.revokedAt ? ` (widerrufen am ${fmt(result.revokedAt)})` : ""}. Es berechtigt nicht zum Führen von Flurförderzeugen.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div role="alert" className="flex items-start gap-4 rounded-md border-2 border-[#b91c1c] bg-white p-5 sm:p-6">
+            <ShieldX className="h-10 w-10 flex-shrink-0 text-[#b91c1c]" aria-hidden="true" />
+            <div>
+                <p className="font-display text-[34px] font-extrabold uppercase leading-none text-[#b91c1c]">
+                    {result.networkError ? "Prüfung nicht möglich" : "Nicht gefunden"}
+                </p>
+                <p className="mt-2 text-[15px] text-foreground">
+                    {result.networkError
+                        ? "Die Verbindung zum Server ist fehlgeschlagen. Bitte versuchen Sie es in einem Moment erneut."
+                        : "Zu dieser Nummer gibt es kein STAPLERO-Zertifikat. Prüfen Sie die Schreibweise (12 Zeichen, auf dem Zertifikat unter dem QR-Code). Wird die Nummer weiterhin nicht gefunden, ist das Dokument nicht von uns ausgestellt."}
+                </p>
+            </div>
+        </div>
+    );
+};
+
 const VerifyCertificate = () => {
     const { code } = useParams<{ code: string }>();
-    const [result,      setResult]      = useState<VerifyResult | null>(null);
-    const [loading,     setLoading]     = useState(false);
-    const [manualCode,  setManualCode]  = useState("");
-    const [hasSearched, setHasSearched] = useState(false);
-    const [showCurr,    setShowCurr]    = useState(false);
+    const navigate = useNavigate();
+    const [result, setResult] = useState<VerifyResult | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [manualCode, setManualCode] = useState(code?.toUpperCase() || "");
+    const [checkedAt, setCheckedAt] = useState<Date | null>(null);
 
     const verify = async (c: string) => {
+        const clean = c.trim().toUpperCase();
+        if (!clean) return;
         setLoading(true);
-        setHasSearched(true);
-        setShowCurr(false);
         try {
-            const res = await fetch(`${API_URL}/certificates/verify/${c.trim().toUpperCase()}`);
+            const res = await fetch(`${API_URL}/certificates/verify/${encodeURIComponent(clean)}`);
             setResult(await res.json());
         } catch {
-            setResult({ valid:false, message:"Verbindungsfehler. Bitte erneut versuchen." });
-        } finally { setLoading(false); }
+            setResult({ valid: false, networkError: true });
+        } finally {
+            setCheckedAt(new Date());
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
-        if (code) { setManualCode(code); verify(code); }
+        if (code) { setManualCode(code.toUpperCase()); verify(code); }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [code]);
 
+    const onSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const clean = manualCode.trim().toUpperCase();
+        if (!clean) return;
+        if (clean === code?.toUpperCase()) verify(clean);
+        else navigate(`/verify/${clean}`);
+    };
+
     const isP = result?.type === "practical";
-    const acc = isP ? "#f59e0b" : "#2563eb";
+    const card: PanelCertificate | null = result?.valid && result.verificationCode
+        ? {
+            _id: result.verificationCode,
+            verificationCode: result.verificationCode,
+            type: result.type || "online",
+            userName: result.userName || "",
+            courseName: result.courseName || "",
+            trainingDate: result.trainingDate || "",
+            trainingLocation: result.trainingLocation,
+            issuedAt: result.issuedAt || result.trainingDate || "",
+            score: result.score,
+            instructorName: result.instructorName,
+            stufen: result.stufen,
+        }
+        : null;
 
     return (
-        <div style={{ minHeight:"100vh", background:"#f3f4f6",
-            display:"flex", flexDirection:"column", alignItems:"center",
-            justifyContent:"center", padding:"32px 16px", fontFamily:"'Inter','Helvetica Neue',sans-serif" }}>
+        <div className="min-h-screen bg-secondary text-foreground">
+            <header className="bg-[#212121]">
+                <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+                    <Link to="/"><img src={logo} alt="STAPLERO" className="h-8" /></Link>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#bdbdbd]">Echtheitsprüfung</span>
+                </div>
+                <div className="h-1 bg-primary" />
+            </header>
 
-            <div style={{ width:"100%", maxWidth:680 }}>
-
-                {/* Logo */}
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:24 }}>
-                    <Link to="/" style={{ fontWeight:900, fontSize:22, color:"#111827",
-                        textDecoration:"none", letterSpacing:-0.5 }}>
-                        STAPLER<span style={{ color:"#f59e0b" }}>O</span>
-                    </Link>
-                    <p style={{ fontSize:10, fontWeight:700, color:"#9ca3af",
-                        textTransform:"uppercase", letterSpacing:"0.1em" }}>
-                        Zertifikatsverifizierung
+            <main className="mx-auto grid max-w-5xl gap-6 px-4 py-8 sm:px-6">
+                <div>
+                    <h1 className="font-display text-[40px] font-extrabold uppercase leading-[0.95] sm:text-[48px]">Zertifikat prüfen</h1>
+                    <p className="mt-2 max-w-[62ch] text-muted-foreground">
+                        Arbeitgeber und Behörden prüfen hier kostenlos und ohne Anmeldung, ob ein Nachweis von STAPLERO ausgestellt wurde und wozu er berechtigt.
                     </p>
                 </div>
 
-                {/* Card */}
-                <div style={{ background:"#FAFAF7", borderRadius:20, overflow:"hidden",
-                    boxShadow:"0 8px 32px rgba(0,0,0,0.1)", border:"2px solid #1e3a5f" }}>
-
-                    <div style={{ height:5, background:"linear-gradient(90deg,#f59e0b,#d97706,#f59e0b)" }} />
-
-                    {/* Header + search */}
-                    <div style={{ padding:"24px 28px 20px" }}>
-                        <div style={{ textAlign:"center", marginBottom:20 }}>
-                            <p style={{ fontSize:9, fontWeight:800, letterSpacing:"0.4em",
-                                color:"#f59e0b", textTransform:"uppercase", marginBottom:4 }}>Staplero</p>
-                            <h1 style={{ fontSize:22, fontWeight:900, color:"#1e3a5f", marginBottom:4 }}>
-                                Echtheitsprüfung
-                            </h1>
-                            <p style={{ fontSize:12, color:"#9ca3af" }}>
-                                Prüfen Sie die Echtheit eines STAPLERO-Zertifikats — kostenlos, ohne Anmeldung
-                            </p>
-                        </div>
-
-                        {/* Ornament */}
-                        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
-                            <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
-                            <div style={{ width:6, height:6, background:"#f59e0b", transform:"rotate(45deg)" }} />
-                            <div style={{ flex:1, height:1, background:"#e5e7eb" }} />
-                        </div>
-
-                        {/* Search */}
-                        <form onSubmit={e => { e.preventDefault(); if (manualCode.trim()) verify(manualCode); }}
-                              style={{ display:"flex", gap:8 }}>
-                            <input
-                                type="text" value={manualCode}
-                                onChange={e => setManualCode(e.target.value.toUpperCase())}
-                                placeholder="Zertifikat-Nummer, z.B. STPL-2025-AB7X"
-                                style={{ flex:1, background:"#fff", border:"2px solid #e5e7eb",
-                                    borderRadius:12, padding:"12px 16px", fontSize:13, fontFamily:"monospace",
-                                    fontWeight:700, letterSpacing:"0.1em", color:"#111827",
-                                    outline:"none", transition:"border-color .15s" }}
-                                onFocus={e => e.currentTarget.style.borderColor="#f59e0b"}
-                                onBlur={e  => e.currentTarget.style.borderColor="#e5e7eb"}
-                            />
-                            <button type="submit" disabled={loading || !manualCode.trim()}
-                                    style={{ display:"flex", alignItems:"center", gap:6, padding:"12px 20px",
-                                        borderRadius:12, border:"none", cursor:"pointer", fontFamily:"inherit",
-                                        fontSize:13, fontWeight:700, whiteSpace:"nowrap",
-                                        background: loading||!manualCode.trim() ? "#e5e7eb" : "#1e3a5f",
-                                        color: loading||!manualCode.trim() ? "#9ca3af" : "#fff",
-                                        transition:"all .15s" }}>
-                                {loading ? <Loader2 size={14} style={{animation:"spin .7s linear infinite"}} /> : <Search size={14} />}
-                                Prüfen
-                            </button>
-                        </form>
+                <form onSubmit={onSubmit} className="rounded-md border border-border bg-white p-4 sm:p-5">
+                    <label htmlFor="cert-code" className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Zertifikat-Nr.</label>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <input
+                            id="cert-code"
+                            type="text"
+                            inputMode="text"
+                            autoComplete="off"
+                            spellCheck={false}
+                            value={manualCode}
+                            onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+                            placeholder="z. B. K7QX2M9PLA4B"
+                            className="min-h-[48px] flex-1 rounded border-2 border-border bg-white px-4 font-mono text-base font-bold tracking-[0.12em] outline-none focus:border-primary"
+                        />
+                        <button type="submit" disabled={loading || !manualCode.trim()}
+                            className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded bg-primary px-6 text-sm font-bold text-[#111] disabled:opacity-50">
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Prüfen
+                        </button>
                     </div>
+                    <p className="mt-2 text-xs text-muted-foreground">Die Nummer steht auf dem Zertifikat unter dem QR-Code. Beim Scannen des QR-Codes wird sie automatisch geprüft.</p>
+                </form>
 
-                    {/* Loading */}
-                    {loading && (
-                        <div style={{ borderTop:"1px solid #e5e7eb", display:"flex",
-                            flexDirection:"column", alignItems:"center", padding:"32px", gap:10 }}>
-                            <div style={{ width:36, height:36, borderRadius:"50%",
-                                border:"3px solid #f59e0b", borderTopColor:"transparent",
-                                animation:"spin .7s linear infinite" }} />
-                            <p style={{ fontSize:12, color:"#9ca3af" }}>Verifizierung läuft…</p>
-                        </div>
-                    )}
+                {loading && (
+                    <div role="status" className="flex items-center gap-3 rounded-md border border-border bg-white p-5 text-muted-foreground">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" /> Zertifikat wird geprüft…
+                    </div>
+                )}
 
-                    {/* Placeholder */}
-                    {!loading && !hasSearched && (
-                        <div style={{ borderTop:"1px solid #e5e7eb", display:"flex",
-                            flexDirection:"column", alignItems:"center", padding:"32px", textAlign:"center" }}>
-                            <Search size={28} color="#d1d5db" style={{ marginBottom:10 }} />
-                            <p style={{ fontSize:13, color:"#9ca3af" }}>
-                                Zertifikat-Nummer eingeben oder QR-Code auf dem Dokument scannen
-                            </p>
-                        </div>
-                    )}
+                {!loading && result && (
+                    <>
+                        <Status result={result} />
 
-                    {/* Result */}
-                    {!loading && result && (
-                        <div style={{ borderTop:"1px solid #e5e7eb" }}>
+                        {card && (
+                            <section className="grid items-start gap-6 rounded-md border border-border bg-white p-5 md:grid-cols-[minmax(0,1fr)_320px] sm:p-6">
+                                <div className="min-w-0">
+                                    <h2 className="mb-2 font-display text-[22px] font-extrabold uppercase">Angaben zum Zertifikat</h2>
+                                    <dl className="border-t border-border">
+                                        <Row label="Inhaber">{result.userName}</Row>
+                                        <Row label="Nachweis">{isP ? "Befähigungsnachweis Gabelstapler (Theorie & Praxis)" : "Theorienachweis Gabelstapler (online)"}</Row>
+                                        {isP
+                                            ? <Row label="Qualifizierung">{(result.stufen?.length ? result.stufen : ["stufe1"]).map((s) => <span key={s} className="block">{STUFEN_LABELS[s] || s}</span>)}</Row>
+                                            : <Row label="Fahrberechtigung" alert>Nein, nur Theorieteil</Row>}
+                                        <Row label={isP ? "Kursdatum" : "Prüfungsdatum"}>{fmt(result.trainingDate)}</Row>
+                                        {result.trainingLocation && <Row label="Ausbildungsort">{result.trainingLocation}</Row>}
+                                        {result.instructorName && <Row label="Ausbilder">{result.instructorName}</Row>}
+                                        {result.score !== undefined && <Row label="Prüfungsergebnis Theorie">{result.score} %</Row>}
+                                        <Row label="Ausgestellt am">{fmt(result.issuedAt)}</Row>
+                                        <Row label="Zertifikat-Nr."><span className="font-mono tracking-[0.1em]">{result.verificationCode}</span></Row>
+                                        <Row label="Rechtsgrundlage">DGUV Vorschrift 68 · DGUV Grundsatz 308-001</Row>
+                                    </dl>
 
-                            {/* Status */}
-                            <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 28px",
-                                background: result.valid?"#f0fdf4":result.revoked?"#fff7ed":"#fef2f2",
-                                borderBottom:"1px solid #e5e7eb" }}>
-                                {result.valid
-                                    ? <CheckCircle size={22} color="#16a34a" />
-                                    : result.revoked
-                                        ? <AlertTriangle size={22} color="#ea580c" />
-                                        : <XCircle size={22} color="#dc2626" />}
-                                <p style={{ fontWeight:700, fontSize:14,
-                                    color: result.valid?"#15803d":result.revoked?"#c2410c":"#b91c1c" }}>
-                                    {result.valid ? "✓ Zertifikat gültig und echt"
-                                        : result.revoked ? "⚠ Zertifikat wurde widerrufen"
-                                            : "✗ Zertifikat nicht gefunden"}
-                                </p>
-                                {!result.valid && result.message && (
-                                    <p style={{ fontSize:11, color:"#6b7280" }}>{result.message}</p>
-                                )}
-                            </div>
-
-                            {result.valid && result.userName && (
-                                <div style={{ padding:"20px 28px 24px" }}>
-
-                                    {/* Two-col: name+qual | cert-nr */}
-                                    <div style={{ display:"flex", gap:16, alignItems:"flex-start", marginBottom:16, flexWrap:"wrap" }}>
-                                        <div style={{ flex:1, minWidth:200 }}>
-                                            <p style={{ fontSize:11, color:"#9ca3af", marginBottom:4 }}>
-                                                Hiermit wird bestätigt, dass
-                                            </p>
-                                            <h2 style={{ fontWeight:900, color:"#111827", lineHeight:1.2,
-                                                wordBreak:"break-word", marginBottom:6,
-                                                fontSize: (result.userName?.length??0)>26?"20px":(result.userName?.length??0)>18?"24px":"28px" }}>
-                                                {result.userName}
-                                            </h2>
-                                            <div style={{ height:3, background:"#f59e0b", borderRadius:2,
-                                                width:Math.min((result.userName?.length??10)*10+30,200)+"px", marginBottom:10 }} />
-                                            <p style={{ fontSize:11, color:"#6b7280", marginBottom:3 }}>
-                                                die Ausbildung zum Führen von Gabelstaplern gemäß
-                                            </p>
-                                            <p style={{ fontSize:12, fontWeight:700, color:"#1e3a5f", marginBottom:3 }}>
-                                                DGUV Vorschrift 68 · DGUV Grundsatz 308-001
-                                            </p>
-                                            {isP ? (
-                                                <p style={{ fontSize:11, color:"#6b7280" }}>
-                                                    erfolgreich abgeschlossen hat und ist{" "}
-                                                    <strong style={{ color:"#1e3a5f" }}>berechtigt, Flurförderzeuge selbstständig zu führen.</strong>
-                                                </p>
-                                            ) : (
-                                                <div style={{ background:"#FEF2F2", borderLeft:"3px solid #dc2626",
-                                                    padding:"6px 10px", borderRadius:"0 4px 4px 0" }}>
-                                                    <p style={{ fontSize:10, color:"#991b1b", fontWeight:700, marginBottom:2 }}>HINWEIS</p>
-                                                    <p style={{ fontSize:10, color:"#7f1d1d" }}>
-                                                        Dieser Nachweis berechtigt nicht zum selbstständigen Führen von Flurförderzeugen.
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Cert number box */}
-                                        {result.verificationCode && (
-                                            <div style={{ background:"#1e3a5f", borderRadius:12,
-                                                padding:"12px 16px", textAlign:"center", flexShrink:0, minWidth:160 }}>
-                                                <p style={{ fontSize:8, fontWeight:700, color:"rgba(255,255,255,0.5)",
-                                                    textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>
-                                                    Zertifikat-Nr.
-                                                </p>
-                                                <p style={{ fontFamily:"monospace", fontSize:14, fontWeight:900,
-                                                    color:"#f59e0b", letterSpacing:"0.1em", wordBreak:"break-all" }}>
-                                                    {result.verificationCode}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Meta grid */}
-                                    <div style={{ display:"flex", flexWrap:"wrap", gap:"10px 28px",
-                                        padding:"12px 0", borderTop:"1px solid #f3f4f6",
-                                        borderBottom:"1px solid #f3f4f6", marginBottom:12 }}>
-                                        {result.trainingDate && (
-                                            <div>
-                                                <p style={{ fontSize:8, fontWeight:700, color:"#9ca3af",
-                                                    textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:2 }}>
-                                                    {isP ? "Kursdatum" : "Ausbildungsdatum"}
-                                                </p>
-                                                <p style={{ fontSize:13, fontWeight:800, color:"#1e3a5f" }}>
-                                                    {fmtLong(result.trainingDate)}
-                                                </p>
-                                            </div>
-                                        )}
-                                        {result.trainingLocation && (
-                                            <div>
-                                                <p style={{ fontSize:8, fontWeight:700, color:"#9ca3af",
-                                                    textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:2 }}>
-                                                    Ausbildungsort
-                                                </p>
-                                                <p style={{ fontSize:12, fontWeight:700, color:"#1e3a5f" }}>
-                                                    {result.trainingLocation}
-                                                </p>
-                                            </div>
-                                        )}
-                                        {result.score !== undefined && (
-                                            <div>
-                                                <p style={{ fontSize:8, fontWeight:700, color:"#9ca3af",
-                                                    textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:2 }}>
-                                                    Prüfungsergebnis
-                                                </p>
-                                                <p style={{ fontSize:12, fontWeight:700, color:"#1e3a5f" }}>
-                                                    {result.score} %
-                                                </p>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Stufen */}
-                                    {result.stufen && result.stufen.length > 0 && (
-                                        <div style={{ marginBottom:12 }}>
-                                            <p style={{ fontSize:8, fontWeight:700, color:"#9ca3af",
-                                                textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:6 }}>
-                                                Qualifizierungsstufen (DGUV G 308-001)
-                                            </p>
-                                            {result.stufen.map(s => (
-                                                <div key={s} style={{ display:"flex", alignItems:"flex-start",
-                                                    gap:7, marginBottom:4 }}>
-                                                    <div style={{ width:5, height:5, background:"#f59e0b",
-                                                        transform:"rotate(45deg)", flexShrink:0, marginTop:4 }} />
-                                                    <p style={{ fontSize:11, fontWeight:600, color:"#1e3a5f" }}>
-                                                        {STUFEN_LABELS[s] || s}
-                                                    </p>
+                                    <details className="group mt-4">
+                                        <summary className="flex cursor-pointer list-none justify-between py-2 text-sm font-semibold">
+                                            {isP ? "Ausbildungsinhalte Theorie & Praxis" : "Theoretische Ausbildungsinhalte"}
+                                            <span className="font-bold text-muted-foreground group-open:hidden">+</span>
+                                            <span className="hidden font-bold text-muted-foreground group-open:inline">–</span>
+                                        </summary>
+                                        <div className={`grid gap-5 pt-2 ${isP ? "md:grid-cols-2" : ""}`}>
+                                            {[["Theorie", THEORY_TOPICS], ...(isP ? [["Praxis", PRACTICE_TOPICS]] : [])].map(([title, items]) => (
+                                                <div key={title as string}>
+                                                    <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{title as string}</h3>
+                                                    <ol>
+                                                        {(items as string[]).map((it, i) => (
+                                                            <li key={it} className="grid grid-cols-[22px_1fr] border-b border-[#f0f0f0] py-1.5 text-[13px]">
+                                                                <span className="font-bold text-primary">{i + 1}.</span>{it}
+                                                            </li>
+                                                        ))}
+                                                    </ol>
                                                 </div>
                                             ))}
                                         </div>
-                                    )}
-
-                                    {/* Curriculum expandable */}
-                                    <button onClick={() => setShowCurr(o => !o)}
-                                            style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
-                                                width:"100%", padding:"10px 0", background:"none", border:"none",
-                                                borderTop:"1px solid #e5e7eb", cursor:"pointer", fontFamily:"inherit",
-                                                marginBottom: showCurr ? 10 : 0 }}>
-                                        <span style={{ fontSize:11, fontWeight:700, color:"#4b5563" }}>
-                                            {isP ? "Ausbildungsinhalte Theorie & Praxis" : "Theoretische Ausbildungsinhalte"}
-                                        </span>
-                                        {showCurr ? <ChevronUp size={14} color="#9ca3af" /> : <ChevronDown size={14} color="#9ca3af" />}
-                                    </button>
-
-                                    {showCurr && (
-                                        <div>
-                                            <div style={{ background:"#1e3a5f", borderRadius:"6px 6px 0 0",
-                                                padding:"5px 10px", marginBottom:1 }}>
-                                                <span style={{ fontSize:9, fontWeight:800, color:"#fff", letterSpacing:"0.1em" }}>THEORIE</span>
-                                            </div>
-                                            <TopicList topics={TH} acc={acc} />
-
-                                            {isP && (
-                                                <div style={{ marginTop:8 }}>
-                                                    <div style={{ background:"#f59e0b", borderRadius:"6px 6px 0 0",
-                                                        padding:"5px 10px", marginBottom:1 }}>
-                                                        <span style={{ fontSize:9, fontWeight:800, color:"#000", letterSpacing:"0.1em" }}>PRAXIS</span>
-                                                    </div>
-                                                    <TopicList topics={PR} acc={acc} />
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Footer */}
-                                    <div style={{ display:"flex", alignItems:"center", gap:8,
-                                        paddingTop:12, marginTop:12, borderTop:"1px solid #f3f4f6" }}>
-                                        <Shield size={12} color="#f59e0b" />
-                                        <p style={{ fontSize:10, color:"#9ca3af" }}>
-                                            DGUV Vorschrift 68 · DGUV Grundsatz 308-001 · Ausgestellt von STAPLERO Ausbildungszentrum Görlitz
-                                        </p>
-                                    </div>
+                                    </details>
                                 </div>
-                            )}
-                        </div>
-                    )}
-                </div>
 
-                {/* Footer */}
-                <p style={{ textAlign:"center", fontSize:11, color:"#9ca3af", marginTop:20 }}>
-                    STAPLERO Ausbildungszentrum · Jakobstr. 13, 02826 Görlitz ·{" "}
-                    <Link to="/" style={{ color:"#6b7280", textDecoration:"none" }}>staplero.com</Link>
-                </p>
-            </div>
+                                <div className="grid justify-items-center gap-2 md:justify-items-start">
+                                    <WalletCard cert={card} holder={card.userName} />
+                                    <p className="max-w-[320px] text-xs text-muted-foreground">
+                                        {isP ? "Digitaler Staplerschein mit Foto des Inhabers. Bitte mit dem Ausweis der Person abgleichen." : "Digitaler Theorienachweis. Kein Fahrausweis."}
+                                    </p>
+                                </div>
+                            </section>
+                        )}
 
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                        {checkedAt && (
+                            <p className="text-xs text-muted-foreground">
+                                Geprüft am {checkedAt.toLocaleDateString("de-DE")} um {checkedAt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })} Uhr über die STAPLERO-Datenbank.
+                            </p>
+                        )}
+                    </>
+                )}
+
+                <section className="grid gap-4 rounded-md border border-border bg-white p-5 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <div>
+                        <h2 className="font-display text-[20px] font-extrabold uppercase">Fragen zur Echtheit?</h2>
+                        <p className="text-sm text-muted-foreground">STAPLERO Ausbildungszentrum · Jakobstr. 13, 02826 Görlitz</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <a href="tel:+4917622067783" className="inline-flex min-h-[44px] items-center gap-2 rounded border-2 border-foreground px-4 text-sm font-bold"><Phone className="h-4 w-4" /> +49 176 22067783</a>
+                        <a href="mailto:info@staplero.com" className="inline-flex min-h-[44px] items-center gap-2 rounded border-2 border-foreground px-4 text-sm font-bold"><Mail className="h-4 w-4" /> info@staplero.com</a>
+                    </div>
+                </section>
+            </main>
         </div>
     );
 };
