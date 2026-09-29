@@ -16,7 +16,8 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
             token = req.headers.authorization.split(" ")[1];
             const decoded: any = jwt.verify(token, JWT_SECRET);
 
-            const user = await User.findById(decoded.id).select("-password");
+            // Tokeny z checkoutu sprzed 24.09 miały tylko `_id` (ważne 30 dni) — akceptujemy oba formaty
+            const user = await User.findById(decoded.id || decoded._id).select("-password");
             if (!user) {
                 return res.status(401).json({ message: "User not found" });
             }

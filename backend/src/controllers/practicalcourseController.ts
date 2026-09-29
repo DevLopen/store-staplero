@@ -162,23 +162,33 @@ export const completeParticipant = async (req: AuthRequest, res: Response) => {
         // 4. Generate PDF buffer for email attachment
         const pdfBuffer = await generateCertificatePDF(cert.toObject());
 
-        // 5. Send certificate email to participant
-        await sendCertificateEmail({
-            to: participant.userEmail,
-            userName: participant.userName,
-            certId: (cert._id as any).toString(),
-            verificationCode: cert.verificationCode,
-            certType: "practical",
-            trainingDate: new Date(participant.startDate),
-            trainingLocation: `${participant.locationName} – ${participant.locationAddress}`,
-            pdfBuffer,
-            instructorName: instructorName,
-        });
+        // 5. Send certificate email to participant — zertyfikat już istnieje, więc błąd maila nie może
+        //    zwrócić 500 (admin może potem użyć "erneut senden")
+        let emailSent = true;
+        try {
+            await sendCertificateEmail({
+                to: participant.userEmail,
+                userName: participant.userName,
+                certId: (cert._id as any).toString(),
+                verificationCode: cert.verificationCode,
+                certType: "practical",
+                trainingDate: new Date(participant.startDate),
+                trainingLocation: `${participant.locationName} – ${participant.locationAddress}`,
+                pdfBuffer,
+                instructorName: instructorName,
+            });
+        } catch (mailErr: any) {
+            emailSent = false;
+            console.error("[Complete participant] Zertifikats-E-Mail fehlgeschlagen:", mailErr.message);
+        }
 
         res.json({
             success: true,
-            message: "Teilnehmer abgeschlossen. Zertifikat ausgestellt und per E-Mail versendet.",
+            message: emailSent
+                ? "Teilnehmer abgeschlossen. Zertifikat ausgestellt und per E-Mail versendet."
+                : "Teilnehmer abgeschlossen, Zertifikat ausgestellt. E-Mail konnte nicht gesendet werden, bitte erneut senden.",
             certificate: cert.toObject(),
+            emailSent,
         });
     } catch (error: any) {
         console.error("Complete participant error:", error);
@@ -389,15 +399,19 @@ export const addManualParticipant = async (req: AuthRequest, res: Response) => {
                 stufen: stufen?.length ? stufen : ["stufe1"],
             });
             const pdfBuffer = await generateCertificatePDF(cert.toObject());
-            await sendCertificateEmail({
-                to: userEmail,
-                userName,
-                certId: (cert._id as any).toString(),
-                verificationCode: cert.verificationCode,
-                certType: "practical",
-                trainingDate: new Date(startDate),
-                pdfBuffer,
-            });
+            try {
+                await sendCertificateEmail({
+                    to: userEmail,
+                    userName,
+                    certId: (cert._id as any).toString(),
+                    verificationCode: cert.verificationCode,
+                    certType: "practical",
+                    trainingDate: new Date(startDate),
+                    pdfBuffer,
+                });
+            } catch (mailErr: any) {
+                console.error("[Manual participant] Zertifikats-E-Mail fehlgeschlagen:", mailErr.message);
+            }
         }
         res.json({ success: true, participant, confirmationSent });
     } catch (err: any) {

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import NotifyRequest from "../models/NotifyRequest";
 import Product from "../models/Product";
+import notifyRequestService from "../services/notifyRequest.service";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -28,6 +29,12 @@ export const createNotifyRequest = async (req: Request, res: Response) => {
     });
 
     if (existing) {
+      // Już powiadomiony wcześniej, a znów czeka (np. termin się zapełnił) — wraca na listę oczekujących
+      if (existing.notified) {
+        existing.notified = false;
+        existing.lastError = undefined;
+        await existing.save();
+      }
       return res.json({ success: true, alreadyExists: true });
     }
 
@@ -69,12 +76,23 @@ export const adminMarkNotifyRequestDone = async (req: Request, res: Response) =>
   try {
     const request = await NotifyRequest.findByIdAndUpdate(
       req.params.id,
-      { notified: true },
+      { notified: true, notifiedAt: new Date(), notifiedManually: true },
       { new: true }
     );
     if (!request) return res.status(404).json({ message: "Nicht gefunden" });
     res.json(request);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err });
+  }
+};
+
+/** Ręczne wysłanie maila z aktualnymi terminami do jednej osoby z listy oczekujących */
+export const adminSendNotifyRequest = async (req: Request, res: Response) => {
+  try {
+    const request = await notifyRequestService.notifyRequestNow(req.params.id);
+    if (!request) return res.status(404).json({ message: "Nicht gefunden" });
+    res.json(request);
+  } catch (err: any) {
+    res.status(400).json({ message: err.message || "Fehler" });
   }
 };

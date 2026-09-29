@@ -49,6 +49,10 @@ export interface NotifyRequestItem {
   locationId?: string;
   locationCity?: string;
   notified: boolean;
+  notifiedAt?: string;
+  notifiedManually?: boolean;
+  notifiedDates?: { locationCity: string; startDate: string; endDate: string }[];
+  lastError?: string;
   createdAt: string;
 }
 
@@ -57,6 +61,9 @@ export const adminGetNotifyRequests = (): Promise<{ requests: NotifyRequestItem[
 
 export const adminMarkNotifyRequestDone = (id: string): Promise<NotifyRequestItem> =>
   apiFetch(`${base}/admin/notify-requests/${id}/notified`, { method: "PUT" });
+
+export const adminSendNotifyRequest = (id: string): Promise<NotifyRequestItem> =>
+  apiFetch(`${base}/admin/notify-requests/${id}/send`, { method: "POST" });
 
 export const adminDeleteNotifyRequest = (id: string): Promise<void> =>
   apiFetch(`${base}/admin/notify-requests/${id}`, { method: "DELETE" });

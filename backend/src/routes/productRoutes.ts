@@ -13,6 +13,7 @@ import {
   adminListNotifyRequests,
   adminDeleteNotifyRequest,
   adminMarkNotifyRequestDone,
+  adminSendNotifyRequest,
 } from "../controllers/notifyRequestController";
 import { protect, admin } from "../middleware/authMiddleware";
 import { notifyRequestRateLimiter } from "../middleware/rateLimiter";
@@ -22,6 +23,7 @@ const router = express.Router();
 // ── ADMIN: Notify requests (musi być PRZED "/admin/:productId", inaczej zostanie przechwycone) ──
 router.get("/admin/notify-requests", protect, admin, adminListNotifyRequests);
 router.put("/admin/notify-requests/:id/notified", protect, admin, adminMarkNotifyRequestDone);
+router.post("/admin/notify-requests/:id/send", protect, admin, adminSendNotifyRequest);
 router.delete("/admin/notify-requests/:id", protect, admin, adminDeleteNotifyRequest);
 
 // ── ADMIN: Product CRUD ────────────────────────────────────────────────────────

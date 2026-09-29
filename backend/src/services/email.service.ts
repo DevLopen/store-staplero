@@ -25,6 +25,32 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || "STAPLERO <noreply@staplero.com>";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.com";
 
+type SendPayload = Parameters<typeof resend.emails.send>[0];
+
+/**
+ * Resend nie rzuca wyjątków — błąd (np. rate limit, zły adres) wraca w `{ error }`.
+ * Bez sprawdzenia maile ginęły po cichu. Tu: ponawiamy przy rate limit / 5xx, inaczej rzucamy.
+ */
+const sendMail = async (payload: SendPayload, attempts = 4): Promise<void> => {
+    for (let attempt = 1; ; attempt++) {
+        let error: any;
+        try {
+            ({ error } = await resend.emails.send(payload));
+        } catch (err: any) {
+            error = err;
+        }
+        if (!error) return;
+
+        const status = error.statusCode ?? error.status;
+        const retryable = error.name === "rate_limit_exceeded" || status === 429 || (status ?? 500) >= 500;
+        console.error(`❌ Resend (${attempt}/${attempts}) an ${payload.to} "${payload.subject}":`, error.name || "", error.message || error);
+        if (!retryable || attempt >= attempts) {
+            throw new Error(`E-Mail an ${payload.to} fehlgeschlagen: ${error.message || error.name || "unbekannter Fehler"}`);
+        }
+        await new Promise((r) => setTimeout(r, 1000 * attempt));
+    }
+};
+
 const layout = (o: Omit<LayoutOptions, "baseUrl">) =>
     renderEmail({ baseUrl: FRONTEND_URL, ...o });
 
@@ -89,7 +115,7 @@ export const sendCertificateEmail = async (opts: CertificateEmailOptions): Promi
         bodyHtml,
     });
 
-    await resend.emails.send({
+    await sendMail({
         from: FROM_EMAIL,
         to,
         subject: `STAPLERO: Ihr Staplerschein ist ausgestellt (${verificationCode})`,
@@ -115,7 +141,7 @@ export const sendWelcomeEmail = async (to: string, name: string): Promise<void> 
       ${p(strong("Ihr STAPLERO Team"))}
     `;
 
-    await resend.emails.send({
+    await sendMail({
         from: FROM_EMAIL,
         to,
         subject: "Willkommen bei STAPLERO!",
@@ -139,7 +165,7 @@ export const sendPasswordResetEmail = async (to: string, name: string, resetUrl:
       ${p(strong("Ihr STAPLERO Team"))}
     `;
 
-    await resend.emails.send({
+    await sendMail({
         from: FROM_EMAIL,
         to,
         subject: "Passwort zurücksetzen: STAPLERO",
@@ -162,7 +188,7 @@ export const sendPasswordChangedEmail = async (to: string, name: string): Promis
       ${p(strong("Ihr STAPLERO Team"))}
     `;
 
-    await resend.emails.send({
+    await sendMail({
         from: FROM_EMAIL,
         to,
         subject: "Ihr Passwort wurde geändert: STAPLERO",
@@ -197,7 +223,7 @@ export const sendOnlineCoursePurchaseEmail = async (
       ${p(`${strong("Viel Erfolg!")}<br>Ihr STAPLERO Team`)}
     `;
 
-    await resend.emails.send({
+    await sendMail({
         from: FROM_EMAIL,
         to,
         subject: `Ihr Online-Kurs: ${courseName} - Zugang freigeschaltet!`,
@@ -342,7 +368,7 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
       ${p(`Bis bald in ${loc}!<br>${strong("Ihr STAPLERO Team")}`)}
     `;
 
-    await resend.emails.send({
+    await sendMail({
         from: FROM_EMAIL,
         to,
         subject: `Platz reserviert: Staplerschein ${dateRange} in ${locationName}`,
@@ -353,6 +379,52 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
             eyebrowTone: "success",
             headline: "Ihr Platz ist reserviert",
             heroHtml,
+            bodyHtml,
+        }),
+    });
+};
+
+// ─── Nowy termin (lista oczekujących "Benachrichtigen") ────────────────────────
+
+interface NewDatesEmailOptions {
+    to: string;
+    productTitle: string;
+    productUrl: string;
+    dates: Array<{ city: string; address: string; startDate: string; endDate: string; time: string; availableSpots: number }>;
+}
+
+export const sendNewCourseDatesEmail = async (opts: NewDatesEmailOptions): Promise<void> => {
+    const { to, productTitle, productUrl, dates } = opts;
+    const range = (a: string, b: string) => {
+        const from = berlinDate(new Date(a), { day: "2-digit", month: "2-digit" });
+        const to = berlinDate(new Date(b), { day: "2-digit", month: "2-digit", year: "numeric" });
+        return a === b ? to : `${from}–${to}`;
+    };
+    const cities = [...new Set(dates.map((d) => d.city))];
+
+    const rows: Array<[string, string]> = dates.map((d) => [
+        `${escapeHtml(d.city)}`,
+        `${strong(range(d.startDate, d.endDate))}${d.time ? ` &middot; ${escapeHtml(d.time)}` : ""}<br><span style="font-size:13px;color:#707072;">${escapeHtml(d.address)} &middot; ${d.availableSpots} ${d.availableSpots === 1 ? "Platz" : "Plätze"} frei</span>`,
+    ]);
+
+    const bodyHtml = `
+      ${p("Hallo,")}
+      ${p(`Sie wollten informiert werden, sobald es neue Termine für ${strong(escapeHtml(productTitle))} gibt. Jetzt ist es so weit:`)}
+      ${infoTable(rows, 140)}
+      ${button(productUrl, "Jetzt Platz sichern")}
+      ${p("Die Plätze werden in der Reihenfolge der Buchung vergeben. Wer zuerst bucht, ist dabei.", { small: true, muted: true })}
+      ${p(`Viele Grüße<br>${strong("Ihr STAPLERO Team")}`)}
+    `;
+
+    await sendMail({
+        from: FROM_EMAIL,
+        to,
+        subject: `Neuer Termin: ${productTitle} in ${cities.join(", ")}`,
+        html: layout({
+            title: "Neuer Termin verfügbar",
+            preheader: `Neue Termine in ${cities.join(", ")}: jetzt buchen, solange Plätze frei sind.`,
+            eyebrow: "Neuer Termin",
+            headline: "Ein neuer Termin ist da",
             bodyHtml,
         }),
     });
@@ -371,7 +443,7 @@ export const sendExpiryReminderEmail = async (
       ${p(strong("Ihr STAPLERO Team"))}
     `;
 
-    await resend.emails.send({
+    await sendMail({
         from: FROM_EMAIL,
         to,
         subject: `Ihr Kurs "${courseName}" läuft in 3 Tagen ab`,
@@ -405,7 +477,7 @@ export const sendInvoiceEmail = async (
       ${p(`Mit freundlichen Grüßen,<br>${strong("Ihr STAPLERO Team")}`)}
     `;
 
-    await resend.emails.send({
+    await sendMail({
         from: FROM_EMAIL,
         to,
         subject: `Ihre Rechnung ${invoiceNumber} - STAPLERO`,
@@ -449,7 +521,7 @@ export const sendContactFormEmail = async (
       ${p(`Gesendet am ${new Date().toLocaleString("de-DE")}`, { small: true, muted: true })}
     `;
 
-    await resend.emails.send({
+    await sendMail({
         from: FROM_EMAIL,
         to: "info@staplero.com",
         replyTo: email,
@@ -463,7 +535,10 @@ export const sendContactFormEmail = async (
         }),
     });
 
-    await sendContactConfirmationEmail(email, name);
+    // Wiadomość do nas już poszła — brak potwierdzenia dla klienta nie powinien zwracać błędu w formularzu
+    await sendContactConfirmationEmail(email, name).catch((err) =>
+        console.error("❌ Contact confirmation email failed:", err.message)
+    );
 };
 
 export const sendContactConfirmationEmail = async (
@@ -477,7 +552,7 @@ export const sendContactConfirmationEmail = async (
       ${p(`Mit freundlichen Grüßen,<br>${strong("Ihr STAPLERO Team")}`)}
     `;
 
-    await resend.emails.send({
+    await sendMail({
         from: FROM_EMAIL,
         to,
         subject: "Wir haben Ihre Nachricht erhalten: STAPLERO",
@@ -499,6 +574,7 @@ export default {
     sendOnlineCoursePurchaseEmail,
     sendPracticalCourseBookingEmail,
     sendExpiryReminderEmail,
+    sendNewCourseDatesEmail,
     sendInvoiceEmail,
     sendContactFormEmail,
     sendContactConfirmationEmail,

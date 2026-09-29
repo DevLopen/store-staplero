@@ -1,6 +1,16 @@
 // backend/src/controllers/location.controller.ts
 import { Request, Response } from "express";
-import Location from "../models/Location";
+import Location, { LocationDoc } from "../models/Location";
+import notifyRequestService from "../services/notifyRequest.service";
+
+/** Po zapisie lokalizacji w tle powiadamia osoby czekające na nowy termin */
+const notifyAboutNewDates = (before: LocationDoc | null, after: LocationDoc) => {
+    const dates = notifyRequestService.findNewlyBookableDates(before, after);
+    if (dates.length === 0) return;
+    notifyRequestService.notifyWaitingForLocation(after, dates).catch((err) =>
+        console.error("❌ Benachrichtigung über neue Termine fehlgeschlagen:", err.message)
+    );
+};
 
 export const getAllLocations = async (req: Request, res: Response) => {
     try {
@@ -24,6 +34,7 @@ export const createLocation = async (req: Request, res: Response) => {
         const location = new Location(req.body);
         await location.save();
         res.status(201).json(location);
+        notifyAboutNewDates(null, location);
     } catch (error: any) {
         if (error.name === 'ValidationError') {
             const errors = Object.values(error.errors).map((e: any) => e.message);
@@ -49,6 +60,7 @@ export const updateLocation = async (req: Request, res: Response) => {
             });
         }
 
+        const before = await Location.findById(req.params.id);
         const location = await Location.findByIdAndUpdate(
             req.params.id,
             req.body,
@@ -64,6 +76,7 @@ export const updateLocation = async (req: Request, res: Response) => {
         }
 
         res.json(location);
+        notifyAboutNewDates(before, location);
     } catch (error: any) {
         if (error.name === 'ValidationError') {
             const errors = Object.values(error.errors).map((e: any) => e.message);

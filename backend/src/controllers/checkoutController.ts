@@ -155,8 +155,10 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             await user.save();
             isNewUser = true;
 
-            // Send welcome email
-            await emailService.sendWelcomeEmail(user.email, user.name);
+            // Send welcome email — nie blokuje zakupu, jeśli wysyłka się nie uda
+            emailService.sendWelcomeEmail(user.email, user.name).catch((err) =>
+                console.error("❌ Welcome email failed:", err.message)
+            );
         } else {
             // Sprawdź hasło dla istniejącego konta (pomijamy, gdy użytkownik jest już zalogowany)
             const isPasswordCorrect = authedUser ? true : await bcrypt.compare(data.password, user.password);

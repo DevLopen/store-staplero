@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Plus, Edit, Trash2, Save, Loader2, ImagePlus, X, Star, StarOff,
-  BookOpen, Forklift, RefreshCw, BellRing, Check as CheckIcon, Mail,
+  BookOpen, Forklift, RefreshCw, BellRing, Check as CheckIcon, Mail, Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import { apiUpload } from "@/api/http";
 import { adminGetCourses } from "@/api/course.api";
 import {
   adminGetProducts, adminCreateProduct, adminUpdateProduct, adminDeleteProduct,
-  adminGetNotifyRequests, adminMarkNotifyRequestDone, adminDeleteNotifyRequest, NotifyRequestItem,
+  adminGetNotifyRequests, adminMarkNotifyRequestDone, adminDeleteNotifyRequest, adminSendNotifyRequest, NotifyRequestItem,
 } from "@/api/product.api";
 import {
   Product, ProductType, emptyLocalizedText, emptyLocalizedList, LocalizedText, LocalizedList,
@@ -113,6 +113,8 @@ const AdminProducts = () => {
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [notifyRequests, setNotifyRequests] = useState<NotifyRequestItem[]>([]);
   const [notifyLoading, setNotifyLoading] = useState(true);
+  const [notifyTab, setNotifyTab] = useState<"waiting" | "notified">("waiting");
+  const [sendingNotifyId, setSendingNotifyId] = useState<string | null>(null);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -168,6 +170,19 @@ const AdminProducts = () => {
       loadNotifyRequests();
     } catch (err: any) {
       toast({ title: "Fehler", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleSendNotifyRequest = async (id: string) => {
+    setSendingNotifyId(id);
+    try {
+      await adminSendNotifyRequest(id);
+      toast({ title: "E-Mail gesendet", description: "Die Person wurde über die aktuellen Termine informiert." });
+      loadNotifyRequests();
+    } catch (err: any) {
+      toast({ title: "Nicht gesendet", description: err.message, variant: "destructive" });
+    } finally {
+      setSendingNotifyId(null);
     }
   };
 
@@ -407,47 +422,93 @@ const AdminProducts = () => {
               <BellRing className="w-5 h-5 text-primary" />
               <h3 className="font-semibold text-foreground">Anfragen: Benachrichtigung bei neuen Terminen</h3>
             </div>
-            <Badge variant="outline">{notifyRequests.filter((r) => !r.notified).length} offen</Badge>
           </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Sobald Sie beim Standort einen Termin mit freien Plätzen anlegen, bekommen alle Wartenden automatisch eine E-Mail.
+          </p>
 
-          {notifyLoading ? (
-            <div className="flex justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-            </div>
-          ) : notifyRequests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Noch keine Anfragen vorhanden.</p>
-          ) : (
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {notifyRequests.map((r) => (
-                <div
-                  key={r._id}
-                  className={`flex items-center justify-between gap-3 p-3 rounded-lg border text-sm ${
-                    r.notified ? "border-border opacity-60" : "border-primary/30 bg-primary/5"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <p className="font-medium text-foreground truncate">{r.email}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {r.productTitle}{r.locationCity ? ` — ${r.locationCity}` : ""}
-                      </p>
-                    </div>
+          {(() => {
+            const waiting = notifyRequests.filter((r) => !r.notified);
+            const notified = notifyRequests.filter((r) => r.notified);
+            const list = notifyTab === "waiting" ? waiting : notified;
+            const fmt = (d?: string) => (d ? new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "");
+            const fmtShort = (d: string) => new Date(d).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+
+            return (
+              <>
+                <Tabs value={notifyTab} onValueChange={(v) => setNotifyTab(v as "waiting" | "notified")} className="mb-3">
+                  <TabsList>
+                    <TabsTrigger value="waiting">Wartet ({waiting.length})</TabsTrigger>
+                    <TabsTrigger value="notified">Benachrichtigt ({notified.length})</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
+                {notifyLoading ? (
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {!r.notified && (
-                      <Button variant="outline" size="sm" onClick={() => handleMarkNotified(r._id)} title="Als erledigt markieren">
-                        <CheckIcon className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => handleDeleteNotifyRequest(r._id)}>
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </Button>
+                ) : list.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {notifyTab === "waiting" ? "Niemand wartet gerade auf einen Termin." : "Noch niemand benachrichtigt."}
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {list.map((r) => (
+                      <div key={r._id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border text-sm">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-1" />
+                          <div className="min-w-0">
+                            <p className="font-medium text-foreground truncate">{r.email}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {r.productTitle} · {r.locationCity || "alle Standorte"}
+                            </p>
+                            {r.notified ? (
+                              <p className="text-xs text-green-700 mt-0.5">
+                                {r.notifiedManually
+                                  ? `Manuell erledigt${r.notifiedAt ? ` am ${fmt(r.notifiedAt)}` : ""}`
+                                  : `E-Mail gesendet${r.notifiedAt ? ` am ${fmt(r.notifiedAt)}` : ""}`}
+                                {r.notifiedDates?.length
+                                  ? ` · ${r.notifiedDates.map((d) => `${d.locationCity} ${fmtShort(d.startDate)}`).join(", ")}`
+                                  : ""}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground mt-0.5">Wartet seit {fmt(r.createdAt)}</p>
+                            )}
+                            {!r.notified && r.lastError && (
+                              <p className="text-xs text-destructive mt-0.5 truncate" title={r.lastError}>
+                                Versand fehlgeschlagen: {r.lastError}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {!r.notified && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleSendNotifyRequest(r._id)}
+                                disabled={sendingNotifyId === r._id}
+                                title="Jetzt mit aktuellen Terminen benachrichtigen"
+                              >
+                                {sendingNotifyId === r._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                              </Button>
+                              <Button variant="outline" size="sm" onClick={() => handleMarkNotified(r._id)} title="Ohne E-Mail als erledigt markieren">
+                                <CheckIcon className="w-3.5 h-3.5" />
+                              </Button>
+                            </>
+                          )}
+                          <Button variant="outline" size="sm" onClick={() => handleDeleteNotifyRequest(r._id)} title="Löschen">
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                )}
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
 

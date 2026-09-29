@@ -64,6 +64,71 @@ export const registerPracticalParticipants = async (
   return { created: created.length, total: all.length };
 };
 
+/**
+ * Mail z informacjami po zakupie: termin/dojazd/co zabrać (kurs praktyczny) albo dostęp (kurs online).
+ * Wynik zapisujemy w order.confirmationEmailSentAt — dzięki temu ponowiony webhook dośle mail,
+ * jeśli za pierwszym razem się nie udał, a nie wyśle go drugi raz, jeśli już wyszedł.
+ * `force` — ręczne ponowne wysłanie z panelu admina.
+ */
+export const sendOrderConfirmationEmail = async (
+  order: OrderDoc,
+  opts: { force?: boolean } = {}
+): Promise<boolean> => {
+  // Atomowa "rezerwacja" wysyłki — dwa równoległe webhooki nie wyślą maila podwójnie
+  const claimed = await Order.findOneAndUpdate(
+    opts.force ? { _id: order._id } : { _id: order._id, confirmationEmailSentAt: null },
+    { $set: { confirmationEmailSentAt: new Date() } },
+    { new: true }
+  );
+  if (!claimed) return false;
+
+  try {
+    const user = await User.findById(order.userId);
+    if (!user) throw new Error(`User ${order.userId} not found`);
+
+    if (order.type === "practical" && order.practicalCourseDetails) {
+      const details = order.practicalCourseDetails;
+      console.log(`🔔 Buchungsbestätigung ${order.orderNumber} → ${user.email}`);
+      await emailService.sendPracticalCourseBookingEmail({
+        to: user.email,
+        name: user.name,
+        orderNumber: order.orderNumber,
+        locationName: details.locationName,
+        locationAddress: details.locationAddress,
+        startDate: details.startDate,
+        participants: [user.name, ...(details.additionalParticipants || []).map((p) => p.name)],
+      });
+    } else if (order.type === "online") {
+      const expiresAt = order.expiresAt || claimed.expiresAt;
+      for (const item of order.items) {
+        if (item.courseId && expiresAt) {
+          await emailService.sendOnlineCoursePurchaseEmail(
+            user.email, user.name, item.courseName, order.orderNumber, expiresAt
+          );
+        }
+      }
+    }
+
+    if (claimed.confirmationEmailError) {
+      await Order.updateOne({ _id: order._id }, { $unset: { confirmationEmailError: 1 } });
+    }
+    order.confirmationEmailSentAt = claimed.confirmationEmailSentAt;
+    order.confirmationEmailError = undefined;
+    console.log(`✅ Bestätigungs-E-Mail für ${order.orderNumber} gesendet`);
+    return true;
+  } catch (err) {
+    // Zwalniamy "rezerwację", żeby kolejny webhook / admin mógł spróbować jeszcze raz
+    const message = (err as any)?.message || String(err);
+    await Order.updateOne(
+      { _id: order._id },
+      { $unset: { confirmationEmailSentAt: 1 }, $set: { confirmationEmailError: message } }
+    );
+    order.confirmationEmailSentAt = undefined;
+    order.confirmationEmailError = message;
+    throw err;
+  }
+};
+
 export const markOrderAsPaid = async (
   orderNumber: string,
   paymentIntentId: string
@@ -71,13 +136,16 @@ export const markOrderAsPaid = async (
   const order = await findOrderByNumber(orderNumber);
   if (!order) throw new Error(`Order ${orderNumber} not found`);
 
-  // Stripe potrafi dostarczyć ten sam webhook wielokrotnie. Drugi raz nie generujemy faktury,
-  // nie wysyłamy maili ani nie dublujemy dostępu — tylko dopilnowujemy, żeby uczestnicy
-  // kursu praktycznego byli zapisani (idempotentne, zapisuje tylko brakujących).
+  // Stripe potrafi dostarczyć ten sam webhook wielokrotnie. Drugi raz nie generujemy faktury
+  // ani nie dublujemy dostępu — dopilnowujemy tylko, żeby uczestnicy byli zapisani
+  // i żeby mail z informacjami faktycznie wyszedł (jeśli wcześniej się nie udało).
   if (order.status === "paid") {
     console.log(`ℹ️ Order ${orderNumber} already paid — skipping side effects`);
     if (order.type === "practical") {
       await registerPracticalParticipants(order);
+    }
+    if (!order.confirmationEmailSentAt) {
+      await sendOrderConfirmationEmail(order);
     }
     return;
   }
@@ -117,6 +185,28 @@ export const markOrderAsPaid = async (
     });
   }
 
+  // Zapisujemy "paid" od razu — faktura (Lexware) potrafi trwać kilkanaście sekund i nie może
+  // blokować zapisu ani maila z informacjami.
+  await order.save();
+
+  // ── Practical course: zapis WSZYSTKICH uczestników + zmniejszenie liczby miejsc ──
+  if (order.type === "practical" && order.practicalCourseDetails) {
+    try {
+      await registerPracticalParticipants(order);
+    } catch (err: any) {
+      console.error("❌ Failed to process practical course:", err.message);
+    }
+  }
+
+  // ── Mail z informacjami (przed fakturą — to najważniejszy mail dla klienta) ──
+  let confirmationError: any;
+  try {
+    await sendOrderConfirmationEmail(order);
+  } catch (err: any) {
+    confirmationError = err;
+    console.error(`❌ Bestätigungs-E-Mail für ${orderNumber} fehlgeschlagen:`, err.message);
+  }
+
   // ── Invoice generation ────────────────────────────────────────────────────
   try {
     const user = await User.findById(order.userId);
@@ -144,9 +234,10 @@ export const markOrderAsPaid = async (
         currency: "EUR",
       });
 
-      order.invoiceId = invoice.id;
-      order.invoiceNumber = invoice.invoiceNumber;
-      order.invoicePdfUrl = invoice.pdfUrl;
+      await Order.updateOne(
+        { _id: order._id },
+        { $set: { invoiceId: invoice.id, invoiceNumber: invoice.invoiceNumber, invoicePdfUrl: invoice.pdfUrl } }
+      );
 
       try {
         const pdfBuffer = await lexwareService.getInvoicePDF(invoice.id);
@@ -161,48 +252,9 @@ export const markOrderAsPaid = async (
     console.error("❌ Failed to create invoice:", invoiceErr.message);
   }
 
-  await order.save();
-
-  // ── Post-save side effects ────────────────────────────────────────────────
-  const user = await User.findById(order.userId);
-  if (!user) return;
-
-  // ── Practical course: zapis WSZYSTKICH uczestników + zmniejszenie liczby miejsc ──
-  if (order.type === "practical" && order.practicalCourseDetails) {
-    try {
-      await registerPracticalParticipants(order);
-    } catch (err: any) {
-      console.error("❌ Failed to process practical course:", err.message);
-    }
-
-    console.log("🔔 sendPracticalCourseBookingEmail wywołane dla:", user.email);
-    await emailService.sendPracticalCourseBookingEmail({
-        to: user.email,
-        name: user.name,
-        orderNumber: order.orderNumber,
-        locationName: order.practicalCourseDetails.locationName,
-        locationAddress: order.practicalCourseDetails.locationAddress,
-        startDate: order.practicalCourseDetails.startDate,
-        participants: [
-          user.name,
-          ...(order.practicalCourseDetails.additionalParticipants || []).map((p) => p.name),
-        ],
-    });
-  }
-
-  if (order.type === "online") {
-    for (const item of order.items) {
-      if (item.courseId && order.expiresAt) {
-        await emailService.sendOnlineCoursePurchaseEmail(
-          user.email,
-          user.name,
-          item.courseName,
-          order.orderNumber,
-          order.expiresAt
-        );
-      }
-    }
-  }
+  // Błąd maila zwracamy do webhooka (HTTP 4xx) — Stripe ponowi zdarzenie, a gałąź
+  // "already paid" dośle wtedy brakujący mail.
+  if (confirmationError) throw confirmationError;
 };
 
 export const assignCourseToUser = async (
@@ -252,7 +304,11 @@ export const sendExpiryReminders = async (): Promise<void> => {
     if (!user) continue;
     const order = await Order.findOne({ orderNumber: uc.orderNumber });
     const courseName = order?.items[0]?.courseName || "Kurs";
-    await emailService.sendExpiryReminderEmail(user.email, user.name, courseName, uc.expiresAt);
+    try {
+      await emailService.sendExpiryReminderEmail(user.email, user.name, courseName, uc.expiresAt);
+    } catch (err: any) {
+      console.error(`❌ Expiry reminder for ${user.email} failed:`, err.message);
+    }
   }
 };
 
@@ -262,6 +318,7 @@ export default {
   findOrderByNumber,
   findOrderBySessionId,
   markOrderAsPaid,
+  sendOrderConfirmationEmail,
   registerPracticalParticipants,
   assignCourseToUser,
   expireOldCourses,

@@ -121,6 +121,8 @@ export const getAllOrders = async (req: Request, res: Response) => {
             createdAt: order.createdAt,
             paidAt: order.paidAt,
             expiresAt: order.expiresAt,
+            confirmationEmailSentAt: order.confirmationEmailSentAt,
+            confirmationEmailError: order.confirmationEmailError,
             customerInfo: {
                 firstName: resolveName(order.userDetails).firstName,
                 lastName: resolveName(order.userDetails).lastName,
@@ -236,5 +238,28 @@ export const syncOrderParticipants = async (req: Request, res: Response) => {
     } catch (err: any) {
         console.error("❌ Error syncing participants:", err);
         res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
+/**
+ * POST /api/orders/:id/resend-confirmation  (Admin only)
+ * Ponownie wysyła klientowi mail z informacjami o kursie (termin, dojazd, co zabrać / dostęp online).
+ */
+export const resendOrderConfirmation = async (req: Request, res: Response) => {
+    try {
+        if (!req.params.id.match(/^[a-f\d]{24}$/i)) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+        const order = await Order.findById(req.params.id);
+        if (!order) return res.status(404).json({ message: "Order not found" });
+        if (order.status !== "paid") {
+            return res.status(400).json({ message: "Nur bezahlte Bestellungen" });
+        }
+
+        await orderService.sendOrderConfirmationEmail(order, { force: true });
+        res.json({ message: "Bestätigungs-E-Mail gesendet", confirmationEmailSentAt: order.confirmationEmailSentAt });
+    } catch (err: any) {
+        console.error("❌ Error resending confirmation:", err);
+        res.status(500).json({ message: err.message || "Server error" });
     }
 };

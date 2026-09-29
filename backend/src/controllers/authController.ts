@@ -66,7 +66,7 @@ export const me = async (req: Request, res: Response) => {
 
     try {
         const decoded: any = jwt.verify(token, JWT_SECRET);
-        const user = await User.findById(decoded.id).select("-password");
+        const user = await User.findById(decoded.id || decoded._id).select("-password");
         if (!user) return res.status(404).json({ message: "Benutzer nicht gefunden" });
         res.status(200).json({ user });
     } catch (err) {

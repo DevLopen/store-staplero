@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Eye, ShoppingBag, ChevronLeft, ChevronRight, RefreshCw, Filter, Users, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { Search, Eye, ShoppingBag, ChevronLeft, ChevronRight, RefreshCw, Filter, Users, CheckCircle, AlertTriangle, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,6 +35,8 @@ const AdminOrders = () => {
     const [updating,    setUpdating]    = useState<string | null>(null);
     const [syncing,     setSyncing]     = useState(false);
     const [syncMsg,     setSyncMsg]     = useState<{ ok: boolean; text: string } | null>(null);
+    const [resending,   setResending]   = useState(false);
+    const [resendMsg,   setResendMsg]   = useState<{ ok: boolean; text: string } | null>(null);
 
     const authH = () => ({
         "Content-Type": "application/json",
@@ -96,6 +98,23 @@ const AdminOrders = () => {
         } catch (e: any) {
             setSyncMsg({ ok: false, text: e.message });
         } finally { setSyncing(false); }
+    };
+
+    // Ponownie wysyła klientowi mail z informacjami o kursie (termin, dojazd / dostęp online)
+    const resendConfirmation = async (order: any) => {
+        setResending(true); setResendMsg(null);
+        try {
+            const id = order._id || order.id;
+            const res = await fetch(`${API}/orders/${id}/resend-confirmation`, { method: "POST", headers: authH() });
+            const d = await res.json();
+            if (!res.ok) throw new Error(d.message || "Fehler");
+            setResendMsg({ ok: true, text: d.message });
+            const patch = { confirmationEmailSentAt: d.confirmationEmailSentAt, confirmationEmailError: undefined };
+            setDetail((prev: any) => (prev ? { ...prev, ...patch } : prev));
+            setOrders(prev => prev.map(o => (o._id || o.id) === id ? { ...o, ...patch } : o));
+        } catch (e: any) {
+            setResendMsg({ ok: false, text: e.message });
+        } finally { setResending(false); }
     };
 
     // Kontrola zapisu uczestników: ile powinno być vs ile faktycznie jest w kursie
@@ -248,7 +267,7 @@ const AdminOrders = () => {
 
             {/* Order detail dialog */}
             {detail && (
-                <Dialog open onOpenChange={() => { setDetail(null); setSyncMsg(null); }}>
+                <Dialog open onOpenChange={() => { setDetail(null); setSyncMsg(null); setResendMsg(null); }}>
                     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Bestellung #{detail.orderNumber || detail.id}</DialogTitle>
@@ -270,6 +289,30 @@ const AdminOrders = () => {
                                         <p className="font-semibold">{v}</p>
                                     </div>
                                 ))}
+
+                                {(detail.status === "paid" || detail.status === "completed") && (
+                                    <div className="bg-muted/30 rounded-lg p-3 col-span-2 flex items-center justify-between gap-3">
+                                        <div>
+                                            <p className="text-xs text-muted-foreground mb-1">Kursdetails an Kunden (Termin, Uhrzeit, Anfahrt)</p>
+                                            {detail.confirmationEmailSentAt ? (
+                                                <p className="font-semibold">
+                                                    Gesendet am {new Date(detail.confirmationEmailSentAt).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })}
+                                                </p>
+                                            ) : detail.confirmationEmailError ? (
+                                                <p className="font-semibold text-red-700">Fehlgeschlagen: {detail.confirmationEmailError}</p>
+                                            ) : (
+                                                <p className="font-semibold text-muted-foreground">Keine Angabe (Bestellung vor dem Update)</p>
+                                            )}
+                                            {resendMsg && (
+                                                <p className={`text-xs mt-1 ${resendMsg.ok ? "text-green-700" : "text-red-700"}`}>{resendMsg.text}</p>
+                                            )}
+                                        </div>
+                                        <Button size="sm" variant="outline" onClick={() => resendConfirmation(detail)} disabled={resending}>
+                                            {resending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Mail className="w-3.5 h-3.5 mr-1.5" />}
+                                            {detail.confirmationEmailSentAt ? "Kursdetails erneut senden" : "Kursdetails per E-Mail senden"}
+                                        </Button>
+                                    </div>
+                                )}
 
                                 {(detail.customerInfo?.address || detail.customerInfo?.city) && (
                                     <div className="bg-muted/30 rounded-lg p-3 col-span-2">

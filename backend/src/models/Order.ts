@@ -62,6 +62,8 @@ export interface OrderDoc extends Document {
     billingAddressDifferent?: boolean;
     billingAddress?: BillingAddress;
     practicalCourseDetails?: PracticalCourseDetails;
+    confirmationEmailSentAt?: Date; // mail z informacjami o kursie (termin / dostęp online)
+    confirmationEmailError?: string; // ostatni błąd wysyłki tego maila
     createdAt: Date;
     paidAt?: Date;
     expiresAt?: Date; // Dla kursów online - 30 dni od paidAt
@@ -144,6 +146,8 @@ const OrderSchema = new Schema<OrderDoc>(
         practicalCourseDetails: PracticalCourseDetailsSchema,
         paidAt: Date,
         expiresAt: Date,
+        confirmationEmailSentAt: Date,
+        confirmationEmailError: String,
     },
     { timestamps: true }
 );
