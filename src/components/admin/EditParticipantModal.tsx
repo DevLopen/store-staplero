@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { AlertCircle, Camera, CheckCircle, Loader2, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConfirm, confirmDelete } from "@/components/ConfirmDialog";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
@@ -32,6 +33,7 @@ const splitName = (p: EditableParticipant) => {
 };
 
 const EditParticipantModal = ({ participant, onClose, onSaved }: Props) => {
+    const confirm = useConfirm();
     const initial = splitName(participant);
     const [form, setForm] = useState({
         firstName: initial.first,
@@ -94,6 +96,7 @@ const EditParticipantModal = ({ participant, onClose, onSaved }: Props) => {
     };
 
     const removePhoto = async () => {
+        if (!(await confirmDelete(confirm, "Foto", "Das Foto wird entfernt und erscheint nicht mehr auf dem Zertifikat."))) return;
         setPhotoBusy(true); setError(""); setSavedMsg("");
         try {
             const res = await fetch(`${base}/photo`, { method: "DELETE", headers: authOnly() });

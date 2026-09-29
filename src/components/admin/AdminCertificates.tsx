@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -34,6 +35,7 @@ interface Stats {
 }
 
 const AdminCertificates = () => {
+    const confirm = useConfirm();
     const [certs, setCerts] = useState<Certificate[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
@@ -131,7 +133,7 @@ const AdminCertificates = () => {
     };
 
     const handleRestore = async (certId: string) => {
-        if (!confirm("Zertifikat wiederherstellen?")) return;
+        if (!(await confirm({ title: "Zertifikat wiederherstellen?", description: "Das Zertifikat wird wieder gültig und bei der Echtheitsprüfung als gültig angezeigt.", confirmLabel: "Wiederherstellen", destructive: false }))) return;
         setActionLoading(`res-${certId}`);
         try {
             const res = await fetch(`${API_URL}/certificates/admin/${certId}/restore`, {

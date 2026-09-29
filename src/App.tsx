@@ -34,6 +34,7 @@ import Impressum from "./pages/Impressum";
 import Datenschutz from "./pages/Datenschutz";
 import CookieBanner from "./components/CookieBanner";
 import VerifyCertificate from "./pages/VerifyCertificate";
+import { ConfirmProvider } from "./components/ConfirmDialog";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -109,9 +110,11 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <BrowserRouter>
-              <AppContent />
-            </BrowserRouter>
+            <ConfirmProvider>
+              <BrowserRouter>
+                <AppContent />
+              </BrowserRouter>
+            </ConfirmProvider>
           </TooltipProvider>
         </AuthProvider>
       </LanguageProvider>

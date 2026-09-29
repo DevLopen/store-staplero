@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Upload, Trash2, Copy, Check, Search, Film, Image, FileText, Box, X, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiUpload } from "@/api/http";
+import { useConfirm, confirmDelete } from "@/components/ConfirmDialog";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -47,6 +48,7 @@ interface Props {
 }
 
 export default function MediaLibrary({ onSelect, defaultCategory = "all" }: Props) {
+    const confirm = useConfirm();
     const [files, setFiles]         = useState<MediaFile[]>([]);
     const [loading, setLoading]     = useState(true);
     const [category, setCategory]   = useState<Category>(defaultCategory);
@@ -91,7 +93,7 @@ export default function MediaLibrary({ onSelect, defaultCategory = "all" }: Prop
     };
 
     const handleDelete = async (filename: string) => {
-        if (!confirm(`Usunąć plik ${filename}?\n\nUwaga: jeśli jest używany w jakimś temacie, przestanie działać.`)) return;
+        if (!(await confirmDelete(confirm, "Datei", `„${filename}“ wird gelöscht. Wenn die Datei in einem Thema verwendet wird, wird sie dort nicht mehr angezeigt.`))) return;
         setDeleting(filename);
         try {
             await fetch(`${API}/upload/${encodeURIComponent(filename)}`, {

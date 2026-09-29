@@ -21,6 +21,7 @@ import {
     GripVertical, Trash2, Plus, Type, Video, Image, Box, Globe,
     AlertCircle, Minus, Zap, Upload, Loader2, Columns2, Square, Shuffle, FolderOpen } from "lucide-react";
 import TipTapEditor from "./TipTapEditor";
+import { useConfirm, confirmDelete } from "@/components/ConfirmDialog";
 
 const BLOCK_TYPES: { type: BlockType; label: string; icon: React.FC<{ className?: string }>; color: string }[] = [
     { type: "richtext",    label: "Tekst",      icon: Type,         color: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" },
@@ -333,7 +334,8 @@ function DragOrderEditor({ block, onChange }: { block: ContentBlock; onChange: (
     const save = (patch: Partial<typeof data>) => onChange({ ...block, interactiveData: { ...data, ...patch } });
     const addItem = () => { const id = `item_${Date.now()}`; save({ items: [...items, { id, label: "" }], correctOrder: [...correctOrder, id] }); };
     const updateLabel = (id: string, label: string) => save({ items: items.map(i => i.id === id ? { ...i, label } : i) });
-    const removeItem = (id: string) => save({ items: items.filter(i => i.id !== id), correctOrder: correctOrder.filter(oid => oid !== id) });
+    const confirm = useConfirm();
+    const removeItem = async (id: string) => (await confirmDelete(confirm, "Element")) && save({ items: items.filter(i => i.id !== id), correctOrder: correctOrder.filter(oid => oid !== id) });
     const moveItem = (idx: number, dir: -1 | 1) => {
         const newOrder = [...correctOrder]; const to = idx + dir;
         if (to < 0 || to >= newOrder.length) return;
@@ -376,6 +378,7 @@ function DragOrderEditor({ block, onChange }: { block: ContentBlock; onChange: (
 
 // ── HOTSPOT — z skalowaniem zdjęcia ─────────────────────────────────────────
 function HotspotEditor({ block, onChange }: { block: ContentBlock; onChange: (b: ContentBlock) => void }) {
+    const confirm = useConfirm();
     const data = (block.interactiveData ?? {}) as Record<string, any>;
     const title: string = data.title ?? "";
     const instruction: string = data.instruction ?? "";
@@ -483,7 +486,7 @@ function HotspotEditor({ block, onChange }: { block: ContentBlock; onChange: (b:
                                         {hs.isHazard ? "⚠" : "✓"} {hs.isHazard ? "Zagrożenie" : "Bezpieczny"}
                                     </span>
                                     <Input value={hs.label} onChange={e => save({ hotspots: hotspots.map(h => h.id === hs.id ? { ...h, label: e.target.value } : h) })} className={`${inputCls} flex-1 h-7 text-xs`} />
-                                    <button onClick={() => save({ hotspots: hotspots.filter(h => h.id !== hs.id) })} className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"><Trash2 className="h-3.5 w-3.5" /></button>
+                                    <button onClick={async () => { if (await confirmDelete(confirm, "Hotspot")) save({ hotspots: hotspots.filter(h => h.id !== hs.id) }); }} className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"><Trash2 className="h-3.5 w-3.5" /></button>
                                 </div>
                             ))}
                         </div>
@@ -504,7 +507,8 @@ function TrueFalseEditor({ block, onChange }: { block: ContentBlock; onChange: (
     const addCard = () => save({ cards: [...cards, { id: `tf_${Date.now()}`, statement: "", isTrue: true }] });
     const updateCard = (id: string, patch: Partial<{ statement: string; isTrue: boolean }>) =>
         save({ cards: cards.map(c => c.id === id ? { ...c, ...patch } : c) });
-    const removeCard = (id: string) => save({ cards: cards.filter(c => c.id !== id) });
+    const confirm = useConfirm();
+    const removeCard = async (id: string) => (await confirmDelete(confirm, "Karte")) && save({ cards: cards.filter(c => c.id !== id) });
 
     return (
         <div className="space-y-3">
@@ -545,6 +549,7 @@ function TrueFalseEditor({ block, onChange }: { block: ContentBlock; onChange: (
 
 // ── ANNOTATED IMAGE — kliknij punkt, zobacz opis ─────────────────────────────
 function AnnotatedImageEditor({ block, onChange }: { block: ContentBlock; onChange: (b: ContentBlock) => void }) {
+    const confirm = useConfirm();
     const data = (block.interactiveData ?? {}) as Record<string, any>;
     const title: string = data.title ?? "";
     const imageUrl: string = data.imageUrl ?? "";
@@ -632,7 +637,7 @@ function AnnotatedImageEditor({ block, onChange }: { block: ContentBlock; onChan
                                         <div className="w-7 h-7 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">{idx + 1}</div>
                                         <Input value={pt.label} onChange={e => save({ points: points.map(p => p.id === pt.id ? { ...p, label: e.target.value } : p) })}
                                                placeholder="Nazwa elementu (np. Kierownica)" className={`${inputCls} flex-1 font-medium`} />
-                                        <button onClick={() => save({ points: points.filter(p => p.id !== pt.id) })} className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"><Trash2 className="h-3.5 w-3.5" /></button>
+                                        <button onClick={async () => { if (await confirmDelete(confirm, "Punkt")) save({ points: points.filter(p => p.id !== pt.id) }); }} className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"><Trash2 className="h-3.5 w-3.5" /></button>
                                     </div>
                                     <Textarea value={pt.description} onChange={e => save({ points: points.map(p => p.id === pt.id ? { ...p, description: e.target.value } : p) })}
                                               placeholder="Opis który zobaczy kursant po kliknięciu w ten punkt..." className={`${inputCls} bg-white`} rows={2} />
@@ -714,7 +719,11 @@ export default function BlockEditor({ blocks, onChange }: BlockEditorProps) {
     };
 
     const addBlock = (type: BlockType) => onChange([...blocks, { ...createBlock(type), order: blocks.length }]);
-    const deleteBlock = (id: string) => onChange(blocks.filter(b => b.id !== id));
+    const confirm = useConfirm();
+    const deleteBlock = async (id: string) => {
+        if (!(await confirmDelete(confirm, "Block", "Der Block wird mit seinem Inhalt entfernt."))) return;
+        onChange(blocks.filter(b => b.id !== id));
+    };
     const updateBlock = (updated: ContentBlock) => onChange(blocks.map(b => b.id === updated.id ? updated : b));
     const toggleWidth = (id: string) => onChange(blocks.map(b => b.id === id ? { ...b, width: b.width === "half" ? "full" : "half" } : b));
     const sorted = blocks.slice().sort((a, b) => a.order - b.order);

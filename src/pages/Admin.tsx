@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm, confirmDelete } from "@/components/ConfirmDialog";
 import Navbar from "@/components/Navbar";
 import { mockCourse, Chapter, Topic, Course, Quiz, QuizQuestion } from "@/data/courseData";
 import { mockLocations, Location, CourseDate } from "@/data/practicalCourseData";
@@ -53,6 +54,7 @@ import {
 const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -279,6 +281,8 @@ const Admin = () => {
   };
 
   const deleteCourse = async (courseId: string) => {
+    const course = courses.find((c: any) => c._id === courseId);
+    if (!(await confirmDelete(confirm, "Kurs", `Der Kurs${course?.title ? ` „${course.title}“` : ""} wird mit allen Kapiteln, Themen und Tests gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`))) return;
     try {
       const token = localStorage.getItem("token");
 
@@ -378,6 +382,7 @@ const Admin = () => {
 
 
   const deleteChapter = async (chapterId: string) => {
+    if (!(await confirmDelete(confirm, "Kapitel", "Das Kapitel wird mit allen Themen und dem Test gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."))) return;
     try {
       const token = localStorage.getItem("token");
 
@@ -444,6 +449,7 @@ const Admin = () => {
 
   const deleteTopic = async (chapterId: string, topicId: string) => {
     if (!selectedCourse) return;
+    if (!(await confirmDelete(confirm, "Thema"))) return;
     try {
       const token = localStorage.getItem("token");
 
@@ -569,6 +575,7 @@ const Admin = () => {
 
   const deleteQuiz = async (chapterId: string) => {
     if (!selectedCourse?._id) return;
+    if (!(await confirmDelete(confirm, "Test", "Der Test wird mit allen Fragen gelöscht. Diese Aktion kann nicht rückgängig gemacht werden."))) return;
 
     try {
       const token = localStorage.getItem("token");
@@ -677,6 +684,7 @@ const Admin = () => {
   };
 
   const deleteQuestion = async (chapterId: string, questionId: string) => {
+    if (!(await confirmDelete(confirm, "Frage"))) return;
     // Pobierz aktualny quiz bezpośrednio z kursu (nie z editingQuiz który może być nieaktualny)
     const currentQuiz = chapterId === "final"
         ? selectedCourse?.finalQuiz
@@ -1089,7 +1097,8 @@ const Admin = () => {
                                         variant="ghost"
                                         size="icon"
                                         className="text-destructive hover:text-destructive"
-                                        onClick={() => {
+                                        onClick={async () => {
+                                          if (!(await confirmDelete(confirm, "Abschlusstest", "Der Abschlusstest wird mit allen Fragen gelöscht."))) return;
                                           setSelectedCourse(prev => ({ ...prev, finalQuiz: undefined }));
                                           toast({ title: "Erfolg", description: "Abschlusstest wurde gelöscht." });
                                         }}
@@ -1149,7 +1158,8 @@ const Admin = () => {
                                             variant="ghost"
                                             size="icon"
                                             className="text-destructive hover:text-destructive"
-                                            onClick={() => {
+                                            onClick={async () => {
+                                              if (!(await confirmDelete(confirm, "Frage"))) return;
                                               setSelectedCourse(prev => ({
                                                 ...prev,
                                                 finalQuiz: prev.finalQuiz ? {
@@ -1339,6 +1349,7 @@ const Admin = () => {
                                   size="icon"
                                   className="text-destructive hover:text-destructive"
                                   onClick={async () => {
+                                    if (!(await confirmDelete(confirm, "Standort", `Der Standort „${location.city}“ wird mit allen Terminen gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`))) return;
                                     try {
                                       const token = localStorage.getItem("token");
                                       await fetch(`${API_URL}/locations/${location.id}`, {
@@ -1430,6 +1441,7 @@ const Admin = () => {
                                         size="icon"
                                         className="text-destructive hover:text-destructive"
                                         onClick={async () => {
+                                          if (!(await confirmDelete(confirm, "Termin", `Termin ${new Date(date.startDate).toLocaleDateString("de-DE")} in ${location.city} wirklich löschen?`))) return;
                                           try {
                                             const token = localStorage.getItem("token");
                                             const updatedDates = location.dates.filter(d => d.id !== date.id);

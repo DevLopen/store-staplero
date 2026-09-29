@@ -23,6 +23,7 @@ import {
 import {
   Product, ProductType, emptyLocalizedText, emptyLocalizedList, LocalizedText, LocalizedList,
 } from "@/types/product.types";
+import { useConfirm, confirmDelete } from "@/components/ConfirmDialog";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -106,6 +107,7 @@ const productToForm = (p: Product): ProductForm => ({
 
 const AdminProducts = () => {
   const { toast } = useToast();
+  const confirm = useConfirm();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -187,6 +189,8 @@ const AdminProducts = () => {
   };
 
   const handleDeleteNotifyRequest = async (id: string) => {
+    const request = notifyRequests.find((r) => r._id === id);
+    if (!(await confirmDelete(confirm, "Anfrage", `Die Anfrage von ${request?.email || "dieser Person"} wird gelöscht. Sie bekommt dann keine Benachrichtigung über neue Termine.`))) return;
     try {
       await adminDeleteNotifyRequest(id);
       loadNotifyRequests();
@@ -301,7 +305,7 @@ const AdminProducts = () => {
   };
 
   const handleDelete = async (product: Product) => {
-    if (!confirm(`Produkt "${product.title.de || product.title.en}" wirklich löschen?`)) return;
+    if (!(await confirmDelete(confirm, "Produkt", `Das Produkt „${product.title.de || product.title.en}“ wird gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`))) return;
     try {
       await adminDeleteProduct(product._id);
       toast({ title: "Gelöscht", description: "Produkt wurde entfernt" });

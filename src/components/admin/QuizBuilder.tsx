@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus, GripVertical, CheckCircle } from "lucide-react";
+import { useConfirm, confirmDelete } from "@/components/ConfirmDialog";
 
 const gen = (p = "") => `${p}${nanoid(8)}`;
 
@@ -45,8 +46,10 @@ function QuestionEditor({
     onChange({ ...question, options: opts });
   };
 
+  const confirm = useConfirm();
   const addOption = () => onChange({ ...question, options: [...(question.options ?? []), ""] });
-  const removeOption = (idx: number) => {
+  const removeOption = async (idx: number) => {
+    if (!(await confirmDelete(confirm, "Antwort"))) return;
     const opts = (question.options ?? []).filter((_, i) => i !== idx);
     onChange({ ...question, options: opts });
   };
@@ -58,7 +61,8 @@ function QuestionEditor({
   };
 
   const addDragItem = () => onChange({ ...question, items: [...(question.items ?? []), { id: gen("i_"), label: "" }] });
-  const removeDragItem = (idx: number) => {
+  const removeDragItem = async (idx: number) => {
+    if (!(await confirmDelete(confirm, "Element"))) return;
     const items = (question.items ?? []).filter((_, i) => i !== idx);
     onChange({ ...question, items });
   };
@@ -258,8 +262,11 @@ export default function QuizBuilder({ quiz, onChange, isFinal = false }: QuizBui
   const addQ = () => onChange({ ...quiz, questions: [...questions, newQuestion()] });
   const updateQ = (updated: QuizQuestion) =>
     onChange({ ...quiz, questions: questions.map(q => q.id === updated.id ? updated : q) });
-  const deleteQ = (id: string) =>
+  const confirm = useConfirm();
+  const deleteQ = async (id: string) => {
+    if (!(await confirmDelete(confirm, "Frage"))) return;
     onChange({ ...quiz, questions: questions.filter(q => q.id !== id) });
+  };
 
   return (
     <div className="space-y-5">
