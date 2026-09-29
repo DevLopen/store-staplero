@@ -255,6 +255,7 @@ export const heroButtons = (primary: { href: string; label: string }, secondary:
 
 export interface LayoutOptions {
     baseUrl: string; // FRONTEND_URL
+    assetsUrl?: string; // publiczny adres obrazków (domyślnie baseUrl)
     title: string; // <title>
     preheader: string; // tekst podglądu w skrzynce
     eyebrow?: string; // mała pomarańczowa etykieta nad nagłówkiem
@@ -299,7 +300,7 @@ export const renderEmail = (o: LayoutOptions): string => `<!DOCTYPE html>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="left">
-                    <a href="${o.baseUrl}" target="_blank"><img src="${o.baseUrl}/staplero-email-logo.png" alt="STAPLERO" width="132" height="47" style="display:block;width:132px;height:auto;"></a>
+                    <a href="${o.baseUrl}" target="_blank"><img src="${o.assetsUrl || o.baseUrl}/staplero-email-logo.png" alt="STAPLERO" width="132" height="47" style="display:block;width:132px;height:auto;"></a>
                   </td>
                   <td class="hide-sm" align="right" style="font-family:${BODY_FONT};font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${C.muted};">Ausbildungszentrum &middot; DGUV V68</td>
                 </tr>

@@ -23,7 +23,10 @@ import {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || "STAPLERO <noreply@staplero.com>";
-const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.com";
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.de";
+// Obrazki w mailach (logo, zdjęcia dojazdu) muszą być pod publicznym adresem z ważnym SSL —
+// przy FRONTEND_URL=localhost (testy) albo staplero.com (zły certyfikat) klient pocztowy ich nie pokaże.
+const EMAIL_ASSETS_URL = (process.env.EMAIL_ASSETS_URL || "https://staplero.de").replace(/\/$/, "");
 
 type SendPayload = Parameters<typeof resend.emails.send>[0];
 
@@ -52,7 +55,7 @@ const sendMail = async (payload: SendPayload, attempts = 4): Promise<void> => {
 };
 
 const layout = (o: Omit<LayoutOptions, "baseUrl">) =>
-    renderEmail({ baseUrl: FRONTEND_URL, ...o });
+    renderEmail({ baseUrl: FRONTEND_URL, assetsUrl: EMAIL_ASSETS_URL, ...o });
 
 const deDate = (d: Date | string, opts: Intl.DateTimeFormatOptions = { year: "numeric", month: "long", day: "numeric" }) =>
     new Date(d).toLocaleDateString("de-DE", opts);
@@ -289,7 +292,8 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
 
     const loc = escapeHtml(locationName);
     const addr = escapeHtml(locationAddress);
-    const isBerlin = /berlin/i.test(locationName);
+    // Zdjęcia dojazdu dotyczą ośrodka przy Neuköllnische Allee — rozpoznajemy po nazwie albo adresie
+    const isBerlin = /berlin/i.test(locationName) || /neuk[öo]llnische\s+allee/i.test(locationAddress);
 
     // Oba dni jako wydarzenie powtarzane codziennie x2
     const from = COURSE_HOURS.from.replace(":", "") + "00";
@@ -320,7 +324,7 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
     const arrivalHtml = isBerlin
         ? `
       ${sectionTitle("So finden Sie uns", "Bitte betreten Sie das Betriebsgelände nicht selbstständig. Ein STAPLERO-Ausbilder holt Sie am Eingang ab, an beiden Tagen.")}
-      ${photoSteps(berlinArrivalSteps.map((s) => ({ imageUrl: `${FRONTEND_URL}/${s.image}`, alt: s.alt, title: s.title, text: s.text })))}`
+      ${photoSteps(berlinArrivalSteps.map((s) => ({ imageUrl: `${EMAIL_ASSETS_URL}/${s.image}`, alt: s.alt, title: s.title, text: s.text })))}`
         : `
       ${sectionTitle("Anreise &amp; Treffpunkt")}
       ${p(`Bitte erscheinen Sie ${strong("10 bis 15 Minuten vor Kursbeginn")} am Schulungsort. Ein STAPLERO-Ausbilder empfängt Sie dort und begleitet Sie zum Schulungsraum.`)}`;

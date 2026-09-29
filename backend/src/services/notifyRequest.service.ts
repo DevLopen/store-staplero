@@ -3,7 +3,7 @@ import NotifyRequest, { NotifyRequestDoc } from "../models/NotifyRequest";
 import Product from "../models/Product";
 import emailService from "./email.service";
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.com";
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.de";
 
 const todayIso = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date()); // "2026-09-29"

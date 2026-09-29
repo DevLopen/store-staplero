@@ -125,7 +125,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 godzina
 const MIN_PASSWORD_LENGTH = 6; // spójnie z formularzem w checkoucie
-const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.com";
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.de";
 
 const sha256 = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
