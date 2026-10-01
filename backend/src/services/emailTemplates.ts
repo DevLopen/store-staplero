@@ -222,9 +222,9 @@ export const heroTicket = (cols: Array<{ label: string; title: string; note?: st
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.darkSoft};border:1px solid #474747;border-radius:6px;">
   <tr>
     ${cols.map((c, i) => `
-    <td class="stack${i > 0 ? " stack-rule" : ""}" width="${Math.floor(100 / cols.length)}%" valign="top" style="padding:22px 24px;${i > 0 ? "border-left:1px dashed #5a5a5a;" : ""}">
+    <td class="stack${i > 0 ? " stack-rule" : ""}" width="${Math.floor(100 / cols.length)}%" valign="top" style="padding:22px ${cols.length > 2 ? 16 : 24}px;${i > 0 ? "border-left:1px dashed #5a5a5a;" : ""}">
       <div style="font-family:${BODY_FONT};font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${C.orange};margin-bottom:6px;">${c.label}</div>
-      <div style="font-family:${DISPLAY_FONT};font-size:30px;line-height:1;font-weight:800;text-transform:uppercase;color:${C.white};">${c.title}</div>
+      <div style="font-family:${DISPLAY_FONT};font-size:${cols.length > 2 ? 24 : 30}px;line-height:1;font-weight:800;text-transform:uppercase;color:${C.white};">${c.title}</div>
       ${c.note ? `<div style="font-family:${BODY_FONT};font-size:14px;color:#b5b5b5;margin-top:6px;">${c.note}</div>` : ""}
     </td>`).join("")}
   </tr>

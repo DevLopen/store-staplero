@@ -96,6 +96,7 @@ export const sendOrderConfirmationEmail = async (
         locationName: details.locationName,
         locationAddress: details.locationAddress,
         startDate: details.startDate,
+        endDate: details.endDate,
         participants: [user.name, ...(details.additionalParticipants || []).map((p) => p.name)],
       });
     } else if (order.type === "online") {

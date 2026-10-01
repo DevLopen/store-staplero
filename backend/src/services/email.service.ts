@@ -247,6 +247,7 @@ interface PracticalCourseBookingEmailOptions {
     locationName: string; // miasto, np. "Berlin"
     locationAddress: string;
     startDate: Date | string; // 1. dzień (teoria); praktyka jest dzień później
+    endDate?: Date | string; // ostatni dzień; 3 dni = Intensivausbildung z dniem na Schubmaststapler
     participants?: string[]; // pierwsza osoba to zamawiający
 }
 
@@ -280,14 +281,23 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
     const theory = new Date(opts.startDate);
     const practice = addDays(theory, 1);
     const cancelUntil = addDays(theory, -7);
+    // Liczba dni z terminu (start–koniec włącznie); 3 dni = Frontstapler + Schubmaststapler
+    const spanDays = opts.endDate
+        ? Math.round((new Date(opts.endDate).getTime() - theory.getTime()) / 86_400_000) + 1
+        : 2;
+    const isThreeDay = spanDays >= 3;
+    const reach = addDays(theory, 2); // 3. dzień (tylko przy isThreeDay)
+    const lastDay = isThreeDay ? reach : practice;
+    const courseDays = isThreeDay ? 3 : 2;
+    const allDays = isThreeDay ? "allen drei Tagen" : "beiden Tagen";
 
     const longDate = (d: Date) => berlinDate(d, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     const shortDate = (d: Date) => berlinDate(d, { weekday: "short", day: "numeric", month: "short" });
     const numericDate = (d: Date) => berlinDate(d, { day: "2-digit", month: "2-digit" }); // "12.10."
     // "12.–13.10." albo "31.10.–01.11." przy zmianie miesiąca
-    const dateRange = berlinDate(theory, { month: "2-digit" }) === berlinDate(practice, { month: "2-digit" })
-        ? `${berlinDate(theory, { day: "2-digit" })}.–${numericDate(practice)}`
-        : `${numericDate(theory)}–${numericDate(practice)}`;
+    const dateRange = berlinDate(theory, { month: "2-digit" }) === berlinDate(lastDay, { month: "2-digit" })
+        ? `${berlinDate(theory, { day: "2-digit" })}.–${numericDate(lastDay)}`
+        : `${numericDate(theory)}–${numericDate(lastDay)}`;
     const hours = `${COURSE_HOURS.from} – ca. ${COURSE_HOURS.to} Uhr`;
 
     const loc = escapeHtml(locationName);
@@ -295,26 +305,30 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
     // Zdjęcia dojazdu dotyczą ośrodka przy Neuköllnische Allee — rozpoznajemy po nazwie albo adresie
     const isBerlin = /berlin/i.test(locationName) || /neuk[öo]llnische\s+allee/i.test(locationAddress);
 
-    // Oba dni jako wydarzenie powtarzane codziennie x2
+    // Wszystkie dni kursu jako wydarzenie powtarzane codziennie
     const from = COURSE_HOURS.from.replace(":", "") + "00";
     const until = COURSE_HOURS.to.replace(":", "") + "00";
     const calendarUrl = "https://calendar.google.com/calendar/render?action=TEMPLATE"
         + `&text=${encodeURIComponent("STAPLERO Gabelstaplerausbildung")}`
         + `&dates=${calendarDay(theory)}T${from}/${calendarDay(theory)}T${until}`
         + `&ctz=${encodeURIComponent(BERLIN_TZ)}`
-        + `&recur=${encodeURIComponent("RRULE:FREQ=DAILY;COUNT=2")}`
+        + `&recur=${encodeURIComponent(`RRULE:FREQ=DAILY;COUNT=${courseDays}`)}`
         + `&location=${encodeURIComponent(locationAddress)}`
         + `&details=${encodeURIComponent(`Bestellnummer ${orderNumber}`)}`;
     const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(locationAddress)}`;
 
     const people = participants.length ? participants : [name];
+    const courseTitle = isThreeDay
+        ? "3-Tage-Intensivausbildung Frontstapler &amp; Schubmaststapler"
+        : "Gabelstaplerausbildung Stufe&nbsp;1";
 
     const heroHtml = `
-      ${heroText(`Hallo ${escapeHtml(name)}, wir freuen uns auf Sie. Hier finden Sie alles, was Sie für die <strong style="color:#ffffff;">Gabelstaplerausbildung Stufe&nbsp;1</strong> brauchen.`)}
+      ${heroText(`Hallo ${escapeHtml(name)}, wir freuen uns auf Sie. Hier finden Sie alles, was Sie für die <strong style="color:#ffffff;">${courseTitle}</strong> brauchen.`)}
       ${heroTicket(
           [
               { label: "Tag 1 &middot; Theorie", title: shortDate(theory), note: hours },
-              { label: "Tag 2 &middot; Praxis &amp; Prüfung", title: shortDate(practice), note: hours },
+              { label: isThreeDay ? "Tag 2 &middot; Praxis" : "Tag 2 &middot; Praxis &amp; Prüfung", title: shortDate(practice), note: hours },
+              ...(isThreeDay ? [{ label: "Tag 3 &middot; Schubmast", title: shortDate(reach), note: hours }] : []),
           ],
           `<strong style="color:#ffffff;">${loc}</strong> &middot; ${addr}<br><span style="color:#b5b5b5;">${people.length} Teilnehmer &middot; Bitte 10 bis 15 Minuten vor Kursbeginn da sein</span>`,
       )}
@@ -323,7 +337,7 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
 
     const arrivalHtml = isBerlin
         ? `
-      ${sectionTitle("So finden Sie uns", "Bitte betreten Sie das Betriebsgelände nicht selbstständig. Ein STAPLERO-Ausbilder holt Sie am Eingang ab, an beiden Tagen.")}
+      ${sectionTitle("So finden Sie uns", `Bitte betreten Sie das Betriebsgelände nicht selbstständig. Ein STAPLERO-Ausbilder holt Sie am Eingang ab, an ${allDays}.`)}
       ${photoSteps(berlinArrivalSteps.map((s) => ({ imageUrl: `${EMAIL_ASSETS_URL}/${s.image}`, alt: s.alt, title: s.title, text: s.text })))}`
         : `
       ${sectionTitle("Anreise &amp; Treffpunkt")}
@@ -339,9 +353,9 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
     const bodyHtml = `
       ${sectionTitle("Bitte mitbringen", undefined, { first: true })}
       ${checklist([
-          { title: "Personalausweis oder Reisepass", note: "an beiden Tagen", tag: "Pflicht", strong: true },
-          { title: "Arbeitssicherheitsschuhe", note: "an beiden Tagen, am Praxistag Pflicht", tag: "Pflicht", strong: true },
-          { title: "Geeignete Arbeitskleidung", note: "am Praxistag, lange Hose empfohlen. Hallentemperatur ca. 18 bis 22 °C" },
+          { title: "Personalausweis oder Reisepass", note: `an ${allDays}`, tag: "Pflicht", strong: true },
+          { title: "Arbeitssicherheitsschuhe", note: isThreeDay ? "an allen drei Tagen, an den Praxistagen Pflicht" : "an beiden Tagen, am Praxistag Pflicht", tag: "Pflicht", strong: true },
+          { title: "Geeignete Arbeitskleidung", note: `${isThreeDay ? "an den Praxistagen" : "am Praxistag"}, lange Hose empfohlen. Hallentemperatur ca. 18 bis 22 °C` },
       ])}
 
       ${arrivalHtml}
@@ -356,13 +370,20 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
           extraHtml: labeledPill("Prüfung", "Schriftlicher Test am Ende des Tages"),
       })}
       ${timelineItem({
-          title: "Tag 2 &middot; Praxis",
+          title: isThreeDay ? "Tag 2 &middot; Praxis Frontstapler" : "Tag 2 &middot; Praxis",
           meta: `${shortDate(practice)} &middot; ${COURSE_HOURS.from}–${COURSE_HOURS.to}`,
           text: `Fahrzeugkontrolle, Einweisung am Gabelstapler, Anfahren, Lenken und Bremsen, Lasten aufnehmen und transportieren, Rangieren auf engem Raum, Stapeln und Einlagern.${isBerlin ? " Treffpunkt wie am ersten Tag, bitte erneut an der Wache melden." : ""}`,
           extraHtml: labeledPill("Prüfung", "Fahrprüfung, danach Ihr Staplerschein", "orange"),
           accent: "orange",
-          last: true,
+          last: !isThreeDay,
       })}
+      ${isThreeDay ? timelineItem({
+          title: "Tag 3 &middot; Schubmaststapler",
+          meta: `${shortDate(reach)} &middot; ${COURSE_HOURS.from}–${COURSE_HOURS.to}`,
+          text: `Ca. 2 Stunden Theorie zum Schubmaststapler: Aufbau, Bedienung und Besonderheiten im Vergleich zum Frontstapler. Anschließend praktische Fahrübungen am Schubmaststapler: Ein- und Auslagern im Regal, Rangieren in engen Gängen.${isBerlin ? " Treffpunkt wie an den Vortagen, bitte erneut an der Wache melden." : ""}`,
+          accent: "orange",
+          last: true,
+      }) : ""}
 
       ${twoColumns(
           callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#707072;">Stornierung</span><br>Kostenfrei bis<br>${strong(longDate(cancelUntil))}<br><span style="font-size:13px;color:#707072;">Danach fällt eine Stornogebühr von 100&nbsp;% an.</span>`, "gray"),
@@ -378,7 +399,7 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
         subject: `Platz reserviert: Staplerschein ${dateRange} in ${locationName}`,
         html: layout({
             title: "Anmeldebestätigung",
-            preheader: `Ihr Platz ist reserviert: ${longDate(theory)} und ${longDate(practice)}, ${locationName}. Bitte Ausweis und Sicherheitsschuhe mitbringen.`,
+            preheader: `Ihr Platz ist reserviert: ${longDate(theory)} bis ${longDate(lastDay)}, ${locationName}. Bitte Ausweis und Sicherheitsschuhe mitbringen.`,
             eyebrow: "Anmeldung bestätigt",
             eyebrowTone: "success",
             headline: "Ihr Platz ist reserviert",
