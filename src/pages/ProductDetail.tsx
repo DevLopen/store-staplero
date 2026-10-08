@@ -528,7 +528,7 @@ const ProductDetail = () => {
                   <div className="flex items-baseline gap-2 flex-wrap">
                     {hasPromo && (
                       <span className="text-muted-foreground text-base line-through">
-                        €{product.price.toFixed(2)}
+                        €{grossOf(product.price).toFixed(2)}
                       </span>
                     )}
                     <span className="font-display text-3xl font-bold text-foreground">
