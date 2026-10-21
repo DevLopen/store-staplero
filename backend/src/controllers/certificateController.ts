@@ -428,6 +428,13 @@ const walletData = (cert: any) => {
         verifyUrl: `${FRONTEND_URL}/verify/${cert.verificationCode}`,
         bannerUrl: `${API_URL}/api/certificates/wallet-banner/${cert.verificationCode}.png`,
         title: isP ? "Staplerschein" : "Theorienachweis",
+        level: isP
+            ? { label: "DGUV V68", value: stufen.some((s) => s.startsWith("stufe2")) ? "Stufe 1 + 2" : "Stufe 1" }
+            : { label: "NUR THEORIE", value: "Theorie" },
+        // Staplerschein: pomarańcz ostrzegawczy, teoria: jasna karta z czerwonym stemplem na banerze
+        colors: isP
+            ? { bg: "rgb(243, 146, 0)", fg: "rgb(22, 22, 22)", label: "rgb(92, 46, 0)", hex: "#f39200" }
+            : { bg: "rgb(242, 241, 238)", fg: "rgb(24, 24, 27)", label: "rgb(185, 28, 28)", hex: "#f2f1ee" },
         front: [
             { key: "certId", label: "Zertifikat-Nr.", value: cert.verificationCode },
             { key: "issued", label: "Ausgestellt", value: formatDateShort(cert.issuedAt) },
@@ -504,11 +511,11 @@ export const getAppleWalletPass = async (req: AuthRequest, res: Response) => {
             teamIdentifier: teamId,
             organizationName: "STAPLERO",
             description: `${d.title} – Befähigungsnachweis Gabelstapler`,
-            logoText: "STAPLERO",
-            backgroundColor: "rgb(33, 33, 33)",
-            foregroundColor: "rgb(255, 255, 255)",
-            labelColor: "rgb(168, 168, 168)",
+            backgroundColor: d.colors.bg,
+            foregroundColor: d.colors.fg,
+            labelColor: d.colors.label,
             storeCard: {
+                headerFields: [{ key: "level", label: d.level.label, value: d.level.value }],
                 // Apple pozwala na maks. 4 pola secondary + auxiliary razem
                 secondaryFields: [
                     { key: "holder", label: "INHABER", value: cert.userName },
@@ -557,8 +564,10 @@ export const buildGoogleGenericObject = (cert: any) => {
         id: `${GOOGLE_ISSUER_ID}.${cert.verificationCode}`,
         classId: GOOGLE_CLASS_ID,
         genericType: "GENERIC_TYPE_UNSPECIFIED",
-        hexBackgroundColor: "#212121",
+        hexBackgroundColor: d.colors.hex,
         logo: { sourceUri: { uri: `${FRONTEND_URL}/logo-wallet.png` }, contentDescription: lang("STAPLERO") },
+        // pełne logo w nagłówku karty (logo powyżej Google wycina w kółko)
+        wideLogo: { sourceUri: { uri: `${FRONTEND_URL}/logo-wallet-wide.png` }, contentDescription: lang("STAPLERO") },
         cardTitle: lang("STAPLERO"),
         subheader: lang(cert.type === "practical" ? "Inhaber" : "Inhaber · keine Fahrberechtigung"),
         header: lang(cert.userName),

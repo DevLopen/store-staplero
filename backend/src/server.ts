@@ -23,6 +23,7 @@ import practicalCourseRoutes from "./routes/practicalcourseRoutes";
 import certificateRoutes from "./routes/certificateRoutes";
 import uploadRoutes      from "./routes/uploadRoutes";
 import productRoutes     from "./routes/productRoutes";
+import learningRoutes    from "./routes/learningRoutes";
 
 import orderService from "./services/order.service";
 
@@ -81,6 +82,7 @@ app.use("/api/admin/practical-courses", practicalCourseRoutes);
 app.use("/api/certificates",           certificateRoutes);
 app.use("/api/upload",                 uploadRoutes);
 app.use("/api/products",               productRoutes);
+app.use("/api/learning",               learningRoutes);
 
 // ── MongoDB ───────────────────────────────────────────────────────────────────
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/staplerschein";

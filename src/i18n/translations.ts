@@ -19,6 +19,7 @@ export const translations = {
     courses:        { de: 'Kurse',           en: 'Courses',         uk: 'Курси',              pl: 'Kursy' },
     dashboard:      { de: 'Dashboard',       en: 'Dashboard',       uk: 'Панель',             pl: 'Panel' },
     myCourse:       { de: 'Mein Kurs',       en: 'My Course',       uk: 'Мій курс',           pl: 'Mój kurs' },
+    myArea:         { de: 'Mein Bereich',    en: 'My account',      uk: 'Мій кабінет',        pl: 'Mój panel' },
     login:          { de: 'Anmelden',        en: 'Login',           uk: 'Увійти',             pl: 'Zaloguj się' },
     logout:         { de: 'Abmelden',        en: 'Logout',          uk: 'Вийти',              pl: 'Wyloguj się' },
     register:       { de: 'Registrieren',    en: 'Register',        uk: 'Реєстрація',         pl: 'Rejestracja' },

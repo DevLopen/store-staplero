@@ -1,0 +1,111 @@
+<!doctype html>
+<!--
+  Źródło banerów kart Wallet (banner-bg-*.png, 1125×369 px = Apple strip @3x, Google heroImage).
+  Wariant w adresie: banner.html?v=stufe1 | stufe12 | theorie, opcjonalnie &tone=soft (jaśniejszy pomarańcz)
+  Render: zrzut elementu #b w przeglądarce 1125×369 (np. Playwright), zapis do ../banner-bg-<v>.png.
+  Biała ramka po prawej to miejsce na zdjęcie: walletBanner.service.ts dokleja je w PHOTO {x 841, y 28, w 235, h 302}.
+-->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #000; }
+  #b { position: relative; width: 1125px; height: 369px; overflow: hidden; font-family: Inter, sans-serif; }
+  .p #b { background: linear-gradient(105deg, #f7a51f 0%, #f39200 48%, #ea8200 100%); color: #161616; }
+  .p.soft #b { background: linear-gradient(105deg, #fdebc8 0%, #fbd99a 55%, #f8c76f 100%); }
+  .t #b { background: linear-gradient(105deg, #f6f5f2 0%, #eeece7 100%); color: #18181b; }
+  svg.bg { position: absolute; inset: 0; }
+  .txt { position: absolute; left: 60px; top: 62px; }
+  .eye { font-size: 25px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; display: flex; align-items: center; gap: 14px; }
+  .p .eye { color: rgba(22, 22, 22, .78); } .t .eye { color: #b91c1c; }
+  .eye i { display: block; width: 34px; height: 4px; background: currentColor; }
+  h1 { margin: 14px 0 0; font: 800 124px/.9 "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: -.005em; }
+  .t h1 { font-size: 88px; margin-top: 22px; }
+  .sub { margin-top: 18px; font-size: 31px; font-weight: 600; display: flex; gap: 14px; align-items: center; }
+  .p .sub { color: rgba(22, 22, 22, .82); } .t .sub { color: #52525b; }
+  .sub b { font-weight: 700; padding: 5px 14px; border-radius: 8px; font-size: 25px; letter-spacing: .04em; }
+  .p .sub b { background: #161616; color: #f7a51f; } .t .sub b { background: #18181b; color: #fff; }
+  .frame { position: absolute; left: 833px; top: 20px; width: 251px; height: 318px; border-radius: 20px; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.22); }
+  .seal { position: absolute; left: 700px; top: 234px; width: 118px; height: 118px; }
+  .stamp { position: absolute; right: 46px; top: 50%; transform: translateY(-50%) rotate(-7deg); border: 6px solid #c81e1e; border-radius: 18px; padding: 18px 24px 16px; color: #c81e1e; text-align: center; background: rgba(255,255,255,.55); }
+  .stamp b { display: block; font: 800 44px/.95 "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: .01em; }
+  .stamp span { display: block; margin-top: 9px; font-size: 16px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+  .edge { position: absolute; left: 0; right: 0; bottom: 0; height: 9px; }
+  .p .edge { background: #161616; } .t .edge { background: #c81e1e; }
+</style>
+</head>
+<body>
+<div id="b">
+  <svg class="bg" viewBox="0 0 1125 369" aria-hidden="true">
+    <defs>
+      <!-- giloszowanie jak na dokumentach: rodzina fal o przesuniętej fazie -->
+      <g id="wave"><path d="M-20 0 C 60 -26 120 26 200 0 S 340 -26 420 0 S 560 26 640 0 S 780 -26 860 0 S 1000 26 1080 0 S 1220 -26 1300 0" fill="none" stroke-width="1.2"/></g>
+    </defs>
+    <g id="guill"></g>
+    <g id="truck"></g>
+  </svg>
+  <div class="txt">
+    <div class="eye"><i></i><span id="eye"></span></div>
+    <h1 id="title"></h1>
+    <div class="sub" id="sub"></div>
+  </div>
+  <div id="right"></div>
+  <div class="edge"></div>
+</div>
+<script>
+  const v = new URLSearchParams(location.search).get("v") || "stufe1";
+  const theory = v === "theorie";
+  const soft = new URLSearchParams(location.search).get("tone") === "soft";
+  document.documentElement.className = theory ? "t" : `p${soft ? " soft" : ""}`;
+  const ink = theory ? "rgba(24,24,27,.07)" : "rgba(22,22,22,.10)";
+
+  // giloszowanie
+  const g = document.getElementById("guill");
+  for (let i = 0; i < 26; i++) {
+    const u = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    u.setAttribute("href", "#wave");
+    u.setAttribute("transform", `translate(${(i % 2) * 70 - 40} ${8 + i * 14.5}) scale(1 ${0.6 + (i % 5) * 0.12})`);
+    u.setAttribute("stroke", ink);
+    g.appendChild(u);
+  }
+
+  // wózek w liniach (znak wodny za tekstem)
+  if (!theory) {
+    document.getElementById("truck").outerHTML = `
+      <g transform="translate(486 344) scale(1.32)" fill="none" stroke="rgba(22,22,22,.17)" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M0 -24V-64Q0 -76 12 -78L48 -84V-116H128V-24Z"/>
+        <path d="M70 -116V-168H124V-116M64 -168H128M86 -168V-116"/>
+        <rect x="2" y="-78" width="32" height="54" rx="4"/>
+        <circle cx="38" cy="-20" r="18"/><circle cx="38" cy="-20" r="6"/>
+        <circle cx="148" cy="-22" r="22"/><circle cx="148" cy="-22" r="7"/>
+        <path d="M176 -196V-6M186 -196V-6M176 -150H186M176 -100H186"/>
+        <path d="M184 -8H262"/>
+        <rect x="192" y="-66" width="64" height="50" rx="3"/><path d="M192 -41H256M224 -66V-16"/>
+        <path d="M-40 0H300"/>
+      </g>`;
+  }
+
+  const T = {
+    stufe1:  { eye: "Befähigungsnachweis", title: "Staplerschein", sub: "Gabelstapler", badge: "Stufe 1" },
+    stufe12: { eye: "Befähigungsnachweis", title: "Staplerschein", sub: "Gabelstapler", badge: "Stufe 1 + 2" },
+    theorie: { eye: "Nur Theorieteil", title: "Theorienachweis", sub: "Gabelstapler · online", badge: "DGUV V68" },
+  }[v];
+  document.getElementById("eye").textContent = T.eye;
+  document.getElementById("title").textContent = T.title;
+  document.getElementById("sub").innerHTML = `<span>${T.sub}</span><b>${T.badge}</b>`;
+
+  document.getElementById("right").innerHTML = theory
+    ? `<div class="stamp"><b>Keine<br>Fahrberechtigung</b><span>Kein Fahrausweis</span></div>`
+    : `<div class="frame"></div>
+       <svg class="seal" viewBox="0 0 120 120" aria-hidden="true">
+         <defs><path id="ring" d="M60 60 m-41 0 a41 41 0 1 1 82 0 a41 41 0 1 1 -82 0"/></defs>
+         <circle cx="60" cy="60" r="57" fill="#161616"/>
+         <circle cx="60" cy="60" r="51" fill="none" stroke="#f7a51f" stroke-width="1.5"/>
+         <circle cx="60" cy="60" r="31" fill="none" stroke="#f7a51f" stroke-width="1.5"/>
+         <text font-family="Inter" font-size="10.5" font-weight="700" letter-spacing="2.6" fill="#f7a51f"><textPath href="#ring">DGUV VORSCHRIFT 68 · GEPRÜFT · </textPath></text>
+         <path d="M47 61l9 9 18-20" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+       </svg>`;
+</script>
+</body>
+</html>

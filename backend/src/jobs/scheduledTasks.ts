@@ -46,7 +46,11 @@ export const setupCronJobs = () => {
 
 /**
  * Send reminders for practical courses happening tomorrow
+ * Wyłączone: właściwa implementacja jest zakomentowana poniżej, ta funkcja tylko to loguje.
  */
+const sendPracticalCourseReminders = async () => {
+    console.log("ℹ️ Practical course reminders are disabled");
+};
 // const sendPracticalCourseReminders = async () => {
 //     const Order = (await import("../models/Order")).default;
 //     const User = (await import("../models/User")).default;

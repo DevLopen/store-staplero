@@ -38,12 +38,15 @@ svg { display: block; }
 .ic-s { width: 14px; height: 14px; }
 
 /* shell */
-.shell { height: 100%; display: grid; grid-template-rows: 56px 1fr; }
+.shell { height: 100%; display: grid; grid-template-rows: 56px 1fr; grid-template-columns: minmax(0, 1fr); }
 .topbar { position: relative; z-index: 50; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px; background: rgba(255,255,255,.96); border-bottom: 1px solid var(--g200); box-shadow: 0 1px 2px rgba(0,0,0,.04); }
 .tb-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .iconbtn { width: 40px; height: 40px; border: 0; background: none; border-radius: 6px; display: grid; place-items: center; color: var(--g500); flex: none; }
 .iconbtn:hover { background: var(--g100); color: var(--g900); }
 .home { display: flex; align-items: center; gap: 6px; color: var(--g400); font-size: 14px; flex: none; }
+a.home, a.course-t { text-decoration: none; } a.home:hover, a.course-t:hover { color: var(--g900); }
+.side-back { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 13px; font-weight: 600; color: var(--g500); text-decoration: none; }
+.side-back:hover { color: var(--g900); }
 .slash { color: var(--g300); }
 .course-t { font-size: 14px; font-weight: 500; color: var(--g700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tb-right { display: flex; align-items: center; gap: 12px; flex: none; }
@@ -326,10 +329,44 @@ input[type=range] { width: 100%; accent-color: var(--primary); height: 28px; mar
 .req small { display: block; font-size: 12.5px; color: var(--g500); }
 @keyframes pop { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
+/* 1.2 specific */
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cmp div { background: var(--g50); border-radius: 10px; padding: 12px; }
+.cmp .k { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--g400); }
+.cmp b { display: block; font-size: 15px; color: var(--g900); margin: 2px 0 4px; }
+.cmp p { font-size: 13.5px; color: var(--g600); line-height: 1.4; }
+.duo { display: flex; gap: 12px; background: var(--g50); border-radius: 12px; padding: 16px 12px; }
+.duo figure { margin: 0; flex: 1; display: grid; gap: 8px; justify-items: center; text-align: center; }
+.duo .av { width: 84px; height: 84px; }
+.duo b { display: block; font-size: 14.5px; color: var(--g900); }
+.duo span { font-size: 12.5px; color: var(--g500); }
+.chk { display: grid; gap: 6px; }
+.chk button { display: flex; gap: 12px; align-items: center; text-align: left; border: 0; background: var(--g50); border-radius: 10px; padding: 9px 12px; min-height: 50px; transition: box-shadow .2s; }
+.chk button.on { box-shadow: inset 0 0 0 1.5px var(--g900); }
+.chk .st { width: 24px; height: 24px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--g300); display: grid; place-items: center; color: #fff; flex: none; font-size: 14px; font-weight: 700; }
+.chk .st svg { width: 14px; height: 14px; stroke-width: 3; }
+.chk .good .st { background: var(--g900); box-shadow: none; }
+.chk .bad .st { background: var(--amber500); box-shadow: none; }
+.chk b { display: block; font-size: 14.5px; color: var(--g900); }
+.chk .f { font-size: 13px; color: var(--g500); }
+.chk .bad .f { color: var(--amber700); font-weight: 500; }
+.sw { display: grid; }
+.sw-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; border-top: 1px solid var(--g100); }
+.sw-row > span { font-size: 14px; color: var(--g700); min-width: 0; }
+.sw-row .toggle { flex: none; width: 214px; padding: 3px; }
+.sw-row .toggle button { height: 32px; font-size: 13px; }
+.park-step { gap: 10px !important; }
+.park-step .q { font-size: 21px; }
+
+.lang { display: flex; gap: 2px; background: var(--g100); border-radius: 8px; padding: 3px; }
+.lang button { height: 28px; min-width: 34px; padding: 0 6px; border: 0; border-radius: 6px; background: none; font-size: 12px; font-weight: 600; color: var(--g500); }
+.lang button[aria-pressed="true"] { background: var(--white); color: var(--g900); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
 @media (max-width: 767px) {
   .main, .shell.closed .main { left: 0; }
   .shell:not(.closed) .scrim { display: block; }
-  .home span, .cprog, .badge { display: none; }
+  .home span, .cprog, .badge, .home, .slash { display: none; }
+  .topbar { padding: 0 8px 0 4px; }
+  .lang button { min-width: 30px; padding: 0 4px; }
   .q { font-size: 22px; }
   .pr { font-size: 13.5px; }
 }
@@ -348,24 +385,25 @@ body { margin: 0; }
 <div class="shell" id="shell">
   <header class="topbar">
     <div class="tb-left">
-      <button class="iconbtn" id="menuBtn" type="button" aria-label="Kursmenü umschalten"><svg class="ic" viewBox="0 0 24 24" id="menuIc"></svg></button>
-      <span class="home"><svg class="ic ic-s" viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>Dashboard</span></span>
+      <button class="iconbtn" id="menuBtn" type="button" aria-label="Kursmenü umschalten" data-ta="aria-label"><svg class="ic" viewBox="0 0 24 24" id="menuIc"></svg></button>
+      <a class="home" href="panel-makiety.html#dash"><svg class="ic ic-s" viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span data-t>Dashboard</span></a>
       <span class="slash">/</span>
-      <span class="course-t">Staplerschein Theorie</span>
+      <a class="course-t" href="panel-makiety.html#course" data-t>Staplerschein Theorie</a>
     </div>
     <div class="tb-right">
+      <div class="lang" id="lang" role="group" aria-label="Sprache"></div>
       <div class="cprog"><div class="trk"><i id="cBar"></i></div><span id="cPct">0%</span></div>
       <div class="badge"><svg class="ic ic-s" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span id="dur"></span></div>
     </div>
   </header>
   <div class="body">
-    <aside class="side" aria-label="Kursinhalt">
-      <div class="side-hd"><p class="k">Kurs</p><p class="t">Staplerschein Theorie</p></div>
+    <aside class="side" aria-label="Kursinhalt" data-ta="aria-label">
+      <div class="side-hd"><a class="side-back" href="panel-makiety.html#course"><svg class="ic ic-s" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span data-t>Kursübersicht</span></a><p class="k" data-t>Kurs</p><p class="t" data-t>Staplerschein Theorie</p></div>
       <nav>
-        <div class="ch act"><div class="n">1</div><span>Grundlagen &amp; Vorschriften</span></div>
+        <div class="ch act"><div class="n">1</div><span data-t>Grundlagen &amp; Vorschriften</span></div>
         <div class="tops" id="tops"></div>
-        <div class="ch locked" style="margin-top:8px"><div class="n lock"><svg class="ic" viewBox="0 0 24 24" style="width:12px;height:12px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div><span>Kapitel 2</span></div>
-        <p class="locked-note">Wird nach Kapitel 1 freigeschaltet</p>
+        <div class="ch locked" style="margin-top:8px"><div class="n lock"><svg class="ic" viewBox="0 0 24 24" style="width:12px;height:12px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div><span data-t>Kapitel 2</span></div>
+        <p class="locked-note" data-t>Wird nach Kapitel 1 freigeschaltet</p>
       </nav>
     </aside>
     <div class="scrim" id="scrim"></div>
@@ -373,7 +411,7 @@ body { margin: 0; }
       <section class="lesson" id="lesson">
         <div class="l-top">
           <div class="l-row">
-            <button class="back" id="back" type="button"><svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>
+            <button class="back" id="back" type="button"><svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span data-t>Zurück</span></button>
             <div class="l-title" id="lTitle"></div>
             <div class="l-count" id="count"></div>
           </div>
@@ -389,9 +427,24 @@ body { margin: 0; }
   </div>
 </div>
 
+<script src="kurs-demo.en.js"></script>
+<script src="kurs-demo.pl.js"></script>
+<script src="kurs-demo.uk.js"></script>
 <script>
 (() => {
   const $ = id => document.getElementById(id);
+  /* i18n: German source text is the key; kurs-demo.<lang>.js files fill window.KURS_I18N[lang] */
+  const LANGS = [['de', 'DE', 'Deutsch'], ['en', 'EN', 'English'], ['pl', 'PL', 'Polski'], ['uk', 'UK', 'Українська']];
+  const LOCALE = { de: 'de-DE', en: 'en-GB', pl: 'pl-PL', uk: 'uk-UA' };
+  let lang = 'de';
+  try { const q = new URLSearchParams(location.search).get('lang') || localStorage.getItem('language'); if (LANGS.some(l => l[0] === q)) lang = q; } catch (e) {}
+  const missing = window.__i18nMissing = new Set();
+  function t(s, v) {
+    let r = s;
+    if (lang !== 'de' && s) { const d = (window.KURS_I18N || {})[lang] || {}; if (s in d) r = d[s]; else missing.add(s); }
+    return v ? r.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '') : r;
+  }
+  const num = n => n.toLocaleString(LOCALE[lang]);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const I = {
     check: '<svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
@@ -421,11 +474,11 @@ body { margin: 0; }
   $('menuBtn').onclick = () => setMenu(shell.classList.contains('closed'));
   $('scrim').onclick = () => setMenu(false);
   let tt;
-  function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 2400); }
+  function toast(m) { const el = $('toast'); el.textContent = t(m); el.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('on'), 2400); }
 
   /* ───────── engine ───────── */
   let cur = 'lz', step = 0, dir = 1;
-  const done = { lz: false, t11: false };
+  const done = { lz: false, t11: false, t12: false };
   const screen = $('screen'), actions = $('actions'), lesson = $('lesson');
 
   function go(n) {
@@ -437,29 +490,41 @@ body { margin: 0; }
   }
   function openTopic(k, s = 0) { cur = k; step = s; dir = 1; closeSheet(); if (mobile()) setMenu(false); render(); }
   function render(stay) {
-    const t = T[cur], st = t.steps, s = st[step];
-    $('lTitle').textContent = t.title;
-    $('dur').textContent = t.dur;
+    const tp = T[cur], st = tp.steps, s = st[step];
+    $('lTitle').textContent = t(tp.title);
+    $('dur').textContent = t(tp.dur);
     $('count').textContent = `${step + 1} / ${st.length}`;
     $('segs').innerHTML = st.map((_, i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('');
     $('back').disabled = step === 0;
-    const seen = (done.lz ? T.lz.steps.length : cur === 'lz' ? step : 0) + (done.t11 ? T.t11.steps.length : cur === 't11' ? step : 0);
+    const seen = Object.keys(T).reduce((n, k) => n + (done[k] ? T[k].steps.length : cur === k ? step : 0), 0);
     const pct = Math.round(seen / 180 * 100);
     $('cBar').style.width = Math.max(1, pct) + '%'; $('cPct').textContent = pct + '%';
     renderTopics();
+    renderLang();
     if (!stay) screen.scrollTop = 0;
     screen.innerHTML = `<div class="in ${stay ? 'stay' : dir < 0 ? 'rev' : ''}">${s.r()}</div>`;
     if (s.a) s.a(); else setActions(nextBtn());
   }
   const rerender = () => render(true);
+  function renderLang() {
+    document.documentElement.lang = lang;
+    $('lang').innerHTML = LANGS.map(([c, s, n]) => `<button type="button" data-l="${c}" title="${n}" aria-pressed="${c === lang}">${s}</button>`).join('');
+    $('lang').querySelectorAll('button').forEach(b => b.onclick = () => {
+      lang = b.dataset.l;
+      try { localStorage.setItem('language', lang); } catch (e) {}
+      closeSheet(); render(true);
+    });
+    document.querySelectorAll('[data-t]').forEach(el => { if (!el.dataset.t) el.dataset.t = el.innerHTML; el.innerHTML = t(el.dataset.t); });
+    document.querySelectorAll('[data-ta]').forEach(el => { const a = el.dataset.ta, k = 'src' + a.replace(/\W/g, ''); if (!el.dataset[k]) el.dataset[k] = el.getAttribute(a); el.setAttribute(a, t(el.dataset[k])); });
+  }
   function nextBtn(label = 'Weiter', disabled = false) {
-    return `<button class="btn btn-p" type="button" id="nx" ${disabled ? 'disabled' : ''}>${label}${I.next}</button>`;
+    return `<button class="btn btn-p" type="button" id="nx" ${disabled ? 'disabled' : ''}>${t(label)}${I.next}</button>`;
   }
   function setActions(html, hint) {
     if (step > 0 && /^<button[^>]*id="nx"/.test(html.trim())) {
-      html = `<div class="nav2"><button class="btn btn-o" type="button" id="bk"><svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Zurück</button>${html}</div>`;
+      html = `<div class="nav2"><button class="btn btn-o" type="button" id="bk"><svg class="ic" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>${t('Zurück')}</button>${html}</div>`;
     }
-    actions.innerHTML = html + (hint ? `<p class="gate-hint">${hint}</p>` : '');
+    actions.innerHTML = html + (hint ? `<p class="gate-hint">${t(hint)}</p>` : '');
     const nx = $('nx'); if (nx) nx.onclick = () => go(step + 1);
     const bk = $('bk'); if (bk) bk.onclick = () => go(step - 1);
   }
@@ -473,8 +538,8 @@ body { margin: 0; }
   });
   function openSheet(kind, title, sub, body, btnLabel, onBtn) {
     const icon = kind === 'ok' ? I.check : kind === 'no' ? I.x : I.info;
-    $('sheet').innerHTML = `<div class="sh-hd ${kind}"><div class="bi">${icon}</div><div><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}</div></div>
-      <div class="sh-body">${body}</div><div class="sh-act"><button class="btn btn-p" type="button" id="shBtn">${btnLabel}</button></div>`;
+    $('sheet').innerHTML = `<div class="sh-hd ${kind}"><div class="bi">${icon}</div><div><b>${t(title)}</b>${sub ? `<span>${t(sub)}</span>` : ''}</div></div>
+      <div class="sh-body">${body}</div><div class="sh-act"><button class="btn btn-p" type="button" id="shBtn">${t(btnLabel)}</button></div>`;
     $('shBtn').onclick = onBtn;
     lesson.classList.add('sheet-open');
   }
@@ -484,21 +549,22 @@ body { margin: 0; }
   const topicList = [
     ['lz', 'Lernziele'],
     ['t11', '1.1 Warum eine Ausbildung vorgeschrieben ist'],
-    [null, '1.2 DGUV Vorschrift 68 – Pflichten des Unternehmers und Fahrers'],
+    ['t12', '1.2 DGUV Vorschrift 68 – Pflichten des Unternehmers und Fahrers'],
     [null, '1.3 Rechtliche Grundlagen (ArbSchG, BetrSichV, StVO, StVZO etc.)'],
     [null, '1.4 Folgen von Fehlverhalten – Haftung, Strafen, Personenschäden'],
     [null, '1.5 Aufbau und Aussehen des Staplerscheins'],
     [null, '1.6 Das Stufensystem nach DGUV G308-001'],
   ];
   function renderTopics() {
-    $('tops').innerHTML = topicList.map(([k, t]) => {
-      if (k === cur) return `<button class="top cur" type="button" data-k="${k}">${I.playC}<span class="tt">${t}<span class="sub">Schritt ${step + 1} von ${T[k].steps.length}</span></span></button>`;
-      if (k && done[k]) return `<button class="top done" type="button" data-k="${k}">${I.checkC}<span class="tt">${t}</span></button>`;
-      if (k) return `<button class="top" type="button" data-k="${k}"><span class="dot"></span><span class="tt">${t}<span class="demo">Demo</span></span></button>`;
-      return `<button class="top other" type="button"><span class="dot"></span><span class="tt">${t}</span></button>`;
-    }).join('') + `<button class="top quiz other" type="button">${I.award}<span class="tt">Test Kapitel 1</span></button>`;
+    $('tops').innerHTML = topicList.map(([k, tt]) => {
+      tt = t(tt);
+      if (k === cur) return `<button class="top cur" type="button" data-k="${k}">${I.playC}<span class="tt">${tt}<span class="sub">${t('Schritt {a} von {b}', { a: step + 1, b: T[k].steps.length })}</span></span></button>`;
+      if (k && done[k]) return `<button class="top done" type="button" data-k="${k}">${I.checkC}<span class="tt">${tt}</span></button>`;
+      if (k) return `<button class="top" type="button" data-k="${k}"><span class="dot"></span><span class="tt">${tt}<span class="demo">Demo</span></span></button>`;
+      return `<button class="top other" type="button"><span class="dot"></span><span class="tt">${tt}</span></button>`;
+    }).join('') + `<button class="top quiz other" type="button">${I.award}<span class="tt">${t('Test Kapitel 1')}</span></button>`;
     $('tops').querySelectorAll('[data-k]').forEach(b => b.onclick = () => openTopic(b.dataset.k));
-    $('tops').querySelectorAll('.other').forEach(b => b.onclick = () => toast('In der Demo sind „Lernziele“ und 1.1 ausgearbeitet'));
+    $('tops').querySelectorAll('.other').forEach(b => b.onclick = () => toast('In der Demo sind „Lernziele“, 1.1 und 1.2 ausgearbeitet'));
   }
 
   /* generic sequential quiz: statement + answer buttons, or question + option list */
@@ -511,28 +577,28 @@ body { margin: 0; }
         const dots = `<div class="qdots">${cfg.items.map((_, k) => `<i class="${k < st.res.length ? (st.res[k] ? 'ok' : 'no') : k === st.i ? 'cur' : ''}"></i>`).join('')}</div>`;
         if (finished()) {
           const n = st.res.filter(Boolean).length;
-          return `<h2 class="q">${cfg.title}</h2><div class="res-big"><b>${n} / ${cfg.items.length}</b><span class="small">richtig</span></div>
-            <p class="txt">${n === cfg.items.length ? cfg.allRight : cfg.someWrong}</p>${dots}`;
+          return `<h2 class="q">${t(cfg.title)}</h2><div class="res-big"><b>${n} / ${cfg.items.length}</b><span class="small">${t('richtig')}</span></div>
+            <p class="txt">${t(n === cfg.items.length ? cfg.allRight : cfg.someWrong)}</p>${dots}`;
         }
         const it = cfg.items[st.i], a = st.answered;
         let body;
         if (cfg.list) {
-          body = `<div class="say" style="font-size:17px;font-weight:600">${it.q}</div><div class="opts">${it.o.map((o, k) => {
+          body = `<div class="say" style="font-size:17px;font-weight:600">${t(it.q)}</div><div class="opts">${it.o.map((o, k) => {
             const cls = a === null ? '' : k === it.a ? 'right' : k === a ? 'wrong' : '';
-            return `<button class="opt ${cls}" type="button" data-k="${k}" ${a !== null ? 'disabled' : ''}>${o}</button>`;
+            return `<button class="opt ${cls}" type="button" data-k="${k}" ${a !== null ? 'disabled' : ''}>${t(o)}</button>`;
           }).join('')}</div>`;
         } else {
-          body = `<div class="stmt ${a === null ? '' : a === it.a ? 'ok' : 'no'}">${it.t}</div>`;
+          body = `<div class="stmt ${a === null ? '' : a === it.a ? 'ok' : 'no'}">${t(it.t)}</div>`;
         }
-        const fb = a === null ? '' : `<div class="fb ${a === it.a ? 'ok' : 'no'}"><b>${a === it.a ? 'Richtig' : 'Nicht ganz'}${cfg.list ? '' : ': ' + cfg.labels[it.a]}</b><span>${it.why}</span></div>`;
-        return `<h2 class="q">${cfg.title}</h2>${cfg.lead && a === null ? `<p class="small">${cfg.lead}</p>` : ''}${body}${fb}${dots}`;
+        const fb = a === null ? '' : `<div class="fb ${a === it.a ? 'ok' : 'no'}"><b>${t(a === it.a ? 'Richtig' : 'Nicht ganz')}${cfg.list ? '' : ': ' + t(cfg.labels[it.a])}</b><span>${t(it.why)}</span></div>`;
+        return `<h2 class="q">${t(cfg.title)}</h2>${cfg.lead && a === null ? `<p class="small">${t(cfg.lead)}</p>` : ''}${body}${fb}${dots}`;
       },
       a: () => {
         const st = cfg.st;
         if (finished()) { setActions(nextBtn()); return; }
         const answer = k => { st.answered = k; rerender(); };
         if (st.answered !== null) {
-          setActions(`<button class="btn btn-p" type="button" id="qn">${st.i < cfg.items.length - 1 ? 'Nächste' : 'Auswertung'}${I.next}</button>`);
+          setActions(`<button class="btn btn-p" type="button" id="qn">${t(st.i < cfg.items.length - 1 ? 'Nächste' : 'Auswertung')}${I.next}</button>`);
           $('qn').onclick = () => { st.res[st.i] = st.answered === cfg.items[st.i].a; st.answered = null; if (st.i < cfg.items.length - 1) st.i++; dir = 1; render(); };
           return;
         }
@@ -540,7 +606,7 @@ body { margin: 0; }
           screen.querySelectorAll('.opt').forEach(b => b.onclick = () => answer(+b.dataset.k));
           setActions(nextBtn('Weiter', true), 'Wähle eine Antwort');
         } else {
-          setActions(`<div class="row-btn">${cfg.labels.map((l, k) => `<button class="btn ${k === cfg.labels.length - 1 ? 'btn-d' : 'btn-o'}" type="button" data-k="${k}">${l}</button>`).join('')}</div>`);
+          setActions(`<div class="row-btn">${cfg.labels.map((l, k) => `<button class="btn ${k === cfg.labels.length - 1 ? 'btn-d' : 'btn-o'}" type="button" data-k="${k}">${t(l)}</button>`).join('')}</div>`);
           actions.querySelectorAll('[data-k]').forEach(b => b.onclick = () => answer(+b.dataset.k));
         }
       },
@@ -617,41 +683,41 @@ body { margin: 0; }
             <path class="bp-draw bp-d3" pathLength="1" stroke="#f97706" stroke-width="2.5" d="M304 228H400V162H304Z"/>
             <circle class="bp-draw" pathLength="1" cx="118" cy="238" r="26" stroke="#f4f4f4" stroke-width="2.5"/>
             <circle class="bp-draw" pathLength="1" cx="226" cy="236" r="30" stroke="#f4f4f4" stroke-width="2.5"/>
-            <g class="bp-fade"><circle cx="352" cy="195" r="6" fill="#f97706"/><text x="364" y="199" fill="#f97706" font-family="Inter, sans-serif" font-size="13">Lastschwerpunkt</text></g>
+            <g class="bp-fade"><circle cx="352" cy="195" r="6" fill="#f97706"/><text x="364" y="199" fill="#f97706" font-family="Inter, sans-serif" font-size="13">${t('Lastschwerpunkt')}</text></g>
             <path class="bp-fade" stroke="#555" stroke-width="2" d="M20 266H500"/>
           </svg>
         </div>
         <div style="display:grid;gap:10px">
-          <h1 class="h1">Grundlagen &amp; Vorschriften</h1>
-          <p class="txt">Bevor du einen Stapler bewegst, klären wir, wer überhaupt fahren darf und warum. Kurz, praktisch und mit ein paar Überraschungen.</p>
+          <h1 class="h1">${t('Grundlagen &amp; Vorschriften')}</h1>
+          <p class="txt">${t('Bevor du einen Stapler bewegst, klären wir, wer überhaupt fahren darf und warum. Kurz, praktisch und mit ein paar Überraschungen.')}</p>
         </div>
-        <div class="meta"><span>${I.clock}ca. 5 Minuten</span><span>${I.users}5 Fälle</span><span>${I.doc}DGUV V68, G 308-001</span></div>`,
+        <div class="meta"><span>${I.clock}${t('ca. 5 Minuten')}</span><span>${I.users}${t('5 Fälle')}</span><span>${I.doc}DGUV V68, G 308-001</span></div>`,
       a: () => setActions(nextBtn('Starten')) },
     { r: () => `
-        <h2 class="q">Wer darf heute Stapler fahren?</h2>
-        <p class="txt">Diese fünf Personen wollen heute auf den Stapler. Entscheide bei jeder: darf sie fahren oder nicht?</p>
-        <div class="people">${cases.map(c => `<div><div class="av pic">${person(c.look)}</div><p><b>${c.name}, ${c.f[0][1]} Jahre</b><span>${c.role}</span></p></div>`).join('')}</div>
-        <p class="small">Die Regeln musst du noch nicht kennen. Nach jeder Entscheidung bekommst du die Begründung.</p>`,
+        <h2 class="q">${t('Wer darf heute Stapler fahren?')}</h2>
+        <p class="txt">${t('Diese fünf Personen wollen heute auf den Stapler. Entscheide bei jeder: darf sie fahren oder nicht?')}</p>
+        <div class="people">${cases.map(c => `<div><div class="av pic">${person(c.look)}</div><p><b>${t('{name}, {age} Jahre', { name: c.name, age: c.f[0][1] })}</b><span>${t(c.role)}</span></p></div>`).join('')}</div>
+        <p class="small">${t('Die Regeln musst du noch nicht kennen. Nach jeder Entscheidung bekommst du die Begründung.')}</p>`,
       a: () => setActions(nextBtn('Ersten Fall ansehen')) },
     ...cases.map((c, i) => ({
       r: () => `
-        <h2 class="q">Darf ${c.name} fahren?</h2>
+        <h2 class="q">${t('Darf {name} fahren?', { name: c.name })}</h2>
         <div class="card" id="card">
-          <div class="card-hd"><div class="av lg pic">${person(c.look)}</div><div><b>${c.name}</b><span>${c.role}</span></div></div>
-          <dl class="facts">${c.f.map(r => `<div><dt>${r[0]}</dt><dd>${r[1]}</dd></div>`).join('')}</dl>
-          <p class="say">${c.say}</p>
+          <div class="card-hd"><div class="av lg pic">${person(c.look)}</div><div><b>${c.name}</b><span>${t(c.role)}</span></div></div>
+          <dl class="facts">${c.f.map(r => `<div><dt>${t(r[0])}</dt><dd>${t(r[1])}</dd></div>`).join('')}</dl>
+          <p class="say">${t(c.say)}</p>
         </div>
-        <div class="swipe-tip"><span>← darf nicht</span><span>Fall ${i + 1} von ${cases.length}</span><span>darf fahren →</span></div>`,
+        <div class="swipe-tip"><span>← ${t('darf nicht')}</span><span>${t('Fall {a} von {b}', { a: i + 1, b: cases.length })}</span><span>${t('darf fahren')} →</span></div>`,
       a: () => {
         const decide = yes => {
           answers[i] = yes;
           const right = yes === c.ok;
           openSheet(right ? 'ok' : 'no', right ? 'Richtig' : 'Falsch',
-            `Deine Antwort: ${yes ? 'darf fahren' : 'darf nicht fahren'}`,
-            `<p><b>${c.name} ${c.ok ? 'darf fahren.' : 'darf nicht fahren.'}</b></p><p>${c.why}</p><p class="src">${c.src} · mehr in Thema ${c.topic}</p>`,
+            t('Deine Antwort: {a}', { a: t(yes ? 'darf fahren' : 'darf nicht fahren') }),
+            `<p><b>${t(c.ok ? '{name} darf fahren.' : '{name} darf nicht fahren.', { name: c.name })}</b></p><p>${t(c.why)}</p><p class="src">${t(c.src)} · ${t('mehr in Thema {n}', { n: c.topic })}</p>`,
             i < cases.length - 1 ? 'Nächster Fall' : 'Zur Auswertung', () => go(step + 1));
         };
-        setActions(`<div class="row-btn"><button class="btn btn-o" type="button" id="cNo">Darf nicht</button><button class="btn btn-d" type="button" id="cYes">Darf fahren</button></div>`);
+        setActions(`<div class="row-btn"><button class="btn btn-o" type="button" id="cNo">${t('Darf nicht')}</button><button class="btn btn-d" type="button" id="cYes">${t('Darf fahren')}</button></div>`);
         $('cNo').onclick = () => decide(false);
         $('cYes').onclick = () => decide(true);
         const card = $('card');
@@ -664,25 +730,25 @@ body { margin: 0; }
     })),
     { r: () => {
         const n = cases.filter((c, i) => answers[i] === c.ok).length;
-        return `<h2 class="q">Deine Einschätzung</h2>
-          <div class="res-big"><b>${n} / ${cases.length}</b><span class="small">richtig eingeschätzt</span></div>
+        return `<h2 class="q">${t('Deine Einschätzung')}</h2>
+          <div class="res-big"><b>${n} / ${cases.length}</b><span class="small">${t('richtig eingeschätzt')}</span></div>
           <div class="list">${cases.map((c, i) => {
-            const a = answers[i], mk = a === undefined ? '' : `<span class="mk ${a === c.ok ? 'ok' : 'no'}" title="${a === c.ok ? 'richtig beantwortet' : 'falsch beantwortet'}">${a === c.ok ? I.check : I.x}</span>`;
-            return `<div class="li"><div class="av pic">${person(c.look)}</div><div class="m"><b>${c.name}: ${c.ok ? 'darf fahren' : 'darf nicht fahren'}</b><span>${c.rule}</span></div>${mk}</div>`;
+            const a = answers[i], mk = a === undefined ? '' : `<span class="mk ${a === c.ok ? 'ok' : 'no'}" title="${t(a === c.ok ? 'richtig beantwortet' : 'falsch beantwortet')}">${a === c.ok ? I.check : I.x}</span>`;
+            return `<div class="li"><div class="av pic">${person(c.look)}</div><div class="m"><b>${c.name}: ${t(c.ok ? 'darf fahren' : 'darf nicht fahren')}</b><span>${t(c.rule)}</span></div>${mk}</div>`;
           }).join('')}</div>
-          <p class="small"><span class="mk ok inl">${I.check}</span> richtig beantwortet <span class="mk no inl">${I.x}</span> falsch beantwortet</p>
-          <p class="small">Am Ende von Kapitel 1 bekommst du dieselben Fälle noch einmal.</p>`;
+          <p class="small"><span class="mk ok inl">${I.check}</span> ${t('richtig beantwortet')} <span class="mk no inl">${I.x}</span> ${t('falsch beantwortet')}</p>
+          <p class="small">${t('Am Ende von Kapitel 1 bekommst du dieselben Fälle noch einmal.')}</p>`;
       } },
     ...[0, 3].map(from => ({
       r: () => `
-        <h2 class="q">${from === 0 ? 'Wie sicher bist du heute?' : 'Noch drei Ziele'}</h2>
-        <p class="small">${from === 0 ? 'Das sind deine Lernziele für Kapitel 1. 1 = unbekannt, 5 = sicher. Falsch gibt es hier nicht.' : 'Gleiche Skala: 1 = unbekannt, 5 = sicher.'}</p>
+        <h2 class="q">${t(from === 0 ? 'Wie sicher bist du heute?' : 'Noch drei Ziele')}</h2>
+        <p class="small">${t(from === 0 ? 'Das sind deine Lernziele für Kapitel 1. 1 = unbekannt, 5 = sicher. Falsch gibt es hier nicht.' : 'Gleiche Skala: 1 = unbekannt, 5 = sicher.')}</p>
         <div>${goals.slice(from, from + 3).map((g, k) => {
           const i = from + k;
-          return `<div class="goal"><div class="gt"><em class="tn">${g[0]}</em><span id="gl${i}">${g[1]}</span></div>
+          return `<div class="goal"><div class="gt"><em class="tn">${g[0]}</em><span id="gl${i}">${t(g[1])}</span></div>
             <div class="rate" role="group" aria-labelledby="gl${i}">${[1, 2, 3, 4, 5].map(v => `<button type="button" data-i="${i}" data-v="${v}" aria-pressed="${rating[i] === v}">${v}</button>`).join('')}</div></div>`;
         }).join('')}</div>
-        <div class="scale"><span>unbekannt</span><span>sicher</span></div>`,
+        <div class="scale"><span>${t('unbekannt')}</span><span>${t('sicher')}</span></div>`,
       a: () => {
         screen.querySelectorAll('.rate button').forEach(b => b.onclick = () => {
           rating[+b.dataset.i] = +b.dataset.v;
@@ -700,47 +766,47 @@ body { margin: 0; }
         }
         goals.forEach((g, i) => {
           const y = i * rh;
-          svg += `<text x="0" y="${y + 23}" font-size="12.5" font-family="Inter" fill="#374151"><tspan font-weight="700" fill="#b45309">${g[0]}</tspan>  ${g[2]}</text>`;
+          svg += `<text x="0" y="${y + 23}" font-size="12.5" font-family="Inter" fill="#374151"><tspan font-weight="700" fill="#b45309">${g[0]}</tspan>  ${t(g[2])}</text>`;
           svg += `<rect x="${x0}" y="${y + 11}" width="${w}" height="16" rx="8" fill="#f3f4f6"/>`;
           if (rating[i]) svg += `<rect x="${x0}" y="${y + 11}" width="${rating[i] / 5 * w}" height="16" rx="8" fill="${rating[i] <= 2 ? '#d1d5db' : '#f59e0b'}"/>`;
         });
         const rated = rating.map((v, i) => [v, i]).filter(x => x[0]);
-        let note = 'Du hast noch keine Ziele bewertet. Du kannst zurückgehen oder einfach weitermachen.';
+        let note = t('Du hast noch keine Ziele bewertet. Du kannst zurückgehen oder einfach weitermachen.');
         if (rated.length) {
           const lo = rated.reduce((a, b) => b[0] < a[0] ? b : a);
-          note = lo[0] >= 4 ? 'Du bringst schon viel Vorwissen mit.' : `Am meisten Neues erwartet dich in Thema ${goals[lo[1]][0]}: ${goals[lo[1]][2]}.`;
+          note = lo[0] >= 4 ? t('Du bringst schon viel Vorwissen mit.') : t('Am meisten Neues erwartet dich in Thema {n}: {name}.', { n: goals[lo[1]][0], name: t(goals[lo[1]][2]) });
         }
-        return `<h2 class="q">Dein Startprofil</h2>
-          <svg class="chart" viewBox="0 0 ${W} ${rh * 6 + 22}" role="img" aria-label="Selbsteinschätzung pro Lernziel">${svg}</svg>
+        return `<h2 class="q">${t('Dein Startprofil')}</h2>
+          <svg class="chart" viewBox="0 0 ${W} ${rh * 6 + 22}" role="img" aria-label="${t('Selbsteinschätzung pro Lernziel')}">${svg}</svg>
           <p class="note">${note}</p>
-          <p class="small">Nach dem Test zu Kapitel 1 siehst du hier deinen Vorher-nachher-Vergleich.</p>`;
+          <p class="small">${t('Nach dem Test zu Kapitel 1 siehst du hier deinen Vorher-nachher-Vergleich.')}</p>`;
       } },
     { r: () => `
-        <h2 class="q">So ist die Theorie aufgebaut</h2>
-        <p class="small">Anteil jedes Themas am Unterricht laut DGUV G 308-001. Tippe auf eine Zeile.</p>
+        <h2 class="q">${t('So ist die Theorie aufgebaut')}</h2>
+        <p class="small">${t('Anteil jedes Themas am Unterricht laut DGUV G 308-001. Tippe auf eine Zeile.')}</p>
         <div class="plan">${plan.map((p, i) => {
           const l = p[1] / 20 * 100, w = Math.max((p[2] - p[1]) / 20 * 100, 6);
-          return `<button class="pr ${p[4] ? 'k1' : ''}" type="button" data-p="${i}"><span>${p[0]}</span><span class="tr"><span class="rg" style="left:${l}%;width:${w}%"></span></span><span class="pc">${p[1] === p[2] ? p[1] : p[1] + '–' + p[2]} %</span></button>`;
+          return `<button class="pr ${p[4] ? 'k1' : ''}" type="button" data-p="${i}"><span>${t(p[0])}</span><span class="tr"><span class="rg" style="left:${l}%;width:${w}%"></span></span><span class="pc">${p[1] === p[2] ? p[1] : p[1] + '–' + p[2]} %</span></button>`;
         }).join('')}</div>`,
       a: () => {
         screen.querySelectorAll('.pr').forEach(b => b.onclick = () => {
           const p = plan[+b.dataset.p];
-          openSheet('neu', p[0], `${p[1] === p[2] ? p[1] : p[1] + '–' + p[2]} % der Theorie${p[4] ? ' · dieses Kapitel' : ''}`,
-            `<ul>${p[3].map(x => `<li>${x}</li>`).join('')}</ul><p class="src">DGUV G 308-001, Tabelle 1 und Anhang 1</p>`, 'Schließen', closeSheet);
+          openSheet('neu', p[0], t('{p} % der Theorie', { p: p[1] === p[2] ? p[1] : p[1] + '–' + p[2] }) + (p[4] ? ' · ' + t('dieses Kapitel') : ''),
+            `<ul>${p[3].map(x => `<li>${t(x)}</li>`).join('')}</ul><p class="src">${t('DGUV G 308-001, Tabelle 1 und Anhang 1')}</p>`, 'Schließen', closeSheet);
         });
         setActions(nextBtn());
       } },
     { r: () => `
-        <h2 class="q">Die Prüfung am Ende</h2>
-        <div class="big-n"><b id="eN">${examVal}</b><span>von 50 Fragen richtig</span></div>
+        <h2 class="q">${t('Die Prüfung am Ende')}</h2>
+        <div class="big-n"><b id="eN">${examVal}</b><span>${t('von 50 Fragen richtig')}</span></div>
         <div style="display:grid;gap:8px">
           <div class="meter"><i id="eBar"></i><span class="th"></span></div>
           <div class="meter-l"><span>0</span><b>70 %</b><span>50</span></div>
         </div>
-        <label class="small" for="eIn">Schiebe den Regler: Wie viele Fragen beantwortest du richtig?</label>
+        <label class="small" for="eIn">${t('Schiebe den Regler: Wie viele Fragen beantwortest du richtig?')}</label>
         <input type="range" id="eIn" min="0" max="50" value="${examVal}">
         <p class="status" id="eSt"></p>
-        <div class="grid2"><div><span>Fragen</span><b>ca. 50</b></div><div><span>Form</span><b>Multiple Choice</b></div><div><span>Zeit</span><b>max. 45 Min.</b></div><div><span>Danach</span><b>Prüfungsfahrt</b></div></div>`,
+        <div class="grid2"><div><span>${t('Fragen')}</span><b>${t('ca. 50')}</b></div><div><span>${t('Form')}</span><b>Multiple Choice</b></div><div><span>${t('Zeit')}</span><b>${t('max. 45 Min.')}</b></div><div><span>${t('Danach')}</span><b>${t('Prüfungsfahrt')}</b></div></div>`,
       a: () => {
         const upd = () => {
           examVal = +$('eIn').value;
@@ -749,17 +815,17 @@ body { margin: 0; }
           $('eBar').style.width = examVal / 50 * 100 + '%';
           $('eBar').style.background = pass ? '#22c55e' : '#f59e0b';
           $('eSt').className = 'status ' + (pass ? 'ok' : 'no');
-          $('eSt').textContent = pass ? `Bestanden mit ${Math.round(examVal / 50 * 100)} %` : `Nicht bestanden: noch ${35 - examVal} Fragen bis 70 %`;
+          $('eSt').textContent = pass ? t('Bestanden mit {p} %', { p: Math.round(examVal / 50 * 100) }) : t('Nicht bestanden: noch {n} Fragen bis 70 %', { n: 35 - examVal });
         };
         $('eIn').addEventListener('input', upd); upd();
         setActions(nextBtn());
       } },
     { r: () => `
-        <h2 class="q">Das nimmst du mit</h2>
+        <h2 class="q">${t('Das nimmst du mit')}</h2>
         <div class="sum">
-          <div><em>1</em><p><b>Führerschein reicht nicht.</b> Der Stapler lenkt hinten, die Last liegt frei vorne und er kippt anders als ein Auto.</p></div>
-          <div><em>2</em><p><b>Selbstständig fahren</b> darfst du ab 18, geeignet, ausgebildet, mit bestandener Prüfung und schriftlichem Auftrag deines jetzigen Arbeitgebers.</p></div>
-          <div><em>3</em><p><b>Drei Stufen:</b> Dieser Kurs ist Stufe 1. Zusatzausbildung für spezielle Geräte und die Einweisung im Betrieb folgen.</p></div>
+          <div><em>1</em><p>${t('<b>Führerschein reicht nicht.</b> Der Stapler lenkt hinten, die Last liegt frei vorne und er kippt anders als ein Auto.')}</p></div>
+          <div><em>2</em><p>${t('<b>Selbstständig fahren</b> darfst du ab 18, geeignet, ausgebildet, mit bestandener Prüfung und schriftlichem Auftrag deines jetzigen Arbeitgebers.')}</p></div>
+          <div><em>3</em><p>${t('<b>Drei Stufen:</b> Dieser Kurs ist Stufe 1. Zusatzausbildung für spezielle Geräte und die Einweisung im Betrieb folgen.')}</p></div>
         </div>`,
       a: () => { setActions(nextBtn('Weiter zu 1.1')); $('nx').onclick = () => { done.lz = true; openTopic('t11'); }; } },
   ];
@@ -795,9 +861,9 @@ body { margin: 0; }
     const [cx, cy] = ICR[mode];
     const tr = trace.map(p => `${OX + p[0]},${OY + p[1]}`).join(' ');
     const tf = (trace.front || []).map(p => `${OX + p[0]},${OY + p[1]}`).join(' ');
-    return `<svg viewBox="0 64 360 236" role="img" aria-label="Draufsicht: ${mode === 'stapler' ? 'Gabelstapler' : 'Auto'} biegt links ab">
+    return `<svg viewBox="0 64 360 236" role="img" aria-label="${t(mode === 'stapler' ? 'Draufsicht: Gabelstapler biegt links ab' : 'Draufsicht: Auto biegt links ab')}">
       <rect y="64" width="360" height="236" fill="#f9fafb"/>
-      <g transform="translate(${OX} ${OY})"><circle cx="${cx}" cy="${cy}" r="4" fill="#9ca3af"/><text x="${cx + 8}" y="${cy + 4}" font-family="Inter" font-size="11" fill="#9ca3af">Drehpunkt</text></g>
+      <g transform="translate(${OX} ${OY})"><circle cx="${cx}" cy="${cy}" r="4" fill="#9ca3af"/><text x="${cx + 8}" y="${cy + 4}" font-family="Inter" font-size="11" fill="#9ca3af">${t('Drehpunkt')}</text></g>
       ${tf ? `<polyline points="${tf}" fill="none" stroke="#9ca3af" stroke-width="2" stroke-dasharray="4 4"/>` : ''}
       ${tr ? `<polyline points="${tr}" fill="none" stroke="#dc2626" stroke-width="2.5"/>` : ''}
       ${peds || ''}
@@ -839,7 +905,7 @@ body { margin: 0; }
     const col = state === 'tip' ? '#dc2626' : state === 'warn' ? '#d97706' : '#16a34a';
     const cls = state === 'tip' ? (prev === 'tip' ? 'tipped' : 'tipping') : '';
     const style = `transform-origin:${gx}px ${gy}px;transform-box:view-box;${state === 'warn' ? 'transform:rotate(2.5deg)' : ''}`;
-    return `<svg viewBox="0 14 420 222" role="img" aria-label="Seitenansicht Stapler mit Last">
+    return `<svg viewBox="0 14 420 222" role="img" aria-label="${t('Seitenansicht Stapler mit Last')}">
       <rect y="14" width="420" height="222" fill="#f9fafb"/>
       <path d="M0 ${gy + 1}H420" stroke="#d1d5db" stroke-width="2"/>
       <g class="${cls}" style="${style}">
@@ -849,16 +915,16 @@ body { margin: 0; }
         <rect x="${fork - 12}" y="24" width="9" height="${gy - 30}" fill="#363636"/>
         <rect x="${fork - 4}" y="${gy - 14}" width="${Math.max(bw, 60) + 6}" height="6" fill="#363636"/>
         <rect x="${fork}" y="${gy - 14 - bh}" width="${bw}" height="${bh}" rx="3" fill="#fde68a" stroke="#b45309" stroke-width="1.5"/>
-        <text x="${fork + bw / 2}" y="${gy - 14 - bh / 2 - 4}" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="#78350f">${kg.toLocaleString('de-DE')} kg</text>
+        <text x="${fork + bw / 2}" y="${gy - 14 - bh / 2 - 4}" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="#78350f">${num(kg)} kg</text>
         <circle cx="${lc}" cy="${gy - 14 - bh / 2 + 10}" r="4.5" fill="${col}"/>
         <circle cx="62" cy="${gy - 16}" r="16" fill="#111827"/><circle cx="62" cy="${gy - 16}" r="6" fill="#6b7280"/>
         <circle cx="${gx}" cy="${gy - 20}" r="20" fill="#111827"/><circle cx="${gx}" cy="${gy - 20}" r="7" fill="#6b7280"/>
       </g>
       <g font-family="Inter" font-size="11" fill="#6b7280">
         <path d="M${gx} ${gy + 8}V${gy + 22}M${lc} ${gy + 8}V${gy + 22}M${gx} ${gy + 15}H${lc}" stroke="#6b7280" stroke-width="1"/>
-        <text x="${lc + 6}" y="${gy + 19}">Hebelarm ${(A_MM + c).toLocaleString('de-DE')} mm</text>
+        <text x="${lc + 6}" y="${gy + 19}">${t('Hebelarm {n} mm', { n: num(A_MM + c) })}</text>
         <path d="M${gx} ${gy}l-7 10h14z" fill="${col}"/>
-        <text x="${gx}" y="${gy + 33}" text-anchor="middle" fill="${col}" font-weight="600">Kippkante</text>
+        <text x="${gx}" y="${gy + 33}" text-anchor="middle" fill="${col}" font-weight="600">${t('Kippkante')}</text>
       </g>
     </svg>`;
   }
@@ -867,29 +933,29 @@ body { margin: 0; }
     const X = c => x0 + (c - 400) / 800 * w, Y = q => y0 + h - q / 3000 * h;
     const pts = []; for (let c = 400; c <= 1200; c += 20) pts.push(`${X(c)},${Y(qzul(c))}`);
     let s = `<rect width="${W}" height="${H}" fill="#fff"/>`;
-    [0, 1000, 2000, 3000].forEach(q => s += `<line x1="${x0}" x2="${x0 + w}" y1="${Y(q)}" y2="${Y(q)}" stroke="#f3f4f6"/><text x="${x0 - 6}" y="${Y(q) + 4}" text-anchor="end" font-size="10.5" fill="#9ca3af" font-family="Inter">${q.toLocaleString('de-DE')}</text>`);
+    [0, 1000, 2000, 3000].forEach(q => s += `<line x1="${x0}" x2="${x0 + w}" y1="${Y(q)}" y2="${Y(q)}" stroke="#f3f4f6"/><text x="${x0 - 6}" y="${Y(q) + 4}" text-anchor="end" font-size="10.5" fill="#9ca3af" font-family="Inter">${num(q)}</text>`);
     [400, 600, 800, 1000, 1200].forEach(c => s += `<text x="${X(c)}" y="${y0 + h + 16}" text-anchor="middle" font-size="10.5" fill="#9ca3af" font-family="Inter">${c}</text>`);
-    s += `<text x="${x0 + w}" y="${H - 2}" text-anchor="end" font-size="10.5" fill="#6b7280" font-family="Inter">Lastschwerpunkt c in mm</text>`;
-    s += `<text x="${x0}" y="${y0 - 4}" font-size="10.5" fill="#6b7280" font-family="Inter">kg zulässig</text>`;
+    s += `<text x="${x0 + w}" y="${H - 2}" text-anchor="end" font-size="10.5" fill="#6b7280" font-family="Inter">${t('Lastschwerpunkt c in mm')}</text>`;
+    s += `<text x="${x0}" y="${y0 - 4}" font-size="10.5" fill="#6b7280" font-family="Inter">${t('kg zulässig')}</text>`;
     s += `<polygon points="${X(400)},${Y(0)} ${pts.join(' ')} ${X(1200)},${Y(0)}" fill="#f0fdf4"/>`;
     s += `<polyline points="${pts.join(' ')}" fill="none" stroke="#16a34a" stroke-width="2.5"/>`;
-    s += `<circle cx="${X(500)}" cy="${Y(2500)}" r="3.5" fill="#16a34a"/><text x="${X(500) + 6}" y="${Y(2500) - 7}" font-size="10.5" fill="#16a34a" font-family="Inter">2.500 kg bei 500 mm</text>`;
+    s += `<circle cx="${X(500)}" cy="${Y(2500)}" r="3.5" fill="#16a34a"/><text x="${X(500) + 6}" y="${Y(2500) - 7}" font-size="10.5" fill="#16a34a" font-family="Inter">${t('{q} kg bei 500 mm', { q: num(2500) })}</text>`;
     if (point) {
       const ok = point[1] <= qzul(point[0]);
       s += `<line x1="${X(point[0])}" x2="${X(point[0])}" y1="${Y(0)}" y2="${Y(point[1])}" stroke="#9ca3af" stroke-dasharray="3 3"/>`;
       s += `<circle cx="${X(point[0])}" cy="${Y(qzul(point[0]))}" r="4" fill="#16a34a"/>`;
       s += `<circle cx="${X(point[0])}" cy="${Y(point[1])}" r="6" fill="${ok ? '#16a34a' : '#dc2626'}"/>`;
-      s += `<text x="${X(point[0]) + 10}" y="${Y(point[1]) - 6}" font-size="11" font-weight="600" fill="${ok ? '#16a34a' : '#dc2626'}" font-family="Inter">deine Palette</text>`;
+      s += `<text x="${X(point[0]) + 10}" y="${Y(point[1]) - 6}" font-size="11" font-weight="600" fill="${ok ? '#16a34a' : '#dc2626'}" font-family="Inter">${t('deine Palette')}</text>`;
     }
-    return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Lastschwerpunktdiagramm des Beispielstaplers">${s}</svg>`;
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${t('Lastschwerpunktdiagramm des Beispielstaplers')}">${s}</svg>`;
   }
   /* side view: driving position (lift height + mast tilt) */
   function posSVG(hcm, tilt) {
     const gy = 200, mx = 214, h = Math.min(hcm, 200) * .62;
     const okH = hcm > 0 && hcm <= 30, okT = tilt === 'back';
     const deg = tilt === 'fwd' ? 4 : tilt === 'back' ? -5 : 0;
-    return `<div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 12px 0"><span class="pill ${okH ? 'ok' : 'no'}">Höhe: ${hcm === 0 ? 'Gabel schleift' : okH ? 'bodenfrei' : 'zu hoch'}</span><span class="pill ${okT ? 'ok' : 'no'}">Mast: ${tilt === 'fwd' ? 'vorgeneigt' : tilt === 'back' ? 'zurückgeneigt' : 'senkrecht'}</span></div>
-    <svg viewBox="0 10 400 220" role="img" aria-label="Seitenansicht: Hubhöhe und Neigung">
+    return `<div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 12px 0"><span class="pill ${okH ? 'ok' : 'no'}">${t('Höhe')}: ${t(hcm === 0 ? 'Gabel schleift' : okH ? 'bodenfrei' : 'zu hoch')}</span><span class="pill ${okT ? 'ok' : 'no'}">${t('Mast')}: ${t(tilt === 'fwd' ? 'vorgeneigt' : tilt === 'back' ? 'zurückgeneigt' : 'senkrecht')}</span></div>
+    <svg viewBox="0 10 400 220" role="img" aria-label="${t('Seitenansicht: Hubhöhe und Neigung')}">
       <rect y="10" width="400" height="220" fill="#f9fafb"/>
       <path d="M0 ${gy + 1}H400" stroke="#d1d5db" stroke-width="2"/>
       <path d="M40 180V140Q40 128 52 126L86 120V90H166V180Z" fill="#f97706"/>
@@ -949,9 +1015,9 @@ body { margin: 0; }
 
   /* learning cards: read first, then practise */
   const learn = (title, lead, points, merke, src, extra = '') => ({
-    r: () => `<h2 class="q">${title}</h2><div class="learn"><p class="lead">${lead}</p>${extra}
-      <ul class="kp">${points.map((p, i) => `<li><span class="n">${i + 1}</span><span>${p}</span></li>`).join('')}</ul>
-      ${merke ? `<div class="merke"><span><b>Merke</b>${merke}</span></div>` : ''}${src ? `<p class="src">Quelle: ${src}</p>` : ''}</div>`,
+    r: () => `<h2 class="q">${t(title)}</h2><div class="learn"><p class="lead">${t(lead)}</p>${typeof extra === 'function' ? extra() : extra}
+      <ul class="kp">${points.map((p, i) => `<li><span class="n">${i + 1}</span><span>${t(p)}</span></li>`).join('')}</ul>
+      ${merke ? `<div class="merke"><span><b>${t('Merke')}</b>${t(merke)}</span></div>` : ''}${src ? `<p class="src">${t('Quelle')}: ${t(src)}</p>` : ''}</div>`,
   });
   const L1 = learn('Warum die Ausbildung Pflicht ist',
     'Ein Gabelstapler sieht einfach aus, verhält sich aber ganz anders als ein Auto. Wer ohne Ausbildung fährt, bringt sich und andere in Gefahr.',
@@ -975,7 +1041,7 @@ body { margin: 0; }
      '<b>Nennlast</b> gilt nur bei einem bestimmten Lastschwerpunkt, oft 500 mm. Liegt er weiter vorne, darfst du weniger heben: siehe Lastschwerpunktdiagramm am Stapler.'],
     'Nicht nur das Gewicht zählt, sondern auch, wo der Schwerpunkt der Last liegt.',
     'DGUV G 308-001, Anhang 1 Nr. 5 Standsicherheit',
-    '<div class="formula">Lastmoment = <span>Gewicht der Last</span> × <span>Abstand zur Vorderachse</span></div>');
+    () => `<div class="formula">${t('Lastmoment')} = <span>${t('Gewicht der Last')}</span> × <span>${t('Abstand zur Vorderachse')}</span></div>`);
   const L4 = learn('Die Last richtig transportieren',
     'Wie du die Last hältst, entscheidet mit darüber, ob der Stapler in Kurven und beim Bremsen stabil bleibt.',
     ['<b>Nah am Gabelrücken</b> aufnehmen. So bleibt der Hebelarm kurz.',
@@ -1008,20 +1074,20 @@ body { margin: 0; }
 
   const t11Steps = [
     { r: () => `
-        <h2 class="q">Du fährst seit Jahren Auto. Reicht das für den Stapler?</h2>
+        <h2 class="q">${t('Du fährst seit Jahren Auto. Reicht das für den Stapler?')}</h2>
         <div class="vs">
           <figure>
-            <svg viewBox="0 0 170 110" role="img" aria-label="Auto, Seitenansicht">
+            <svg viewBox="0 0 170 110" role="img" aria-label="${t('Auto, Seitenansicht')}">
               <path d="M8 84V68q0-8 8-9l22-4 18-20q4-4 10-4h40q6 0 10 5l16 19 20 3q8 1 8 9v17z" fill="#6b7280"/>
               <path d="M62 37h28v20H45zM96 37h14q4 0 7 4l13 16H96z" fill="#dbeafe"/>
               <circle cx="40" cy="86" r="15" fill="#111827"/><circle cx="40" cy="86" r="6" fill="#9ca3af"/>
               <circle cx="132" cy="86" r="15" fill="#111827"/><circle cx="132" cy="86" r="6" fill="#9ca3af"/>
               <path d="M0 102H170" stroke="#d1d5db" stroke-width="2"/>
             </svg>
-            <figcaption><b>Auto</b><span class="tag-ok"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Führerschein vorhanden</span></figcaption>
+            <figcaption><b>${t('Auto')}</b><span class="tag-ok"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${t('Führerschein vorhanden')}</span></figcaption>
           </figure>
                     <figure>
-            <svg viewBox="0 0 170 110" role="img" aria-label="Gabelstapler, Seitenansicht">
+            <svg viewBox="0 0 170 110" role="img" aria-label="${t('Gabelstapler, Seitenansicht')}">
               <path d="M10 88V66q0-6 6-7l18-3V44h50v44z" fill="#f97706"/>
               <rect x="10" y="58" width="20" height="30" rx="3" fill="#c25c00"/>
               <path d="M44 44V14h36v30M40 14h44" stroke="#212121" stroke-width="3.5" fill="none"/>
@@ -1032,35 +1098,35 @@ body { margin: 0; }
               <circle cx="80" cy="88" r="13" fill="#111827"/><circle cx="80" cy="88" r="5" fill="#9ca3af"/>
               <path d="M0 102H170" stroke="#d1d5db" stroke-width="2"/>
             </svg>
-            <figcaption><b>Gabelstapler</b><span class="tag-qt"><i>?</i>Darfst du ihn damit fahren?</span></figcaption>
+            <figcaption><b>${t('Gabelstapler')}</b><span class="tag-qt"><i>?</i>${t('Darfst du ihn damit fahren?')}</span></figcaption>
           </figure>
         </div>
-        <p class="txt">Bevor wir starten: Was meinst du?</p>`,
+        <p class="txt">${t('Bevor wir starten: Was meinst du?')}</p>`,
       a: () => {
         const ans = yes => openSheet(yes ? 'no' : 'ok', yes ? 'Leider nein' : 'Richtig', 'DGUV Grundsatz 308-001',
-          `<blockquote>„Wer einen Kraftfahrzeug-Führerschein besitzt, ist nicht allein deshalb schon befähigt, Gabelstapler zu führen.“</blockquote><p>In den nächsten Minuten erlebst du selbst, warum.</p><p class="src">DGUV G 308-001, Vorbemerkung</p>`,
+          `<blockquote>${t('„Wer einen Kraftfahrzeug-Führerschein besitzt, ist nicht allein deshalb schon befähigt, Gabelstapler zu führen.“')}</blockquote><p>${t('In den nächsten Minuten erlebst du selbst, warum.')}</p><p class="src">${t('DGUV G 308-001, Vorbemerkung')}</p>`,
           'Los geht’s', () => go(step + 1));
-        setActions(`<div class="row-btn"><button class="btn btn-o" type="button" id="a1">Ja, reicht</button><button class="btn btn-d" type="button" id="a2">Nein</button></div>`);
+        setActions(`<div class="row-btn"><button class="btn btn-o" type="button" id="a1">${t('Ja, reicht')}</button><button class="btn btn-d" type="button" id="a2">${t('Nein')}</button></div>`);
         $('a1').onclick = () => ans(true); $('a2').onclick = () => ans(false);
       } },
     { r: () => `
-        <h2 class="q">Drei Dinge machen den Stapler anders</h2>
+        <h2 class="q">${t('Drei Dinge machen den Stapler anders')}</h2>
         <div class="diff">
-          <div><span class="di">${I.steer}</span><p><b>Er lenkt hinten</b><span>Das Heck schwenkt in Kurven nach außen.</span></p></div>
-          <div><span class="di">${I.lever}</span><p><b>Die Last liegt frei vorne</b><span>Stapler und Last funktionieren wie eine Wippe.</span></p></div>
-          <div><span class="di">${I.box}</span><p><b>Die Last bewegt sich</b><span>Sie wird gehoben, gesenkt und geneigt.</span></p></div>
+          <div><span class="di">${I.steer}</span><p><b>${t('Er lenkt hinten')}</b><span>${t('Das Heck schwenkt in Kurven nach außen.')}</span></p></div>
+          <div><span class="di">${I.lever}</span><p><b>${t('Die Last liegt frei vorne')}</b><span>${t('Stapler und Last funktionieren wie eine Wippe.')}</span></p></div>
+          <div><span class="di">${I.box}</span><p><b>${t('Die Last bewegt sich')}</b><span>${t('Sie wird gehoben, gesenkt und geneigt.')}</span></p></div>
         </div>
-        <p class="small">Alle drei probierst du jetzt selbst aus.</p>`,
+        <p class="small">${t('Alle drei probierst du jetzt selbst aus.')}</p>`,
       a: () => setActions(nextBtn('Ausprobieren')) },
     { r: () => `
-        <h2 class="q">Lenkung: Auto und Stapler im Vergleich</h2>
-        <div class="toggle" role="group" aria-label="Fahrzeug wählen"><button type="button" data-m="auto" aria-pressed="${sim.mode === 'auto'}">Auto</button><button type="button" data-m="stapler" aria-pressed="${sim.mode === 'stapler'}">Gabelstapler</button></div>
+        <h2 class="q">${t('Lenkung: Auto und Stapler im Vergleich')}</h2>
+        <div class="toggle" role="group" aria-label="${t('Fahrzeug wählen')}"><button type="button" data-m="auto" aria-pressed="${sim.mode === 'auto'}">${t('Auto')}</button><button type="button" data-m="stapler" aria-pressed="${sim.mode === 'stapler'}">${t('Gabelstapler')}</button></div>
         <div class="sim" id="turn">${turnFrame(sim.mode, 0, [], '')}</div>
-        <div class="legend"><span><i style="background:#dc2626"></i>Weg der hinteren Ecke</span><span><i style="background:#9ca3af"></i>Weg der vorderen Ecke</span></div>`,
+        <div class="legend"><span><i style="background:#dc2626"></i>${t('Weg der hinteren Ecke')}</span><span><i style="background:#9ca3af"></i>${t('Weg der vorderen Ecke')}</span></div>`,
       a: () => {
         screen.querySelectorAll('.toggle button').forEach(b => b.onclick = () => { sim.mode = b.dataset.m; rerender(); });
         const both = () => sim.modeSeen.stapler && sim.modeSeen.auto;
-        gated(both(), 'Lass beide Fahrzeuge abbiegen', `<button class="btn btn-d" type="button" id="drv">${sim.mode === 'stapler' ? 'Stapler' : 'Auto'} links abbiegen lassen</button>`);
+        gated(both(), 'Lass beide Fahrzeuge abbiegen', `<button class="btn btn-d" type="button" id="drv">${t(sim.mode === 'stapler' ? 'Stapler links abbiegen lassen' : 'Auto links abbiegen lassen')}</button>`);
         $('drv').onclick = async () => {
           $('drv').disabled = true;
           await animateTurn($('turn'), sim.mode);
@@ -1071,36 +1137,36 @@ body { margin: 0; }
         };
       } },
     { r: () => `
-        <h2 class="q">Wo wird es für deinen Kollegen gefährlich?</h2>
-        <p class="small">Der Stapler biegt gleich links ab. Wer steht in Gefahr?</p>
+        <h2 class="q">${t('Wo wird es für deinen Kollegen gefährlich?')}</h2>
+        <p class="small">${t('Der Stapler biegt gleich links ab. Wer steht in Gefahr?')}</p>
         <div class="sim" id="peds">${turnFrame('stapler', 0, [], Object.keys(PEDS).map(id => pedSVG(id, PEDS[id], '')).join(''))}</div>`,
       a: () => {
-        setActions(`<div class="row-btn">${['A', 'B', 'C'].map(id => `<button class="btn btn-o" type="button" data-p="${id}">Person ${id}</button>`).join('')}</div>`);
+        setActions(`<div class="row-btn">${['A', 'B', 'C'].map(id => `<button class="btn btn-o" type="button" data-p="${id}">${t('Person {id}', { id })}</button>`).join('')}</div>`);
         actions.querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
           sim.pedPick = b.dataset.p;
           actions.querySelectorAll('[data-p]').forEach(x => x.disabled = true);
           const hit = await animateTurn($('peds'), 'stapler', { peds: true });
           const right = sim.pedPick === hit;
-          setTimeout(() => openSheet(right ? 'ok' : 'no', right ? 'Richtig erkannt' : `Gefahr droht Person ${hit}`, `Deine Wahl: Person ${sim.pedPick}`,
-            `<p>Person ${hit} steht neben dem Heck. Weil der Stapler hinten lenkt, schwenkt das Heck beim Abbiegen nach außen und erfasst sie. Ein Autofahrer rechnet damit nicht.</p><p>Deshalb: Personen im Fahrbereich im Blick behalten und vor dem Lenken auch nach hinten schauen.</p><p class="src">DGUV G 308-001, Vorbemerkung und Anhang 1 Nr. 3</p>`,
+          setTimeout(() => openSheet(right ? 'ok' : 'no', right ? 'Richtig erkannt' : t('Gefahr droht Person {id}', { id: hit }), t('Deine Wahl: Person {id}', { id: sim.pedPick }),
+            `<p>${t('Person {id} steht neben dem Heck. Weil der Stapler hinten lenkt, schwenkt das Heck beim Abbiegen nach außen und erfasst sie. Ein Autofahrer rechnet damit nicht.', { id: hit })}</p><p>${t('Deshalb: Personen im Fahrbereich im Blick behalten und vor dem Lenken auch nach hinten schauen.')}</p><p class="src">${t('DGUV G 308-001, Vorbemerkung und Anhang 1 Nr. 3')}</p>`,
             'Weiter', () => go(step + 1)), 500);
         });
       } },
     { r: () => `
-        <h2 class="q">Im echten Leben</h2>
-        <div class="video"><span class="tag">Video-Platz</span><div class="pl">${I.play}</div></div>
-        <div class="todo"><b>Optional: kurze Realaufnahme</b><span>Ein Stapler biegt auf eurem Übungsplatz eng ab, gefilmt von oben oder von der Seite. Pylone markieren den Weg des Hecks.</span><span>Länge: 15 bis 30 Sekunden</span></div>` },
+        <h2 class="q">${t('Im echten Leben')}</h2>
+        <div class="video"><span class="tag">${t('Video-Platz')}</span><div class="pl">${I.play}</div></div>
+        <div class="todo"><b>${t('Optional: kurze Realaufnahme')}</b><span>${t('Ein Stapler biegt auf eurem Übungsplatz eng ab, gefilmt von oben oder von der Seite. Pylone markieren den Weg des Hecks.')}</span><span>${t('Länge: {l}', { l: t('15 bis 30 Sekunden') })}</span></div>` },
     { r: () => {
         const { kg, c } = sim.lever, M = kg * (A_MM + c), state = leverState();
-        return `<h2 class="q">Die Wippe: Wann kippt der Stapler?</h2>
-          <div class="mission ${sim.leverSeen ? 'done' : ''}" id="mission">${sim.leverSeen ? 'Geschafft: Zu viel Last zu weit vorne, er kippt.' : 'Aufgabe: Bring den Stapler zum Kippen.'}</div>
-          <div class="presets"><button type="button" data-kg="1000" data-c="500">Normale Palette</button><button type="button" data-kg="1800" data-c="900">Lange Kiste</button><button type="button" data-kg="3000" data-c="900">Zu schwer, zu weit vorne</button></div>
+        return `<h2 class="q">${t('Die Wippe: Wann kippt der Stapler?')}</h2>
+          <div class="mission ${sim.leverSeen ? 'done' : ''}" id="mission">${t(sim.leverSeen ? 'Geschafft: Zu viel Last zu weit vorne, er kippt.' : 'Aufgabe: Bring den Stapler zum Kippen.')}</div>
+          <div class="presets"><button type="button" data-kg="1000" data-c="500">${t('Normale Palette')}</button><button type="button" data-kg="1800" data-c="900">${t('Lange Kiste')}</button><button type="button" data-kg="3000" data-c="900">${t('Zu schwer, zu weit vorne')}</button></div>
           <div class="sim" id="lever">${leverSVG(kg, c, state, state)}</div>
           <div class="load-bar"><div class="lb"><i id="lvBar" style="width:${Math.min(100, M / MS * 100)}%;background:${state === 'ok' ? '#22c55e' : state === 'warn' ? '#f59e0b' : '#dc2626'}"></i></div>
             <div class="lb-l"><span class="status ${state === 'ok' ? 'ok' : state === 'warn' ? 'warn' : 'no'}" id="lvSt"></span><span class="small" id="lvPct"></span></div></div>
-          <div class="slider"><div class="sl-top"><label for="lvKg">Gewicht der Last</label><b id="lvKgV">${kg.toLocaleString('de-DE')} kg</b></div><input type="range" id="lvKg" min="200" max="3000" step="100" value="${kg}"></div>
-          <div class="slider"><div class="sl-top"><label for="lvC">Lastschwerpunkt c</label><b id="lvCV">${c} mm</b></div><input type="range" id="lvC" min="400" max="1200" step="50" value="${c}"></div>
-          <p class="small">Beispielstapler 2.500 kg bei 500 mm, vereinfacht.</p>`;
+          <div class="slider"><div class="sl-top"><label for="lvKg">${t('Gewicht der Last')}</label><b id="lvKgV">${num(kg)} kg</b></div><input type="range" id="lvKg" min="200" max="3000" step="100" value="${kg}"></div>
+          <div class="slider"><div class="sl-top"><label for="lvC">${t('Lastschwerpunkt c')}</label><b id="lvCV">${c} mm</b></div><input type="range" id="lvC" min="400" max="1200" step="50" value="${c}"></div>
+          <p class="small">${t('Beispielstapler {q} kg bei 500 mm, vereinfacht.', { q: num(2500) })}</p>`;
       },
       a: () => {
         const upd = () => {
@@ -1111,13 +1177,13 @@ body { margin: 0; }
           $('lvBar').style.width = Math.min(100, M / MS * 100) + '%';
           $('lvBar').style.background = state === 'ok' ? '#22c55e' : state === 'warn' ? '#f59e0b' : '#dc2626';
           $('lvSt').className = 'status ' + (state === 'ok' ? 'ok' : state === 'warn' ? 'warn' : 'no');
-          $('lvSt').textContent = state === 'ok' ? 'Zulässig' : state === 'warn' ? 'Überlastet: Hinterräder werden leicht' : 'Der Stapler kippt nach vorne';
-          $('lvPct').textContent = `Lastmoment ${Math.round(M / MN * 100)} %`;
-          $('lvKgV').textContent = kg.toLocaleString('de-DE') + ' kg'; $('lvCV').textContent = c + ' mm';
+          $('lvSt').textContent = t(state === 'ok' ? 'Zulässig' : state === 'warn' ? 'Überlastet: Hinterräder werden leicht' : 'Der Stapler kippt nach vorne');
+          $('lvPct').textContent = t('Lastmoment {p} %', { p: Math.round(M / MN * 100) });
+          $('lvKgV').textContent = num(kg) + ' kg'; $('lvCV').textContent = c + ' mm';
           if (state === 'tip' && !sim.leverSeen) {
             sim.leverSeen = true;
             const m = $('mission'); m.classList.add('done');
-            m.textContent = 'Geschafft: Zu viel Last zu weit vorne, er kippt.';
+            m.textContent = t('Geschafft: Zu viel Last zu weit vorne, er kippt.');
           }
         };
         screen.firstElementChild.classList.add('lever-step');
@@ -1127,78 +1193,76 @@ body { margin: 0; }
         upd();
       } },
     { r: () => `
-        <h2 class="q">Darfst du diese Palette heben?</h2>
-        <div class="grid2"><div><span>Deine Palette</span><b>1.800 kg</b></div><div><span>Lastschwerpunkt</span><b>900 mm</b></div></div>
-        <p class="small">Eine lange Kiste, der Schwerpunkt liegt weit vorne. Dein Stapler hat 2.500 kg Nennlast. Grün ist der zulässige Bereich.</p>
+        <h2 class="q">${t('Darfst du diese Palette heben?')}</h2>
+        <div class="grid2"><div><span>${t('Deine Palette')}</span><b>${num(1800)} kg</b></div><div><span>${t('Lastschwerpunkt')}</span><b>900 mm</b></div></div>
+        <p class="small">${t('Eine lange Kiste, der Schwerpunkt liegt weit vorne. Dein Stapler hat {q} kg Nennlast. Grün ist der zulässige Bereich.', { q: num(2500) })}</p>
         ${capacityChart(sim.capAns !== null ? [900, 1800] : null)}`,
       a: () => {
         if (sim.capAns !== null) { setActions(nextBtn()); return; }
         const ans = yes => {
           sim.capAns = yes; rerender();
           openSheet(!yes ? 'ok' : 'no', !yes ? 'Richtig, nicht zulässig' : 'Nein, das ist zu viel', 'Lastschwerpunktdiagramm',
-            `<p>Bei 900 mm Lastschwerpunkt darf dieser Stapler nur rund <b>${(Math.floor(qzul(900) / 10) * 10).toLocaleString('de-DE')} kg</b> heben. 1.800 kg sind zu viel, obwohl die Nennlast 2.500 kg beträgt.</p><p>Die zulässigen Werte stehen am Stapler im Lastschwerpunktdiagramm. Als Autofahrer musst du so etwas nie beachten.</p><p class="src">DGUV G 308-001, Anhang 1 Nr. 5 Standsicherheit</p>`,
+            `<p>${t('Bei 900 mm Lastschwerpunkt darf dieser Stapler nur rund <b>{z} kg</b> heben. {a} kg sind zu viel, obwohl die Nennlast {q} kg beträgt.', { z: num(Math.floor(qzul(900) / 10) * 10), a: num(1800), q: num(2500) })}</p><p>${t('Die zulässigen Werte stehen am Stapler im Lastschwerpunktdiagramm. Als Autofahrer musst du so etwas nie beachten.')}</p><p class="src">${t('DGUV G 308-001, Anhang 1 Nr. 5 Standsicherheit')}</p>`,
             'Weiter', () => go(step + 1));
         };
-        setActions(`<div class="row-btn"><button class="btn btn-o" type="button" id="c1">Ja, darf ich</button><button class="btn btn-d" type="button" id="c2">Nein</button></div>`);
+        setActions(`<div class="row-btn"><button class="btn btn-o" type="button" id="c1">${t('Ja, darf ich')}</button><button class="btn btn-d" type="button" id="c2">${t('Nein')}</button></div>`);
         $('c1').onclick = () => ans(true); $('c2').onclick = () => ans(false);
       } },
     { r: () => `
-        <h2 class="q">Stell die richtige Fahrstellung ein</h2>
+        <h2 class="q">${t('Stell die richtige Fahrstellung ein')}</h2>
         <div class="sim" id="pos">${posSVG(sim.pos.h, sim.pos.tilt)}</div>
-        <div class="slider"><div class="sl-top"><label for="ph">Hubhöhe</label><b id="phV">${sim.pos.h} cm</b></div><input type="range" id="ph" min="0" max="200" step="10" value="${sim.pos.h}"></div>
-        <div class="toggle" role="group" aria-label="Neigung des Hubmasts">${[['fwd', 'vorgeneigt'], ['up', 'senkrecht'], ['back', 'zurückgeneigt']].map(([k, l]) => `<button type="button" data-t="${k}" aria-pressed="${sim.pos.tilt === k}">${l}</button>`).join('')}</div>`,
+        <div class="slider"><div class="sl-top"><label for="ph">${t('Hubhöhe')}</label><b id="phV">${sim.pos.h} cm</b></div><input type="range" id="ph" min="0" max="200" step="10" value="${sim.pos.h}"></div>
+        <div class="toggle" role="group" aria-label="${t('Neigung des Hubmasts')}">${[['fwd', 'vorgeneigt'], ['up', 'senkrecht'], ['back', 'zurückgeneigt']].map(([k, l]) => `<button type="button" data-tl="${k}" aria-pressed="${sim.pos.tilt === k}">${t(l)}</button>`).join('')}</div>`,
       a: () => {
         const upd = () => { $('pos').innerHTML = posSVG(sim.pos.h, sim.pos.tilt); $('phV').textContent = sim.pos.h + ' cm'; };
         $('ph').addEventListener('input', e => { sim.pos.h = +e.target.value; upd(); });
-        screen.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { sim.pos.tilt = b.dataset.t; screen.querySelectorAll('[data-t]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); upd(); });
+        screen.querySelectorAll('[data-tl]').forEach(b => b.onclick = () => { sim.pos.tilt = b.dataset.tl; screen.querySelectorAll('[data-tl]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); upd(); });
         if (sim.posDone) { setActions(nextBtn()); return; }
-        setActions(`<button class="btn btn-d" type="button" id="drive">Losfahren</button>`);
+        setActions(`<button class="btn btn-d" type="button" id="drive">${t('Losfahren')}</button>`);
         $('drive').onclick = () => {
           const okH = sim.pos.h > 0 && sim.pos.h <= 30, okT = sim.pos.tilt === 'back';
           if (okH && okT) {
             sim.posDone = true;
             openSheet('ok', 'Gute Fahrt', 'Richtige Fahrstellung',
-              `<ul><li>Last nur bodenfrei angehoben</li><li>Hubmast zurückgeneigt</li></ul><p>So liegt der Schwerpunkt tief und die Last liegt sicher an der Gabel an.</p><p class="src">DGUV G 308-001, Anhang 1 Nr. 8 Umgang mit Last</p>`,
+              `<ul><li>${t('Last nur bodenfrei angehoben')}</li><li>${t('Hubmast zurückgeneigt')}</li></ul><p>${t('So liegt der Schwerpunkt tief und die Last liegt sicher an der Gabel an.')}</p><p class="src">${t('DGUV G 308-001, Anhang 1 Nr. 8 Umgang mit Last')}</p>`,
               'Weiter', () => go(step + 1));
           } else {
             const errs = [];
             if (sim.pos.h === 0) errs.push('Die Gabel schleift am Boden. Hebe die Last an, bis sie bodenfrei ist.');
             else if (!okH) errs.push('Die Last ist zu hoch. Ein hoher Schwerpunkt bedeutet Kippgefahr in Kurven und beim Bremsen, dazu schlechte Sicht.');
             if (!okT) errs.push(sim.pos.tilt === 'fwd' ? 'Der Mast ist vorgeneigt. Die Last kann beim Bremsen von der Gabel rutschen.' : 'Neige den Mast zurück, damit die Last sicher an der Gabel anliegt.');
+            errs.forEach((e, i) => errs[i] = t(e));
             openSheet('no', 'So noch nicht', 'Korrigiere die Fahrstellung', `<ul>${errs.map(e => `<li>${e}</li>`).join('')}</ul>`, 'Nochmal versuchen', closeSheet);
           }
         };
       } },
     q11a,
     { r: () => {
-        const parts = ['Der Unternehmer darf mit dem selbstständigen Steuern von Flurförderzeugen mit Fahrersitz oder Fahrerstand nur Personen beauftragen, die mindestens', 'Jahre alt sind, für diese Tätigkeit', 'und', 'sind und ihre', 'nachgewiesen haben. Der Auftrag muss', 'erteilt werden.'];
-        let html = '';
-        parts.forEach((p, i) => {
-          html += p + ' ';
-          if (i < 5) {
-            const v = sim.gap[i];
+        /* blanks are {1}..{5} in the (translated) sentence, filled in this order */
+        const html = t('Der Unternehmer darf mit dem selbstständigen Steuern von Flurförderzeugen mit Fahrersitz oder Fahrerstand nur Personen beauftragen, die mindestens {1} Jahre alt sind, für diese Tätigkeit {2} und {3} sind und ihre {4} nachgewiesen haben. Der Auftrag muss {5} erteilt werden.')
+          .replace(/\{([1-5])\}/g, (_, n) => {
+            const i = n - 1, v = sim.gap[i];
             const st = sim.gapChecked && v ? (gapRight(i) ? 'right' : 'wrong') : '';
-            html += `<button class="blank ${v ? '' : 'empty'} ${st}" type="button" data-b="${i}" aria-label="Lücke ${i + 1}">${v || '______'}</button> `;
-          }
-        });
+            return `<button class="blank ${v ? '' : 'empty'} ${st}" type="button" data-b="${i}" aria-label="${t('Lücke {n}', { n })}">${v ? t(v) : '______'}</button>`;
+          });
         const used = sim.gap.filter(Boolean);
-        return `<h2 class="q">Was steht in DGUV Vorschrift 68 §7?</h2>
-          <p class="small">Tippe die Wörter der Reihe nach an. Tippe auf eine Lücke, um sie wieder zu leeren.</p>
+        return `<h2 class="q">${t('Was steht in DGUV Vorschrift 68 §7?')}</h2>
+          <p class="small">${t('Tippe die Wörter der Reihe nach an. Tippe auf eine Lücke, um sie wieder zu leeren.')}</p>
           <div class="gap-text">${html}</div>
-          <div class="chips">${gapChips.map(c => `<button class="chip" type="button" data-c="${c}" ${used.includes(c) || sim.gapOk ? 'disabled' : ''}>${c}</button>`).join('')}</div>`;
+          <div class="chips">${gapChips.map(c => `<button class="chip" type="button" data-c="${c}" ${used.includes(c) || sim.gapOk ? 'disabled' : ''}>${t(c)}</button>`).join('')}</div>`;
       },
       a: () => {
         screen.querySelectorAll('.chip').forEach(b => b.onclick = () => { const k = sim.gap.indexOf(null); if (k < 0) return; sim.gap[k] = b.dataset.c; sim.gapChecked = false; rerender(); });
         screen.querySelectorAll('.blank').forEach(b => b.onclick = () => { if (sim.gapOk) return; sim.gap[+b.dataset.b] = null; sim.gapChecked = false; rerender(); });
         if (sim.gapOk) { setActions(nextBtn()); return; }
         const full = sim.gap.every(Boolean);
-        setActions(`<button class="btn btn-d" type="button" id="gchk" ${full ? '' : 'disabled'}>Prüfen</button>`, full ? '' : 'Fülle alle fünf Lücken');
+        setActions(`<button class="btn btn-d" type="button" id="gchk" ${full ? '' : 'disabled'}>${t('Prüfen')}</button>`, full ? '' : 'Fülle alle fünf Lücken');
         $('gchk').onclick = () => {
           sim.gapChecked = true;
           if (sim.gap.every((_, i) => gapRight(i))) {
             sim.gapOk = true; rerender();
             openSheet('ok', 'Genau so steht es in §7', 'DGUV Vorschrift 68',
-              `<p>Fünf Voraussetzungen: mindestens 18 Jahre, geeignet, ausgebildet, Befähigung nachgewiesen und ein schriftlicher Auftrag.</p><p>Was das für dich und deinen Arbeitgeber genau bedeutet, lernst du in Thema 1.2.</p><p class="src">DGUV V68 §7 Abs. 1, zitiert nach G 308-001 Abschn. 2.1</p>`, 'Weiter', () => go(step + 1));
+              `<p>${t('Fünf Voraussetzungen: mindestens 18 Jahre, geeignet, ausgebildet, Befähigung nachgewiesen und ein schriftlicher Auftrag.')}</p><p>${t('Was das für dich und deinen Arbeitgeber genau bedeutet, lernst du in Thema 1.2.')}</p><p class="src">${t('DGUV V68 §7 Abs. 1')}</p>`, 'Weiter', () => go(step + 1));
           } else {
             rerender();
             setTimeout(() => { sim.gap = sim.gap.map((v, i) => gapRight(i) ? v : null); sim.gapChecked = false; rerender(); }, 1500);
@@ -1211,13 +1275,13 @@ body { margin: 0; }
         const road = sim.road === 'road';
         const base = [['Mindestens 18 Jahre', ''], ['Geeignet', 'körperlich, geistig, charakterlich'], ['Ausgebildet, Befähigung nachgewiesen', 'Staplerschein'], ['Schriftlicher Auftrag', 'vom Unternehmer']];
         const extra = [['Fahrerlaubnis', 'Führerschein der passenden Klasse nach FeV'], ['Fahrzeug für die Straße', 'Ausrüstung und Zulassung nach StVZO und FZV']];
-        return `<h2 class="q">Im Betrieb oder auf der Straße?</h2>
-          <p class="small">Im Betrieb gelten die Voraussetzungen aus §7. Auf öffentlichen Straßen kommt das Straßenverkehrsrecht dazu. Schalte um und vergleiche.</p>
-          <div class="toggle" role="group" aria-label="Einsatzort"><button type="button" data-r="site" aria-pressed="${!road}">Im Betrieb</button><button type="button" data-r="road" aria-pressed="${road}">Öffentliche Straße</button></div>
-          <div class="reqs">${base.map(([t, s]) => `<div class="req"><span class="ck">${I.check}</span><span>${t}${s ? `<small>${s}</small>` : ''}</span></div>`).join('')}
-          ${road ? extra.map(([t, s]) => `<div class="req road"><span class="ck">${I.check}</span><span>${t}<small>${s}</small></span></div>`).join('') : ''}</div>
-          <p class="note">${road ? 'Auf der Straße brauchst du beides: Staplerausbildung und Führerschein.' : 'Im Betrieb ersetzt der Führerschein keine dieser Voraussetzungen.'}</p>
-          <p class="src">DGUV G 308-001, Abschn. 2.1 und 2.2</p>`;
+        return `<h2 class="q">${t('Im Betrieb oder auf der Straße?')}</h2>
+          <p class="small">${t('Im Betrieb gelten die Voraussetzungen aus §7. Auf öffentlichen Straßen kommt das Straßenverkehrsrecht dazu. Schalte um und vergleiche.')}</p>
+          <div class="toggle" role="group" aria-label="${t('Einsatzort')}"><button type="button" data-r="site" aria-pressed="${!road}">${t('Im Betrieb')}</button><button type="button" data-r="road" aria-pressed="${road}">${t('Öffentliche Straße')}</button></div>
+          <div class="reqs">${base.map(([a, b]) => `<div class="req"><span class="ck">${I.check}</span><span>${t(a)}${b ? `<small>${t(b)}</small>` : ''}</span></div>`).join('')}
+          ${road ? extra.map(([a, b]) => `<div class="req road"><span class="ck">${I.check}</span><span>${t(a)}<small>${t(b)}</small></span></div>`).join('') : ''}</div>
+          <p class="note">${t(road ? 'Auf der Straße brauchst du beides: Staplerausbildung und Führerschein.' : 'Im Betrieb ersetzt der Führerschein keine dieser Voraussetzungen.')}</p>
+          <p class="src">${t('DGUV G 308-001, Abschn. 2.1 und 2.2')}</p>`;
       },
       a: () => {
         screen.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { sim.road = b.dataset.r; if (sim.road === 'road') sim.roadSeen = true; rerender(); });
@@ -1225,14 +1289,14 @@ body { margin: 0; }
       } },
     q11d,
     { r: () => `
-        <h2 class="q">Das nimmst du mit</h2>
+        <h2 class="q">${t('Das nimmst du mit')}</h2>
         <div class="sum">
-          <div><em>1</em><p><b>Hinterradlenkung:</b> Das Heck schwenkt aus. Achte vor dem Lenken auf Personen neben und hinter dir.</p></div>
-          <div><em>2</em><p><b>Wippe:</b> Gewicht und Lastschwerpunkt entscheiden zusammen, ob der Stapler stehen bleibt. Das Lastschwerpunktdiagramm zeigt die Grenze.</p></div>
-          <div><em>3</em><p><b>Fahrstellung:</b> Last bodenfrei, Hubmast zurückgeneigt.</p></div>
-          <div><em>4</em><p><b>Darum Pflicht:</b> Fahren darf nur, wer mindestens 18, geeignet, ausgebildet und schriftlich beauftragt ist. Auf der Straße kommt der Führerschein dazu.</p></div>
+          <div><em>1</em><p>${t('<b>Hinterradlenkung:</b> Das Heck schwenkt aus. Achte vor dem Lenken auf Personen neben und hinter dir.')}</p></div>
+          <div><em>2</em><p>${t('<b>Wippe:</b> Gewicht und Lastschwerpunkt entscheiden zusammen, ob der Stapler stehen bleibt. Das Lastschwerpunktdiagramm zeigt die Grenze.')}</p></div>
+          <div><em>3</em><p>${t('<b>Fahrstellung:</b> Last bodenfrei, Hubmast zurückgeneigt.')}</p></div>
+          <div><em>4</em><p>${t('<b>Darum Pflicht:</b> Fahren darf nur, wer mindestens 18, geeignet, ausgebildet und schriftlich beauftragt ist. Auf der Straße kommt der Führerschein dazu.')}</p></div>
         </div>`,
-      a: () => { setActions(nextBtn('Weiter zu 1.2')); $('nx').onclick = () => { done.t11 = true; renderTopics(); toast('In der Demo endet der Kurs hier'); }; } },
+      a: () => { setActions(nextBtn('Weiter zu 1.2')); $('nx').onclick = () => { done.t11 = true; openTopic('t12'); }; } },
   ];
 
   /* order: learn card first, then the matching exercise */
@@ -1243,12 +1307,359 @@ body { margin: 0; }
       .forEach(x => t11Steps.push(typeof x === 'number' ? base[x] : x));
   }
 
+  /* ════════════════ TOPIC 1.2 ════════════════ */
+  const s12 = { who: null, chk: {}, chkCur: null, act: null, ramp: { case: 'up', up: null, down: null }, rampOk: false, park: { loc: 'exit', brake: 'off', fork: 'up', tilt: 'flat', motor: 'on', key: 'in' }, parkOk: false };
+  const CHEF = { skin: '#e8b48e', hair: '#4b3a2a', top: '#374151', vest: false, beard: false };
+  const DRIVER = { skin: '#d9a07a', hair: '#1f1a17', top: '#facc15', vest: true, beard: true };
+
+  /* side view of a counterbalance truck, facing right, ground at y = 0 */
+  const truckSide = (load = true) => `
+    <path d="M0 -20V-60Q0 -72 12 -74L46 -80V-110H126V-20Z" fill="#f97706"/>
+    <rect x="0" y="-74" width="34" height="54" rx="4" fill="#c25c00"/>
+    <path d="M68 -110V-160H122V-110M62 -160H126" stroke="#212121" stroke-width="4" fill="none"/>
+    <circle cx="38" cy="-16" r="16" fill="#111827"/><circle cx="38" cy="-16" r="6" fill="#6b7280"/>
+    <circle cx="146" cy="-20" r="20" fill="#111827"/><circle cx="146" cy="-20" r="7" fill="#6b7280"/>
+    <rect x="170" y="-180" width="9" height="174" fill="#363636"/>
+    <rect x="178" y="-12" width="80" height="6" fill="#212121"/>
+    ${load ? '<rect x="184" y="-62" width="70" height="50" rx="3" fill="#fde68a" stroke="#b45309" stroke-width="1.5"/>' : ''}`;
+
+  /* daily check: hotspots on the truck */
+  const CHK = [
+    { k: 'gabel', t: 'Gabelzinken', p: [300, 192], lx: 300, ly: 172, bad: true, f: 'Feiner Riss am Übergang zum Gabelrücken der linken Zinke' },
+    { k: 'kette', t: 'Hubketten', p: [226, 80], lx: 242, ly: 84, anchor: 'start', f: 'Beide Ketten gleichmäßig gespannt' },
+    { k: 'hydr', t: 'Hydraulik', p: [199, 128], lx: 236, ly: 132, anchor: 'start', f: 'Schläuche trocken, kein Öl am Boden' },
+    { k: 'reifen', t: 'Reifen', p: [78, 184], lx: 78, ly: 222, f: 'Profil in Ordnung, keine Schnitte' },
+    { k: 'bremse', t: 'Bremsen', p: [140, 150], lx: 120, ly: 154, anchor: 'end', f: 'Betriebs- und Feststellbremse greifen' },
+    { k: 'licht', t: 'Hupe und Licht', p: [134, 40], lx: 134, ly: 26, f: 'Hupe und Beleuchtung funktionieren' },
+  ];
+  function checkSVG() {
+    const gy = 200;
+    const marks = CHK.map(c => {
+      const st = s12.chk[c.k], on = s12.chkCur === c.k;
+      const fill = st ? (c.bad ? '#f59e0b' : '#111827') : '#fff';
+      const inner = st ? (c.bad ? `<text y="4.5" text-anchor="middle" font-family="Inter" font-size="13" font-weight="700" fill="#fff">!</text>` : `<path d="M-4 0l3 3 5-6" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`) : '';
+      return `<g class="hs" data-k="${c.k}" style="cursor:pointer">
+        ${on ? `<circle cx="${c.p[0]}" cy="${c.p[1]}" r="16" fill="none" stroke="#f97706" stroke-width="2"/>` : ''}
+        <g transform="translate(${c.p[0]} ${c.p[1]})"><circle r="10" fill="${fill}" stroke="#111827" stroke-width="1.8"/>${inner}</g>
+        <text x="${c.lx}" y="${c.ly}" text-anchor="${c.anchor || 'middle'}" font-family="Inter" font-size="11.5" font-weight="600" fill="#374151">${t(c.t)}</text></g>`;
+    }).join('');
+    return `<svg viewBox="0 10 400 222" role="img" aria-label="${t('Stapler mit Prüfpunkten')}">
+      <rect y="10" width="400" height="222" fill="#f9fafb"/>
+      <path d="M0 ${gy + 1}H400" stroke="#d1d5db" stroke-width="2"/>
+      <path d="M40 180V140Q40 128 52 126L86 120V90H166V180Z" fill="#f97706"/>
+      <rect x="40" y="126" width="34" height="54" rx="4" fill="#c25c00"/>
+      <path d="M108 90V40H162V90M102 40H166" stroke="#212121" stroke-width="4" fill="none"/>
+      <circle cx="78" cy="${gy - 16}" r="16" fill="#111827"/><circle cx="78" cy="${gy - 16}" r="6" fill="#6b7280"/>
+      <circle cx="186" cy="${gy - 20}" r="20" fill="#111827"/><circle cx="186" cy="${gy - 20}" r="7" fill="#6b7280"/>
+      <rect x="210" y="20" width="9" height="${gy - 26}" fill="#363636"/>
+      <path d="M223 30V150" stroke="#6b7280" stroke-width="2.5" stroke-dasharray="3 2"/>
+      <path d="M168 168q20-6 30-40t12-40" stroke="#111827" stroke-width="2.5" fill="none"/>
+      <rect x="218" y="134" width="7" height="60" fill="#212121"/>
+      <rect x="218" y="${gy - 9}" width="96" height="6" fill="#212121"/>
+      ${marks}
+    </svg>`;
+  }
+
+  /* ramp: load must be on the uphill side */
+  const rampFacesRight = (cs, d) => (cs === 'up') === (d === 'vor');
+  function rampSVG(cs, d, checked) {
+    const ang = Math.atan(100 / 400) * 180 / Math.PI;
+    const f = d ? (rampFacesRight(cs, d) ? 1 : -1) : 1;
+    const ok = d && rampFacesRight(cs, d);
+    const arrow = cs === 'up' ? 'M-60 0H60m-10 -7l10 7-10 7' : 'M60 0H-60m10 -7l-10 7 10 7';
+    return `<svg viewBox="0 10 400 220" role="img" aria-label="${t(cs === 'up' ? 'Stapler auf einer Rampe, Fahrt hinauf' : 'Stapler auf einer Rampe, Fahrt hinunter')}">
+      <rect y="10" width="400" height="220" fill="#f9fafb"/>
+      <polygon points="0,215 400,115 400,230 0,230" fill="#e5e7eb"/>
+      <path d="M0 215L400 115" stroke="#9ca3af" stroke-width="2"/>
+      <text x="392" y="104" text-anchor="end" font-family="Inter" font-size="12" font-weight="600" fill="#6b7280">${t('oben')}</text>
+      <text x="8" y="204" font-family="Inter" font-size="12" font-weight="600" fill="#6b7280">${t('unten')}</text>
+      <g transform="translate(200 165) rotate(${-ang})">
+        <g transform="translate(0 -118)"><path d="${arrow}" stroke="#111827" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <text y="-12" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#374151">${t('Fahrtrichtung')}</text></g>
+        ${d ? `<g transform="scale(${f * .55} .55) translate(-129 0)">${truckSide()}</g>` : `<text y="-40" text-anchor="middle" font-family="Inter" font-size="13" fill="#9ca3af">${t('Wähle die Richtung')}</text>`}
+      </g>
+      ${checked && d ? `<text x="16" y="32" font-family="Inter" font-size="13" font-weight="700" fill="${ok ? '#16a34a' : '#dc2626'}">${t(ok ? 'Last bergseitig' : 'Last talseitig')}</text>` : ''}
+    </svg>`;
+  }
+
+  /* parking the truck */
+  function parkSVG(p) {
+    const gy = 200, mx = 214, h = p.fork === 'up' ? 46 : 0, deg = p.tilt === 'down' ? 3 : 0;
+    const bg = p.loc === 'exit'
+      ? `<rect x="292" y="58" width="76" height="142" fill="#e5e7eb" stroke="#9ca3af" stroke-width="2"/><rect x="300" y="32" width="60" height="20" rx="2" fill="#16a34a"/>
+         <text x="330" y="46" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#fff">${t('Notausgang')}</text>`
+      : `<path d="M28 ${gy + 1}H392" stroke="#facc15" stroke-width="5" stroke-dasharray="14 10"/>
+         <text x="392" y="${gy + 22}" text-anchor="end" font-family="Inter" font-size="11.5" font-weight="600" fill="#6b7280">${t('Abstellfläche')}</text>`;
+    return `<svg viewBox="0 20 400 210" role="img" aria-label="${t('Stapler beim Abstellen')}">
+      <rect y="20" width="400" height="210" fill="#f9fafb"/>${bg}
+      <path d="M0 ${gy + 1}H400" stroke="#d1d5db" stroke-width="2"/>
+      <path d="M40 180V140Q40 128 52 126L86 120V90H166V180Z" fill="#f97706"/>
+      <rect x="40" y="126" width="34" height="54" rx="4" fill="#c25c00"/>
+      <path d="M108 90V40H162V90M102 40H166" stroke="#212121" stroke-width="4" fill="none"/>
+      <circle cx="78" cy="${gy - 16}" r="16" fill="#111827"/><circle cx="78" cy="${gy - 16}" r="6" fill="#6b7280"/>
+      <circle cx="186" cy="${gy - 20}" r="20" fill="#111827"/><circle cx="186" cy="${gy - 20}" r="7" fill="#6b7280"/>
+      ${p.motor === 'on' ? '<path d="M30 132q-8-6 0-12t0-12M20 136q-8-6 0-12t0-12" stroke="#9ca3af" stroke-width="2" fill="none" stroke-linecap="round"/>' : ''}
+      <g transform="rotate(${deg} ${mx} ${gy - 6})">
+        <rect x="${mx - 4}" y="40" width="9" height="${gy - 46}" fill="#363636"/>
+        <g transform="translate(0 ${-h})"><rect x="${mx + 4}" y="${gy - 60}" width="7" height="56" fill="#212121"/><rect x="${mx + 4}" y="${gy - 8}" width="74" height="6" fill="#212121"/></g>
+      </g>
+    </svg>`;
+  }
+  const PARK = [
+    ['loc', 'Abstellort', [['exit', 'Notausgang'], ['area', 'Abstellfläche']]],
+    ['brake', 'Feststellbremse', [['off', 'gelöst'], ['on', 'angezogen']]],
+    ['fork', 'Gabel', [['up', 'angehoben'], ['down', 'ganz unten']]],
+    ['tilt', 'Gabelspitzen', [['flat', 'waagerecht'], ['down', 'nach unten']]],
+    ['motor', 'Motor', [['on', 'läuft'], ['off', 'aus']]],
+    ['key', 'Schlüssel', [['in', 'steckt'], ['out', 'abgezogen']]],
+  ];
+  const PARK_ERR = {
+    loc: 'Vor dem Notausgang ist der Fluchtweg versperrt. Stell den Stapler auf die Abstellfläche.',
+    brake: 'Die Feststellbremse ist gelöst. Der Stapler kann wegrollen.',
+    fork: 'Die Gabel ist noch angehoben. Fahre sie in die tiefste Stellung.',
+    tilt: 'Neige die Gabel mit den Spitzen nach unten, damit niemand darüber stolpert.',
+    motor: 'Der Motor läuft noch. Stell ihn ab.',
+    key: 'Der Schlüssel steckt. Zieh ihn ab und nimm ihn mit, damit niemand unbefugt fährt.',
+  };
+  const PARK_OK = { loc: 'area', brake: 'on', fork: 'down', tilt: 'down', motor: 'off', key: 'out' };
+
+  const L12a = learn('Eine Vorschrift, zwei Seiten',
+    'Die DGUV Vorschrift 68 ist die Unfallverhütungsvorschrift für Flurförderzeuge. Ihre Regeln zum Betrieb gelten für den Unternehmer und für alle Beschäftigten.',
+    ['<b>Unternehmer</b> heißt nicht nur der Chef. Gemeint sind alle Vorgesetzten, denen Unternehmeraufgaben übertragen wurden, zum Beispiel Lager- oder Schichtleiter.',
+     '<b>Versicherte</b> nennt die Vorschrift alle Beschäftigten, also auch dich als Fahrer.',
+     '<b>Du bist für die sichere Steuerung verantwortlich.</b> Fahren darfst du nur, wenn der Unternehmer dich beauftragt hat.',
+     '<b>Verstöße</b> gegen viele dieser Pflichten sind Ordnungswidrigkeiten, für beide Seiten. Mehr dazu in Thema 1.4.'],
+    'Der Unternehmer schafft sichere Bedingungen. Du hältst dich daran und fährst sicher.',
+    'DGUV V68 §4, §7 Abs. 3 mit DA, DA zu §9, §40');
+  const L12b = learn('Pflichten des Unternehmers',
+    'Bevor du den ersten Meter fährst, muss dein Arbeitgeber einiges erledigt haben.',
+    ['<b>Beauftragen:</b> nur geeignete, ausgebildete Personen mit nachgewiesener Befähigung, und zwar schriftlich. Vorher gibt es eine Einweisung auf das Gerät und in den Betrieb.',
+     '<b>Betriebsanweisung</b> schriftlich erstellen, verständlich formulieren, bekannt machen und darauf achten, dass sie eingehalten wird.',
+     '<b>Mängel beheben lassen,</b> bevor der Stapler weiter benutzt wird.',
+     '<b>Prüfen lassen:</b> mindestens einmal im Jahr durch einen Sachkundigen, mit schriftlichem Prüfnachweis.',
+     '<b>Mitfahren regeln:</b> nur auf Staplern mit eigenem Sitz- oder Standplatz und Haltegriffen, festgelegt in der Betriebsanweisung.'],
+    'Die Prüfplakette am Stapler zeigt, wann die nächste jährliche Prüfung fällig ist.',
+    'DGUV V68 §5, §7 mit DA, §9 Abs. 2, §25, §37, §39 mit DA');
+  const L12c = learn('Pflichten des Fahrers',
+    'Mit dem schriftlichen Auftrag übernimmst du Verantwortung für jede Fahrt.',
+    ['<b>Betriebsanweisung beachten,</b> dazu die Betriebsanleitung des Herstellers.',
+     '<b>Vor Schichtbeginn prüfen:</b> den Stapler jeden Tag auf erkennbare Mängel prüfen und während der Arbeit darauf achten.',
+     '<b>Mängel melden:</b> Mit einem Mangel, der die Sicherheit beeinträchtigt, fährst du nicht los. Du meldest ihn sofort.',
+     '<b>Sicher fahren:</b> mit Sicht auf die Fahrbahn, angepasster Geschwindigkeit und bodenfreier Last.',
+     '<b>Niemanden gefährden:</b> nur vom Fahrerplatz aus steuern und bei jeder Bewegung auf Personen achten.'],
+    'Ein Stapler mit Sicherheitsmangel bleibt stehen, auch wenn die Schicht drängt.',
+    'DGUV V68 §5 Abs. 4, §9 Abs. 1, §12, §16 Abs. 1');
+  const L12d = learn('Betriebsanleitung oder Betriebsanweisung?',
+    'Zwei fast gleiche Wörter, zwei verschiedene Dokumente. In der Prüfung wird gern danach gefragt.',
+    ['<b>Inhalt der Betriebsanweisung</b> unter anderem: freigegebene Fahrwege, Lagerung und Stapelung, Mitnahme von Personen, Anbaugeräte und Arbeitsbühnen.',
+     '<b>Unterweisung:</b> Der Inhalt wird dir vor Beginn der Arbeit erklärt und regelmäßig wiederholt. Meist bestätigst du das mit deiner Unterschrift.'],
+    'Anleitung: Hersteller und Gerät. Anweisung: Unternehmer und Betrieb.',
+    'DGUV V68 §5 mit DA, DA zu §6',
+    () => `<div class="cmp"><div><span class="k">${t('vom Hersteller')}</span><b>${t('Betriebsanleitung')}</b><p>${t('Gehört zum Gerät: Bedienung, Wartung, bestimmungsgemäße Verwendung.')}</p></div>
+      <div><span class="k">${t('vom Unternehmer')}</span><b>${t('Betriebsanweisung')}</b><p>${t('Gilt für deinen Betrieb, aufgebaut auf der Anleitung und den Gegebenheiten vor Ort.')}</p></div></div>`);
+  const L12e = learn('Die tägliche Einsatzprüfung',
+    'Jeden Tag, bevor du losfährst, prüfst du den Stapler auf erkennbare Mängel. Mängel, die die Sicherheit beeinträchtigen, sind zum Beispiel:',
+    ['<b>Gabelzinken:</b> verbogen, gerissen, stark abgeschliffen, unterschiedlich hoch oder nicht gegen Herausheben gesichert.',
+     '<b>Hubmast:</b> Risse an tragenden Teilen, ungleich gespannte Hubketten, undichte Hydraulik.',
+     '<b>Fahrwerk:</b> schadhafte Reifen, zu wenig Luftdruck, zu viel Spiel in der Lenkung.',
+     '<b>Bremsen:</b> Betriebs- oder Feststellbremse wirkt nicht.'],
+    'Mangel gefunden: nicht fahren und sofort melden. Reparieren darf nur eine fachkundige Person.',
+    'DGUV V68 §9 mit DA, §10 Abs. 1');
+  const L12f = learn('So fährst du nach §12',
+    'Die Vorschrift regelt auch, wie du fährst. Einiges kennst du schon aus Thema 1.1.',
+    ['<b>Sicht:</b> Fahre nur mit ausreichender Sicht auf die Fahrbahn. Versperrt die Last die Sicht, fährst du rückwärts oder lässt dich einweisen.',
+     '<b>Geschwindigkeit</b> an die Fahrbahn anpassen, zum Beispiel bei Nässe, Schmutz oder engen Wegen.',
+     '<b>Bodenfrei:</b> Mit angehobener Last fährst du nur zum Aufnehmen und Absetzen, außer der Unternehmer hat ein Gerät ausdrücklich dafür bestimmt.',
+     '<b>Hubmast zurückgeneigt,</b> damit sich die Last nicht ungewollt bewegt.',
+     '<b>Steigungen und Gefälle:</b> Die Last immer bergseitig führen und niemals auf der Schräge wenden.'],
+    'Mit Last bergauf vorwärts, bergab rückwärts. So bleibt die Last immer oben.',
+    'DGUV V68 §12 mit DA, §8 mit DA, G 308-001 Anhang 2 Übung 9');
+  const L12g = learn('Den Stapler richtig verlassen',
+    'Stell den Stapler so ab, dass er kein Hindernis ist: nicht auf Verkehrs- und Fluchtwegen, nicht vor Notausgängen oder Feuerlöschern und nicht auf einer Schräge. Dann gilt:',
+    ['<b>Feststellbremse</b> anziehen.',
+     '<b>Gabel</b> in die tiefste Stellung fahren.',
+     '<b>Gabelspitzen</b> nach unten neigen.',
+     '<b>Motor</b> abstellen.',
+     '<b>Schlüssel</b> abziehen und mitnehmen, damit niemand unbefugt fährt.'],
+    'Steigst du nur kurz ab und bleibst direkt daneben, zum Beispiel zum Ankuppeln, reicht die Feststellbremse.',
+    'DGUV V68 §15 mit DA');
+  const L12h = learn('Weitere Regeln im Alltag',
+    'Ein paar Regeln aus der Vorschrift begegnen dir fast jeden Tag.',
+    ['<b>Mitfahren</b> nur auf einem eigenen Sitz- oder Standplatz mit Haltegriffen, wenn die Betriebsanweisung es erlaubt. Niemals auf der Gabel oder auf der Last.',
+     '<b>Unter angehobener Last</b> oder angehobener Gabel darf sich niemand aufhalten.',
+     '<b>Aufzüge</b> nur benutzen, wenn der Unternehmer sie für Stapler freigegeben hat, und erst einfahren, wenn niemand im Fahrkorb steht.',
+     '<b>LKW be- und entladen</b> nur, wenn er gegen Wegrollen gesichert ist.',
+     '<b>Fahrauftrag:</b> gilt nur im Betrieb, der ihn erteilt hat. Ohne regelmäßige Fahrpraxis über ein Jahr sollte er zurückgenommen werden.'],
+    'Kein eigener Platz für einen Mitfahrer heißt: keine Mitfahrt.',
+    'DGUV V68 §7 mit DA, §14, §16 Abs. 4, §17 Abs. 1, §25');
+
+  const q12a = seqQuiz({ title: 'Wer muss das tun?', lead: 'Unternehmer oder Fahrer? Ordne jede Pflicht zu.', labels: ['Unternehmer', 'Fahrer'], allRight: 'Perfekt. Du kennst die Aufgaben beider Seiten.', someWrong: 'Faustregel: Der Unternehmer organisiert und sorgt für sichere Geräte. Der Fahrer prüft, meldet und fährt sicher.', items: [
+    { t: 'Den Stapler vor Schichtbeginn auf Mängel prüfen', a: 1, why: 'Die tägliche Einsatzprüfung macht der Fahrer selbst (§9 Abs. 1).' },
+    { t: 'Eine schriftliche Betriebsanweisung erstellen', a: 0, why: 'Die Betriebsanweisung schreibt der Unternehmer für seinen Betrieb (§5 Abs. 1).' },
+    { t: 'Einen gemeldeten Mangel beheben lassen', a: 0, why: 'Der Fahrer meldet, der Unternehmer sorgt für die Reparatur durch eine fachkundige Person (§9 Abs. 2, §10).' },
+    { t: 'Den Stapler jährlich von einem Sachkundigen prüfen lassen', a: 0, why: 'Dafür sorgt der Unternehmer, inklusive Prüfnachweis (§37, §39).' },
+    { t: 'Beim Verlassen den Schlüssel abziehen', a: 1, why: 'Das gehört zu den Pflichten des Fahrers beim Verlassen (§15 Abs. 1).' },
+    { t: 'Den schriftlichen Fahrauftrag erteilen', a: 0, why: 'Nur der Unternehmer kann beauftragen (§7 Abs. 1).' },
+    { t: 'Erst anfahren, wenn der Mitfahrer auf seinem Platz sitzt', a: 1, why: 'Das ist Sache des Fahrers (§25 Abs. 4).' },
+  ] });
+  const q12b = seqQuiz({ title: 'Anleitung oder Anweisung?', lead: 'In welchem Dokument steht das?', labels: ['Anleitung', 'Anweisung'], allRight: 'Richtig. Du verwechselst die beiden nicht mehr.', someWrong: 'Merke: Anleitung kommt vom Hersteller und beschreibt das Gerät. Anweisung kommt vom Unternehmer und regelt den Betrieb.', items: [
+    { t: 'Welche Fahrwege in eurer Halle befahren werden dürfen', a: 1, why: 'Die Verkehrswege legt der Unternehmer in der Betriebsanweisung fest.' },
+    { t: 'Wie die Hebel und Pedale an diesem Modell bedient werden', a: 0, why: 'Die Bedienung des Geräts beschreibt der Hersteller in der Betriebsanleitung.' },
+    { t: 'Ob Kollegen auf dem Stapler mitfahren dürfen', a: 1, why: 'Die Mitnahme von Personen regelt der Unternehmer in der Betriebsanweisung (§25 Abs. 2).' },
+    { t: 'In welchen Abständen der Hersteller eine Wartung vorsieht', a: 0, why: 'Wartungsangaben macht der Hersteller in der Betriebsanleitung.' },
+    { t: 'Wo im Lager Paletten gestapelt werden', a: 1, why: 'Lagerflächen und Stapelung stehen in der Betriebsanweisung.' },
+  ] });
+  const q12c = seqQuiz({ title: 'Erlaubt oder nicht?', lead: 'Entscheide bei jeder Situation.', labels: ['Nicht erlaubt', 'Erlaubt'], allRight: 'Alles richtig. Du kennst die Regeln im Alltag.', someWrong: 'Schau dir die Regeln auf der Karte davor noch einmal an.', items: [
+    { t: 'Ein Kollege stellt sich auf die Gabel, damit du ihn zum oberen Regalfach hebst.', a: 0, why: 'Auf die angehobene Gabel darf niemand. Dafür gibt es zugelassene Arbeitsbühnen (§16 Abs. 4, §26).' },
+    { t: 'Dein Kollege fährt auf dem Beifahrersitz mit Haltegriff mit. Die Betriebsanweisung erlaubt das.', a: 1, why: 'Eigener Platz mit Haltegriff und in der Betriebsanweisung geregelt: erlaubt (§25).' },
+    { t: 'Du steigst kurz ab, um einen Anhänger anzukuppeln, und bleibst direkt am Stapler.', a: 1, why: 'Bei kurzem Verlassen in unmittelbarer Nähe reicht die Feststellbremse (§15 Abs. 2).' },
+    { t: 'Der LKW an der Rampe ist nicht gegen Wegrollen gesichert. Du fährst trotzdem hinein, es geht ja schnell.', a: 0, why: 'Be- und Entladen nur, wenn das Fahrzeug gegen Rollen gesichert ist (§17 Abs. 1).' },
+    { t: 'Du fährst in einen Lastenaufzug, den der Unternehmer für Stapler freigegeben hat. Im Fahrkorb steht niemand.', a: 1, why: 'Freigegebener Aufzug und leerer Fahrkorb: erlaubt (§14 Abs. 2 und 4).' },
+  ] });
+  const q12d = seqQuiz({ title: 'Kurztest', list: true, allRight: 'Alles richtig. Thema 1.2 sitzt.', someWrong: 'Fast. Geh bei Bedarf zurück zu den Karten.', items: [
+    { q: 'Wer erstellt die Betriebsanweisung?', o: ['Der Hersteller des Staplers', 'Der Unternehmer', 'Die Berufsgenossenschaft'], a: 1, why: 'Der Unternehmer schreibt sie für seinen Betrieb (§5 Abs. 1).' },
+    { q: 'Wie oft muss ein Sachkundiger den Stapler prüfen?', o: ['Mindestens einmal im Jahr', 'Alle drei Jahre', 'Nur nach einem Unfall'], a: 0, why: 'In Abständen von längstens einem Jahr (§37 Abs. 1).' },
+    { q: 'Du fährst mit Last eine Rampe hinunter. Wie?', o: ['Vorwärts, die Last voraus', 'Rückwärts, die Last bergseitig', 'Egal, wenn du langsam fährst'], a: 1, why: 'Die Last wird auf Steigungen und Gefällen immer bergseitig geführt (§12 Abs. 7).' },
+    { q: 'Bei der Einsatzprüfung tropft Öl aus einem Hydraulikschlauch. Was tust du?', o: ['Fahren und am Schichtende melden', 'Nicht fahren und sofort melden', 'Den Schlauch selbst tauschen'], a: 1, why: 'Mit einem Sicherheitsmangel wird nicht gefahren. Reparieren darf nur eine fachkundige Person (§9, §10).' },
+  ] });
+
+  /* video placeholder: real footage the client records later */
+  const vid = (title, what, len) => ({ r: () => `
+      <h2 class="q">${t(title)}</h2>
+      <div class="video"><span class="tag">${t('Video-Platz')}</span><div class="pl">${I.play}</div></div>
+      <div class="todo"><b>${t('Optional: kurze Realaufnahme')}</b><span>${t(what)}</span><span>${t('Länge: {l}', { l: t(len) })}</span></div>` });
+  const V12a = vid('Einsatzprüfung am echten Stapler',
+    'Ein Fahrer geht vor Schichtbeginn einmal um den Stapler: Gabelzinken, Hubketten, Hydraulik, Reifen, Bremsen, Hupe und Licht. Nahaufnahmen zeigen, worauf er achtet, zum Beispiel einen Riss an der Gabel.', '60 bis 90 Sekunden');
+  const V12b = vid('Rampe im echten Leben',
+    'Ein Stapler mit Palette fährt eine Rampe vorwärts hinauf und rückwärts wieder hinunter, seitlich gefilmt. Die Last bleibt sichtbar immer oben.', '20 bis 30 Sekunden');
+  const V12c = vid('Richtig abstellen',
+    'Der Fahrer stellt den Stapler auf der Abstellfläche ab: Feststellbremse, Gabel absenken und neigen, Motor aus, Schlüssel abziehen. Jeder Handgriff in Nahaufnahme.', '20 bis 30 Sekunden');
+
+  const t12Steps = [
+    { r: () => `
+        <h2 class="q">${t('Wer sorgt dafür, dass im Lager sicher Stapler gefahren wird?')}</h2>
+        <div class="duo">
+          <figure><div class="av pic">${person(CHEF)}</div><figcaption><b>${t('Unternehmer')}</b><span>${t('Chef, Lager- oder Schichtleiter')}</span></figcaption></figure>
+          <figure><div class="av pic">${person(DRIVER)}</div><figcaption><b>${t('Fahrer')}</b><span>${t('du, mit Staplerschein')}</span></figcaption></figure>
+        </div>
+        <p class="txt">${t('Bevor wir starten: Was meinst du?')}</p>`,
+      a: () => {
+        const ans = k => {
+          s12.who = k;
+          const right = k === 2;
+          openSheet(right ? 'ok' : 'no', right ? 'Richtig, beide' : 'Nicht nur', t('Deine Antwort: {a}', { a: t(['der Unternehmer', 'der Fahrer', 'beide'][k]) }),
+            `<blockquote>${t('„Soweit nichts anderes bestimmt ist, richten sich die Bestimmungen dieses Abschnittes an Unternehmer und Versicherte.“')}</blockquote><p>${t('Versicherte sind alle Beschäftigten, also auch du. Welche Pflichten auf welcher Seite liegen, lernst du jetzt.')}</p><p class="src">DGUV V68 §4</p>`,
+            'Los geht’s', () => go(step + 1));
+        };
+        setActions(`<div class="row-btn"><button class="btn btn-o" type="button" data-k="0">${t('Unternehmer')}</button><button class="btn btn-o" type="button" data-k="1">${t('Fahrer')}</button><button class="btn btn-d" type="button" data-k="2">${t('Beide')}</button></div>`);
+        actions.querySelectorAll('[data-k]').forEach(b => b.onclick = () => ans(+b.dataset.k));
+      } },
+    { r: () => {
+        const n = CHK.filter(c => s12.chk[c.k]).length, cur = CHK.find(c => c.k === s12.chkCur);
+        return `<h2 class="q">${t('Deine Einsatzprüfung')}</h2>
+          <div class="mission ${n === CHK.length ? 'done' : ''}">${n === CHK.length ? t('Alle Punkte geprüft.') : t('Aufgabe: Prüfe alle Punkte. Geprüft: {n} von {m}', { n, m: CHK.length })}</div>
+          <div class="sim" id="chkSim">${checkSVG()}</div>
+          <div class="chk">${CHK.map(c => {
+            const st = s12.chk[c.k];
+            return `<button type="button" data-k="${c.k}" class="${st ? (c.bad ? 'bad' : 'good') : ''} ${cur === c ? 'on' : ''}"><span class="st">${st ? (c.bad ? '!' : I.check) : ''}</span><span><b>${t(c.t)}</b><span class="f">${st ? (c.bad ? t('Mangel') + ': ' : '') + t(c.f) : t('noch nicht geprüft')}</span></span></button>`;
+          }).join('')}</div>`;
+      },
+      a: () => {
+        const pick = k => { s12.chk[k] = true; s12.chkCur = k; rerender(); };
+        screen.querySelectorAll('.chk button').forEach(b => b.onclick = () => pick(b.dataset.k));
+        screen.querySelectorAll('.hs').forEach(g => g.addEventListener('click', () => pick(g.dataset.k)));
+        setActions(nextBtn());
+      } },
+    { r: () => {
+        const opts = ['Vorsichtig fahren, nur mit leichten Lasten', 'Nicht fahren und den Mangel sofort melden', 'Den Riss selbst zuschweißen und losfahren'];
+        const a = s12.act;
+        return `<h2 class="q">${t('Riss an der Gabelzinke. Was tust du?')}</h2>
+          <div class="say">${t('Bei deiner Einsatzprüfung hast du einen feinen Riss an der linken Gabelzinke gefunden. Die Schicht beginnt in fünf Minuten.')}</div>
+          <div class="opts">${opts.map((o, k) => `<button class="opt ${a === null ? '' : k === 1 ? 'right' : k === a ? 'wrong' : ''}" type="button" data-k="${k}" ${a !== null ? 'disabled' : ''}>${t(o)}</button>`).join('')}</div>`;
+      },
+      a: () => {
+        if (s12.act !== null) { setActions(nextBtn()); return; }
+        screen.querySelectorAll('.opt').forEach(b => b.onclick = () => {
+          s12.act = +b.dataset.k; rerender();
+          const right = s12.act === 1;
+          openSheet(right ? 'ok' : 'no', right ? 'Richtig' : 'Nein, das ist gefährlich', 'DGUV Vorschrift 68 §9',
+            `<blockquote>${t('„Er darf Flurförderzeuge, an denen Mängel, die die Sicherheit beeinträchtigen, erkannt worden sind, nicht in Betrieb setzen oder weiter benutzen. Er hat erkannte Mängel dem Unternehmer umgehend zu melden.“')}</blockquote><p>${t('Eine gerissene Gabelzinke kann unter Last brechen. Reparieren darf nur eine fachkundige Person, zum Beispiel der Kundendienst des Herstellers.')}</p><p class="src">${t('DGUV V68 §9 Abs. 1, §10 Abs. 1 mit DA')}</p>`,
+            'Weiter', () => go(step + 1));
+        });
+        setActions(nextBtn('Weiter', true), 'Wähle eine Antwort');
+      } },
+    { r: () => {
+        const r = s12.ramp, d = r[r.case];
+        return `<h2 class="q">${t('Mit Last auf der Rampe')}</h2>
+          <p class="small">${t('Du transportierst eine Palette über eine Rampe. Wähle für beide Fahrten die Richtung.')}</p>
+          <div class="toggle" role="group" aria-label="${t('Fahrt wählen')}"><button type="button" data-c="up" aria-pressed="${r.case === 'up'}">${t('Hinauf')}</button><button type="button" data-c="down" aria-pressed="${r.case === 'down'}">${t('Hinunter')}</button></div>
+          <div class="sim">${rampSVG(r.case, d, s12.rampOk || r.checked)}</div>
+          <div class="toggle" role="group" aria-label="${t('Fahrtrichtung des Staplers')}"><button type="button" data-d="vor" aria-pressed="${d === 'vor'}" ${s12.rampOk ? 'disabled' : ''}>${t('Vorwärts')}</button><button type="button" data-d="rueck" aria-pressed="${d === 'rueck'}" ${s12.rampOk ? 'disabled' : ''}>${t('Rückwärts')}</button></div>`;
+      },
+      a: () => {
+        const r = s12.ramp;
+        screen.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { r.case = b.dataset.c; rerender(); });
+        screen.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { r[r.case] = b.dataset.d; r.checked = false; rerender(); });
+        if (s12.rampOk) { setActions(nextBtn()); return; }
+        const full = r.up && r.down;
+        setActions(`<button class="btn btn-d" type="button" id="rchk" ${full ? '' : 'disabled'}>${t('Prüfen')}</button>`, full ? '' : 'Wähle für Hinauf und Hinunter eine Richtung');
+        $('rchk').onclick = () => {
+          const okUp = r.up === 'vor', okDown = r.down === 'rueck';
+          r.checked = true;
+          if (okUp && okDown) s12.rampOk = true;
+          rerender();
+          const li = (ok, w, x) => `<li><b>${t(w)}: ${t(ok ? 'richtig gewählt.' : 'falsch gewählt.')}</b> ${t(x)}</li>`;
+          openSheet(okUp && okDown ? 'ok' : 'no', okUp && okDown ? 'Last immer oben' : 'So noch nicht', 'DGUV Vorschrift 68 §12 Abs. 7',
+            `<ul>${li(okUp, 'Hinauf', 'Richtig ist vorwärts, die Last ist vorne oben.')}${li(okDown, 'Hinunter', 'Richtig ist rückwärts, so bleibt die Last oben.')}</ul><p>${t('Liegt die Last talseitig, kann sie von der Gabel rutschen und der Stapler kippt leichter nach vorne. Auf der Schräge wird nie gewendet.')}</p><p class="src">${t('DGUV V68 §12 Abs. 7, §8 mit DA')}</p>`,
+            okUp && okDown ? 'Weiter' : 'Nochmal versuchen', okUp && okDown ? () => go(step + 1) : () => { closeSheet(); if (!okUp) r.up = null; if (!okDown) r.down = null; r.case = !okUp ? 'up' : 'down'; r.checked = false; rerender(); });
+        };
+      } },
+    { r: () => `
+        <h2 class="q">${t('Feierabend: Stell den Stapler ab')}</h2>
+        <div class="sim">${parkSVG(s12.park)}</div>
+        <div class="sw">${PARK.map(([k, l, o]) => `<div class="sw-row"><span>${t(l)}</span><div class="toggle" role="group" aria-label="${t(l)}">${o.map(([v, x]) => `<button type="button" data-p="${k}" data-v="${v}" aria-pressed="${s12.park[k] === v}">${t(x)}</button>`).join('')}</div></div>`).join('')}</div>`,
+      a: () => {
+        screen.firstElementChild.classList.add('park-step');
+        screen.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { s12.park[b.dataset.p] = b.dataset.v; rerender(); });
+        if (s12.parkOk) { setActions(nextBtn()); return; }
+        setActions(`<button class="btn btn-d" type="button" id="leave">${t('Absteigen und gehen')}</button>`);
+        $('leave').onclick = () => {
+          const errs = Object.keys(PARK_OK).filter(k => s12.park[k] !== PARK_OK[k]);
+          if (!errs.length) {
+            s12.parkOk = true;
+            openSheet('ok', 'Richtig abgestellt', 'Alle Punkte erfüllt',
+              `<ul>${['Abstellfläche statt Fluchtweg', 'Feststellbremse angezogen', 'Gabel ganz unten, Spitzen nach unten', 'Motor aus, Schlüssel abgezogen'].map(x => `<li>${t(x)}</li>`).join('')}</ul><p class="src">${t('DGUV V68 §15 Abs. 1')}</p>`, 'Weiter', () => go(step + 1));
+          } else {
+            openSheet('no', 'So noch nicht', t(errs.length === 1 ? '1 Punkt fehlt' : '{n} Punkte fehlen', { n: errs.length }), `<ul>${errs.map(k => `<li>${t(PARK_ERR[k])}</li>`).join('')}</ul>`, 'Korrigieren', closeSheet);
+          }
+        };
+      } },
+    { r: () => `
+        <h2 class="q">${t('Das nimmst du mit')}</h2>
+        <div class="sum">
+          <div><em>1</em><p>${t('<b>Beide Seiten tragen Pflichten.</b> Der Unternehmer beauftragt schriftlich, schreibt die Betriebsanweisung, lässt jährlich prüfen und Mängel beheben.')}</p></div>
+          <div><em>2</em><p>${t('<b>Du prüfst jeden Tag</b> vor Schichtbeginn. Mit einem Sicherheitsmangel fährst du nicht und meldest ihn sofort.')}</p></div>
+          <div><em>3</em><p>${t('<b>Beim Fahren:</b> Sicht auf die Fahrbahn, angepasstes Tempo, Last bodenfrei, Mast zurückgeneigt, auf Rampen die Last bergseitig.')}</p></div>
+          <div><em>4</em><p>${t('<b>Beim Verlassen:</b> freier Platz, Feststellbremse, Gabel unten und geneigt, Motor aus, Schlüssel mitnehmen.')}</p></div>
+        </div>`,
+      a: () => { setActions(nextBtn('Weiter zu 1.3')); $('nx').onclick = () => { done.t12 = true; renderTopics(); toast('In der Demo endet der Kurs hier'); }; } },
+  ];
+
+  /* order: learn card first, then the matching exercise */
+  {
+    const base = t12Steps.slice();
+    t12Steps.length = 0;
+    [0, L12a, L12b, L12c, q12a, L12d, q12b, L12e, V12a, 1, 2, L12f, V12b, 3, L12g, V12c, 4, L12h, q12c, q12d, 5]
+      .forEach(x => t12Steps.push(typeof x === 'number' ? base[x] : x));
+  }
+
   const T = {
     lz: { title: 'Lernziele', dur: '5 min', steps: lzSteps },
     t11: { title: '1.1 Warum eine Ausbildung vorgeschrieben ist', dur: '15 min', steps: t11Steps },
+    t12: { title: '1.2 DGUV Vorschrift 68: Pflichten', dur: '15 min', steps: t12Steps },
   };
 
-  const m = location.hash.match(/^#(lz|t11)(\d+)?$/);
+  const m = location.hash.match(/^#(lz|t11|t12)(\d+)?$/);
   if (m) { cur = m[1]; step = Math.min(T[cur].steps.length - 1, +(m[2] || 0)); }
   render();
 })();

@@ -10,7 +10,6 @@ import { AuthProvider } from "@/context/AuthContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
 import CourseOverview from "./pages/CourseOverview";
 import QuizView from "./pages/QuizView";
 import FinalQuizView from "./pages/FinalQuizView";
@@ -25,6 +24,9 @@ import ResetPassword from "./pages/ResetPassword";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
+import LessonPage from "./pages/learn/LessonPage";
+import CoursePage from "./pages/learn/CoursePage";
+import Panel from "./pages/learn/Panel";
 import Checkout from "./pages/Checkout";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import CheckoutCancel from "./pages/CheckoutCancel";
@@ -55,7 +57,8 @@ const AppContent = () => {
   const isPanelArea =
       location.pathname.startsWith("/admin") ||
       location.pathname.startsWith("/dashboard") ||
-      location.pathname.startsWith("/course");
+      location.pathname.startsWith("/course") ||
+      location.pathname.startsWith("/lernen");
 
   return (
       <>
@@ -77,13 +80,16 @@ const AppContent = () => {
           <Route path="/checkout/cancel" element={<CheckoutCancel />} />
 
           {/* --- PANEL UŻYTKOWNIKA --- */}
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Panel />} />
           <Route path="/course/:courseId" element={<CourseOverview />} />
           <Route path="/course/:courseId/chapter/:chapterId/topic/:topicId" element={<TopicView />} />
           <Route path="/course/:courseId/chapter/:chapterId/quiz" element={<QuizView />} />
           <Route path="/course/:courseId/final-quiz" element={<FinalQuizView />} />
 
           <Route path="/verify/:code" element={<VerifyCertificate />} />
+          {/* kursy v2 (odtwarzacz kroków), działa obok starego /course */}
+          <Route path="/lernen/:courseId" element={<CoursePage />} />
+          <Route path="/lernen/:courseId/:lessonId" element={<LessonPage />} />
 
           {/* --- ADMIN --- */}
           <Route path="/admin" element={<Admin />} />

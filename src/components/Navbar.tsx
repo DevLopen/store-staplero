@@ -90,7 +90,7 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
                     <Link to="/dashboard">
                       <Button variant="default" size="sm">
                         <LayoutDashboard className="w-4 h-4 mr-2" />
-                        {t('nav.myCourse')}
+                        {t('nav.myArea')}
                       </Button>
                     </Link>
                     {isAdmin && (
@@ -150,7 +150,7 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
                         <Link to="/dashboard" onClick={() => setIsOpen(false)}>
                           <Button variant="default" className="w-full justify-start">
                             <LayoutDashboard className="w-4 h-4 mr-2" />
-                            {t('nav.myCourse')}
+                            {t('nav.myArea')}
                           </Button>
                         </Link>
                         {isAdmin && (

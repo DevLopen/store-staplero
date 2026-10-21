@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>Staplero Panel-Makiety</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Clickable mockups for the rebuilt panel: learner side (dashboard, course overview) and admin
+   course builder (course list, structure tree + step editor + live preview). Same tokens as kurs-demo.html. */
+:root {
+  color-scheme: light;
+  --white: #fff;
+  --g50: #f9fafb; --g100: #f3f4f6; --g200: #e5e7eb; --g300: #d1d5db; --g400: #9ca3af; --g500: #6b7280; --g600: #4b5563; --g700: #374151; --g900: #111827;
+  --amber50: #fffbeb; --amber100: #fef3c7; --amber500: #f59e0b; --amber600: #d97706; --amber700: #b45309;
+  --primary: #f97706; --primary-hover: #e56a00;
+  --green: #16a34a; --green50: #f0fdf4; --green500: #22c55e;
+  --red: #dc2626; --red50: #fef2f2;
+  --dark: #212121; --dark2: #363636;
+  --font: "Inter", system-ui, sans-serif; --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --ease: cubic-bezier(.4, 0, .2, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--g50); color: var(--g700); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { color: var(--g900); }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+svg { display: block; }
+.ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic-s { width: 14px; height: 14px; }
+
+/* mockup switcher (not part of the design) */
+.mk-bar { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: var(--dark); color: #e5e7eb; font-size: 12.5px; overflow-x: auto; }
+.mk-bar b { color: #fff; font-weight: 600; margin-right: 6px; white-space: nowrap; }
+.mk-bar button { border: 0; background: var(--dark2); color: #e5e7eb; border-radius: 6px; padding: 5px 10px; white-space: nowrap; font-size: 12.5px; }
+.mk-bar button[aria-pressed="true"] { background: var(--primary); color: #fff; }
+.mk-bar .sep { width: 1px; height: 18px; background: #555; margin: 0 4px; }
+
+/* app chrome */
+.app { min-height: calc(100vh - 38px); display: flex; flex-direction: column; }
+.top { height: 56px; display: flex; align-items: center; gap: 14px; padding: 0 20px; background: var(--white); border-bottom: 1px solid var(--g200); position: sticky; top: 38px; z-index: 50; }
+.logo { font-family: var(--display); font-size: 24px; color: var(--g900); letter-spacing: .01em; display: flex; align-items: center; gap: 8px; }
+.logo i { width: 10px; height: 10px; background: var(--primary); border-radius: 2px; display: block; }
+.top nav { display: flex; gap: 2px; margin-left: 12px; }
+.top nav a { padding: 7px 12px; border-radius: 8px; color: var(--g500); text-decoration: none; font-weight: 500; font-size: 14px; }
+.top nav a.on { color: var(--g900); background: var(--g100); }
+.top .sp { flex: 1; }
+.lang { display: flex; gap: 2px; background: var(--g100); border-radius: 8px; padding: 3px; }
+.lang button { height: 28px; min-width: 34px; border: 0; border-radius: 6px; background: none; font-size: 12px; font-weight: 600; color: var(--g500); }
+.lang button[aria-pressed="true"] { background: var(--white); color: var(--g900); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--dark); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 13px; }
+.page { width: 100%; max-width: 1120px; margin: 0 auto; padding: 28px 20px 64px; display: grid; gap: 24px; }
+.btn { height: 42px; border: 0; border-radius: 8px; padding: 0 16px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; transition: background .2s, box-shadow .2s; }
+.btn-p { background: var(--primary); color: #fff; } .btn-p:hover { background: var(--primary-hover); }
+.btn-d { background: var(--g900); color: #fff; }
+.btn-o { background: var(--white); box-shadow: inset 0 0 0 1.5px var(--g300); color: var(--g900); } .btn-o:hover { box-shadow: inset 0 0 0 1.5px var(--g900); }
+.btn-g { background: none; color: var(--g600); } .btn-g:hover { background: var(--g100); }
+.btn-s { height: 34px; padding: 0 12px; font-size: 13.5px; }
+.card { background: var(--white); border: 1px solid var(--g200); border-radius: 12px; }
+.lt { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--g400); }
+.muted { color: var(--g500); font-size: 14px; }
+.bar { height: 6px; border-radius: 999px; background: var(--g200); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--amber500); border-radius: 999px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--green50); color: var(--green); }
+.pill.draft { background: var(--g100); color: var(--g600); }
+.pill.warn { background: var(--amber50); color: var(--amber700); }
+.pill.dark { background: var(--g900); color: #fff; }
+
+/* learner dashboard */
+.hello h1 { font-size: 28px; letter-spacing: -.01em; }
+.resume { display: grid; grid-template-columns: 360px 1fr; overflow: hidden; }
+.resume .vis { background: var(--dark); display: grid; place-items: center; min-height: 190px; }
+.resume .vis svg { width: 82%; height: auto; }
+.resume .vis { padding: 0; background: var(--g50); border-right: 1px solid var(--g100); } .resume .vis img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb.img { overflow: hidden; background: var(--g50); box-shadow: inset 0 0 0 1px var(--g200); } .thumb.img img { width: 100%; height: 100%; object-fit: cover; object-position: 60% 70%; transform: scale(1.7); }
+.wallet { display: flex; gap: 8px; flex-wrap: wrap; }
+.wbtn { height: 42px; padding: 0 14px; border-radius: 8px; border: 0; background: var(--white); color: var(--g900); box-shadow: inset 0 0 0 1.5px var(--g300); font-weight: 600; font-size: 13.5px; display: inline-flex; align-items: center; gap: 9px; }
+.wbtn:hover { box-shadow: inset 0 0 0 1.5px var(--g900); }
+.wbtn.pdf { background: var(--primary); color: #fff; box-shadow: none; } .wbtn.pdf:hover { background: var(--primary-hover); }
+.certcard { display: grid; grid-template-columns: 220px 1fr; overflow: hidden; }
+.certcard .face { position: relative; background: var(--amber50); color: var(--g900); padding: 18px; display: grid; gap: 6px; align-content: space-between; min-height: 150px; border-right: 1px solid var(--amber100); overflow: hidden; }
+.certcard .face b { font-family: var(--display); font-size: 26px; line-height: 1; position: relative; }
+.certcard .face span { font-size: 12px; color: var(--amber700); position: relative; }
+.certcard .face.off { background: var(--g50); border-right-color: var(--g100); }
+.certcard .face.off b { color: var(--g400); } .certcard .face.off span { color: var(--g400); }
+.certcard .body { padding: 18px 20px; display: grid; gap: 10px; align-content: center; }
+.form2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+@media (max-width: 860px) {
+  .certcard, .form2 { grid-template-columns: 1fr; }
+  .table.resp thead { display: none; }
+  .table.resp tr { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 14px 16px; border-bottom: 1px solid var(--g100); }
+  .table.resp tr:last-child { border-bottom: 0; }
+  .table.resp td { padding: 0; border: 0; }
+  .table.resp td:nth-child(1) { grid-column: 1; } .table.resp td:nth-child(4) { grid-column: 2; grid-row: 1; text-align: right; font-weight: 600; color: var(--g900); }
+  .table.resp td:nth-child(2) { grid-column: 1 / -1; } .table.resp td:nth-child(3) { display: none; }
+  .table.resp td:nth-child(5) { grid-column: 1; align-self: center; } .table.resp td:nth-child(6) { grid-column: 2; text-align: right; }
+}
+.resume .body { padding: 22px 24px; display: grid; gap: 12px; align-content: center; }
+.resume h2 { font-size: 22px; }
+.resume .row { display: flex; align-items: center; gap: 12px; }
+.resume .row .bar { flex: 1; max-width: 320px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.cc { padding: 18px; display: grid; gap: 10px; }
+.cc h3 { font-size: 16px; }
+.cc .meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--g500); }
+.side2 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.list-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--g100); }
+.list-row:first-child { border-top: 0; }
+.list-row .t { flex: 1; min-width: 0; }
+.list-row b { display: block; color: var(--g900); font-size: 14.5px; font-weight: 600; }
+.list-row span.s { font-size: 13px; color: var(--g500); }
+.dt { width: 46px; text-align: center; flex: none; }
+.dt b { font-family: var(--display); font-size: 24px; line-height: 1; }
+.dt span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--g500); }
+.box-hd { padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--g100); }
+.box-hd h3 { font-size: 15px; }
+
+/* course overview */
+.co-hd { display: grid; grid-template-columns: 1fr 280px; gap: 24px; align-items: start; }
+.co-hd h1 { font-family: var(--display); font-size: 44px; line-height: 1; }
+.stat { padding: 18px; display: grid; gap: 12px; }
+.stat .big { font-family: var(--display); font-size: 40px; color: var(--g900); line-height: 1; }
+.chap { overflow: hidden; }
+.chap-hd { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 0; background: none; text-align: left; }
+.chap-hd .n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; border: 2px solid var(--g300); color: var(--g500); }
+.chap.cur .chap-hd .n { border-color: var(--amber500); color: var(--amber700); }
+.chap.done .chap-hd .n { border-color: var(--green); background: var(--green); color: #fff; }
+.chap.lock .chap-hd { color: var(--g400); }
+.chap-hd .t { flex: 1; min-width: 0; }
+.chap-hd b { display: block; color: var(--g900); font-size: 15.5px; }
+.chap.lock .chap-hd b { color: var(--g400); }
+.chap-hd .s { font-size: 13px; color: var(--g500); }
+.chap-hd .chev { transition: transform .2s; color: var(--g400); }
+.chap.open .chev { transform: rotate(180deg); }
+.lessons { display: none; border-top: 1px solid var(--g100); padding: 6px 0; }
+.chap.open .lessons { display: block; }
+.les { display: flex; align-items: center; gap: 12px; padding: 10px 18px 10px 62px; color: var(--g700); text-decoration: none; }
+a.les:hover { background: var(--g50); }
+.les .st { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--g300); flex: none; display: grid; place-items: center; }
+.les.done .st { background: var(--green); border-color: var(--green); color: #fff; }
+.les.cur .st { border-color: var(--amber500); background: var(--amber500); color: #fff; }
+.les .t { flex: 1; font-size: 14.5px; }
+.les.cur .t { color: var(--g900); font-weight: 600; }
+.les .d { font-size: 12.5px; color: var(--g400); }
+.les.test .t { color: var(--amber700); font-weight: 600; }
+.cert { display: flex; gap: 16px; align-items: center; padding: 18px; background: var(--dark); color: #e5e7eb; border: 0; }
+.cert h3 { color: #fff; font-size: 16px; }
+
+/* admin */
+.adm { display: grid; grid-template-columns: 232px 1fr; flex: 1; }
+.adm-nav { background: var(--white); border-right: 1px solid var(--g200); padding: 16px 12px; display: grid; gap: 18px; align-content: start; }
+.adm-nav .grp { display: grid; gap: 2px; }
+.adm-nav .lt { padding: 0 10px 4px; }
+.adm-nav a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: var(--g600); text-decoration: none; font-weight: 500; font-size: 14px; }
+.adm-nav a:hover { background: var(--g50); }
+.adm-nav a.on { background: var(--amber50); color: var(--amber700); }
+.adm-main { min-width: 0; }
+.page-hd { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-hd h1 { font-size: 24px; }
+.table { width: 100%; border-collapse: collapse; }
+.table th { text-align: left; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--g400); padding: 10px 16px; border-bottom: 1px solid var(--g200); }
+.table td { padding: 14px 16px; border-bottom: 1px solid var(--g100); vertical-align: middle; font-size: 14px; }
+.table tr:last-child td { border-bottom: 0; }
+.table tr.click { cursor: pointer; } .table tr.click:hover td { background: var(--g50); }
+.ctitle { display: flex; gap: 12px; align-items: center; }
+.thumb { width: 44px; height: 44px; border-radius: 8px; background: var(--dark); display: grid; place-items: center; flex: none; }
+.thumb i { width: 14px; height: 14px; background: var(--primary); border-radius: 3px; display: block; }
+.ctitle b { display: block; color: var(--g900); }
+.ctitle span { font-size: 13px; color: var(--g500); }
+.langs { display: flex; gap: 4px; }
+.lg { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: var(--green50); color: var(--green); }
+.lg.part { background: var(--amber50); color: var(--amber700); }
+.lg.none { background: var(--g100); color: var(--g400); }
+.empty { padding: 28px; text-align: center; display: grid; gap: 10px; justify-items: center; border: 1.5px dashed var(--g300); border-radius: 12px; background: var(--white); }
+
+/* builder */
+.bld { display: grid; grid-template-rows: auto 1fr; height: calc(100vh - 38px); }
+.bld-top { display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 60px; background: var(--white); border-bottom: 1px solid var(--g200); }
+.crumb { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--g500); min-width: 0; }
+.crumb a { color: var(--g500); text-decoration: none; }
+.crumb b { color: var(--g900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.saved { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--g500); white-space: nowrap; }
+.saved i { width: 8px; height: 8px; border-radius: 50%; background: var(--green500); display: block; }
+.saved.busy i { background: var(--amber500); }
+.bld-lang { display: flex; gap: 2px; background: var(--g100); border-radius: 8px; padding: 3px; }
+.bld-lang button { height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: none; font-size: 12.5px; font-weight: 600; color: var(--g500); display: flex; gap: 6px; align-items: center; }
+.bld-lang button[aria-pressed="true"] { background: var(--white); color: var(--g900); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+.bld-lang em { font-style: normal; font-size: 10.5px; background: var(--amber500); color: #fff; border-radius: 999px; padding: 0 5px; line-height: 16px; }
+.bld-body { display: grid; grid-template-columns: 300px minmax(0, 1fr) 400px; min-height: 0; }
+.tree { background: var(--white); border-right: 1px solid var(--g200); overflow-y: auto; padding: 12px 8px 40px; }
+.tree-ch { margin-bottom: 4px; }
+.tree-row { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; text-align: left; padding: 7px 8px; border-radius: 8px; font-size: 13.5px; color: var(--g700); position: relative; }
+.tree-row:hover { background: var(--g50); }
+.tree-row.ch { font-weight: 600; color: var(--g900); }
+.tree-row.les { padding-left: 26px; }
+.tree-row.step { padding-left: 36px; font-size: 13px; color: var(--g600); }
+.tree-row.sel { background: var(--amber50); color: var(--amber700); }
+.tree-row .tx { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-row .ty { font-size: 10.5px; font-weight: 600; color: var(--g400); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.tree-row .tyi { color: var(--g400); display: grid; } .tree-row .tyi .ic { width: 15px; height: 15px; }
+.tree-row.sel .tyi { color: var(--amber600); }
+.tree-row .miss { width: 7px; height: 7px; border-radius: 50%; background: var(--amber500); flex: none; }
+.tree-row .mv { display: none; gap: 2px; }
+.tree-row:hover .mv, .tree-row.sel .mv { display: flex; }
+.tree-row .mv span { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; color: var(--g500); background: var(--white); box-shadow: inset 0 0 0 1px var(--g200); }
+.tree-row .mv span:hover { color: var(--g900); }
+.tree-add { display: flex; align-items: center; gap: 6px; border: 0; background: none; color: var(--primary); font-weight: 600; font-size: 13px; padding: 6px 8px 6px 44px; border-radius: 8px; width: 100%; }
+.tree-add:hover { background: var(--amber50); }
+.tree-add.l { padding-left: 26px; }
+.editor { overflow-y: auto; padding: 22px 28px 60px; }
+.ed-hd { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.ed-hd .ty { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 6px; background: var(--g900); color: #fff; }
+.ed-hd h2 { font-size: 19px; flex: 1; min-width: 0; }
+.fld { display: grid; gap: 6px; margin-bottom: 18px; }
+.fld > label, .fld > .lab { font-size: 13.5px; font-weight: 600; color: var(--g900); display: flex; justify-content: space-between; }
+.fld > label small, .fld > .lab small { font-weight: 400; color: var(--g400); }
+.fld input, .fld textarea, .fld select { width: 100%; border: 1.5px solid var(--g300); border-radius: 8px; padding: 9px 12px; background: var(--white); font-size: 14.5px; transition: border-color .15s; }
+.fld input:focus, .fld textarea:focus { border-color: var(--g900); outline: none; }
+.fld textarea { min-height: 76px; resize: vertical; line-height: 1.45; }
+.fld .help { font-size: 12.5px; color: var(--g500); }
+.fld .err { font-size: 12.5px; color: var(--red); font-weight: 500; }
+.fld.bad input, .fld.bad textarea { border-color: var(--red); }
+.src-de { font-size: 13px; color: var(--g500); background: var(--g50); border-radius: 6px; padding: 7px 10px; }
+.src-de b { color: var(--g400); font-size: 11px; letter-spacing: .06em; margin-right: 6px; }
+.pts { display: grid; gap: 8px; }
+.pt { display: grid; grid-template-columns: 26px minmax(0, 150px) minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.pt .n { width: 24px; height: 24px; border-radius: 50%; background: var(--g900); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; margin-top: 8px; }
+.pt textarea { min-height: 42px; }
+.pt .act { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+.pt .act button { width: 26px; height: 20px; border: 0; background: none; color: var(--g400); border-radius: 4px; display: grid; place-items: center; padding: 0; }
+.pt .act button:hover { background: var(--g100); color: var(--g900); }
+.link-add { border: 0; background: none; color: var(--primary); font-weight: 600; font-size: 13.5px; padding: 4px 0; display: inline-flex; gap: 6px; align-items: center; }
+.ai { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--amber50); margin-bottom: 18px; font-size: 14px; color: var(--g900); }
+.preview { background: var(--g100); border-left: 1px solid var(--g200); overflow-y: auto; padding: 18px; display: grid; gap: 10px; align-content: start; justify-items: center; }
+.preview .lt { justify-self: start; }
+.phone { width: 340px; height: 640px; border-radius: 28px; background: var(--white); border: 8px solid var(--g900); overflow: hidden; display: grid; grid-template-rows: auto 1fr auto; }
+.ph-top { padding: 12px 16px 8px; display: grid; gap: 8px; }
+.ph-top .r { display: flex; justify-content: space-between; font-size: 11px; color: var(--g400); }
+.ph-top .r b { color: var(--g900); font-size: 11.5px; }
+.segs { display: flex; gap: 2px; } .segs i { flex: 1; height: 3px; border-radius: 2px; background: var(--g200); } .segs i.on { background: var(--amber500); }
+.ph-body { overflow-y: auto; padding: 4px 16px 12px; display: grid; gap: 10px; align-content: start; }
+.ph-body .q { font-size: 19px; font-weight: 700; line-height: 1.25; color: var(--g900); }
+.ph-body .lead { font-size: 13.5px; color: var(--g900); }
+.ph-body .kp { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.ph-body .kp li { display: flex; gap: 9px; background: var(--g50); border-radius: 8px; padding: 7px 9px; font-size: 12.5px; line-height: 1.4; }
+.ph-body .kp .n { width: 18px; height: 18px; border-radius: 50%; background: var(--g900); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 1px; }
+.ph-body .kp b { color: var(--g900); }
+.ph-body .merke { background: var(--amber50); border-radius: 8px; padding: 9px 11px; font-size: 13px; color: var(--g900); }
+.ph-body .merke b { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--amber700); }
+.ph-body .src { font-size: 11px; color: var(--g400); }
+.ph-body .stmt { border: 1.5px solid var(--g200); border-radius: 10px; padding: 16px 14px; font-size: 15px; font-weight: 600; color: var(--g900); min-height: 90px; display: flex; align-items: center; }
+.ph-body .opt { border-radius: 8px; box-shadow: inset 0 0 0 1.5px var(--g200); padding: 10px 12px; font-size: 13.5px; color: var(--g900); }
+.ph-body .video { aspect-ratio: 16/9; background: var(--g900); border-radius: 10px; display: grid; place-items: center; color: var(--amber500); font-size: 11px; font-weight: 600; letter-spacing: .08em; }
+.ph-body .placeholder { color: var(--g300); font-style: italic; }
+.ph-act { padding: 10px 16px 14px; border-top: 1px solid var(--g100); display: grid; grid-template-columns: 1fr 2fr; gap: 6px; }
+.ph-act span { height: 40px; border-radius: 7px; display: grid; place-items: center; font-weight: 600; font-size: 13.5px; }
+.ph-act .o { box-shadow: inset 0 0 0 1.5px var(--g300); color: var(--g900); } .ph-act .p { background: var(--primary); color: #fff; }
+.ph-act.two span { background: var(--white); }
+.ph-act.two .d { background: var(--g900); color: #fff; }
+
+/* modal */
+.scrim { position: fixed; inset: 0; background: rgba(17,24,39,.4); z-index: 200; display: none; place-items: center; padding: 20px; }
+.scrim.on { display: grid; }
+.modal { width: min(820px, 100%); max-height: 86vh; overflow-y: auto; background: var(--white); border-radius: 14px; padding: 22px; display: grid; gap: 16px; }
+.modal-hd { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.modal-hd h2 { font-size: 20px; }
+.types { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.tp { text-align: left; border: 0; border-radius: 10px; background: var(--g50); padding: 14px; display: grid; gap: 6px; box-shadow: inset 0 0 0 1.5px transparent; transition: box-shadow .15s; }
+.tp:hover { box-shadow: inset 0 0 0 1.5px var(--g900); }
+.tp .h { display: flex; gap: 10px; align-items: center; font-weight: 600; color: var(--g900); }
+.tp .ico { width: 32px; height: 32px; border-radius: 8px; background: var(--white); display: grid; place-items: center; color: var(--primary); flex: none; }
+.tp p { font-size: 13px; color: var(--g500); }
+.types-grp { display: grid; gap: 8px; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--g900); color: #fff; padding: 9px 16px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .25s; z-index: 300; pointer-events: none; }
+.toast.on { opacity: 1; }
+.note-bar { padding: 10px 16px; background: var(--amber50); color: var(--g900); font-size: 13.5px; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+
+@media (max-width: 1180px) { .bld-body { grid-template-columns: 260px minmax(0, 1fr); } .preview { display: none; } }
+.tabbar { display: none; }
+@media (max-width: 860px) {
+  .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: var(--white); border-top: 1px solid var(--g200); padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .tabbar a { display: grid; justify-items: center; gap: 2px; min-height: 48px; padding-top: 4px; font-size: 11.5px; font-weight: 600; color: var(--g500); text-decoration: none; }
+  .tabbar a.on { color: var(--amber700); }
+  .page { padding-bottom: 96px; }
+  .grid3, .side2, .co-hd, .resume { grid-template-columns: 1fr; }
+  .resume .vis { min-height: 150px; }
+  .top nav, .top .lang { display: none; }
+  .adm { grid-template-columns: 1fr; } .adm-nav { display: none; }
+  .bld-body { grid-template-columns: 1fr; } .tree { display: none; }
+  .types { grid-template-columns: 1fr; }
+  .table .hide-m { display: none; }
+}
+/* dashboard: path to licence + two equal columns */
+.road { list-style: none; margin: 0; padding: 18px 18px 20px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; counter-reset: none; }
+.road li { position: relative; display: grid; gap: 3px; padding: 22px 14px 0 0; align-content: start; }
+.road li::before { content: ""; position: absolute; top: 6px; left: 14px; right: 0; height: 2px; background: var(--g200); }
+.road li:last-child::before { display: none; }
+.road .dot { position: absolute; top: 0; left: 0; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--g300); background: var(--white); }
+.road li.cur .dot { border-color: var(--amber500); background: var(--amber500); box-shadow: 0 0 0 4px var(--amber100); }
+.road li.cur::before { background: linear-gradient(90deg, var(--amber500) 18%, var(--g200) 18%); }
+.road b { font-size: 14.5px; color: var(--g900); }
+.road span { font-size: 13px; color: var(--g500); }
+.road a { font-size: 13px; font-weight: 600; color: var(--amber700); text-decoration: none; margin-top: 4px; }
+.road a:hover { text-decoration: underline; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch; }
+.two > .card { display: flex; flex-direction: column; }
+.box-ft { margin-top: auto; padding: 12px 16px; border-top: 1px solid var(--g100); }
+.thumb img.dim { opacity: .45; }
+@media (max-width: 860px) {
+  .two { grid-template-columns: 1fr; }
+  .road { grid-template-columns: 1fr; gap: 14px; }
+  .road li { padding: 0 0 0 28px; } .road li::before { top: 18px; bottom: -18px; left: 6px; right: auto; width: 2px; height: auto; }
+  .road li.cur::before { background: var(--g200); }
+}
+
+/* contrast pass: grey canvas, white cards that stand out, darker secondary text */
+body { background: #eceef1; }
+.card { border-color: #d9dce1; box-shadow: 0 1px 2px rgba(17,24,39,.06), 0 1px 1px rgba(17,24,39,.03); }
+.muted, .list-row span.s, .cc .meta, .chap-hd .s, .road span { color: var(--g600); }
+.lt { color: var(--g500); }
+.box-hd { border-bottom-color: #e3e6ea; } .box-hd h3 { font-size: 16px; }
+.list-row { border-top-color: #e9ebee; }
+.hello h1 { font-size: 32px; }
+.top { border-bottom-color: #d9dce1; }
+.top nav a { color: var(--g600); }
+.top nav a.on { color: var(--g900); background: var(--amber100); }
+.resume .vis { background: var(--amber50); border-right-color: var(--amber100); }
+.resume .vis img, .thumb.img img { mix-blend-mode: multiply; }
+.thumb.img { background: var(--amber50); box-shadow: inset 0 0 0 1px var(--amber100); }
+.resume h2 { font-size: 24px; }
+.bar { background: #dfe2e6; }
+.road li::before { background: #cfd3d9; }
+.road .dot { border-color: var(--g400); }
+.pill.draft { background: #e5e7eb; color: var(--g700); }
+.pill.warn { background: var(--amber100); }
+.pill.ok { background: #dcfce7; color: #15803d; }
+.certcard .face { background: var(--amber100); border-right-color: #fde68a; }
+.certcard .face span { color: #92400e; }
+.adm-nav, .tree { border-right-color: #d9dce1; }
+.preview { background: #e5e7eb; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="mk-bar" role="toolbar" aria-label="Makieta wählen">
+  <b>Makiety</b>
+  <button type="button" data-v="dash">Kursant: pulpit</button>
+  <button type="button" data-v="course">Kursant: kurs</button>
+  <button type="button" data-v="certs">Kursant: zertifikate</button>
+  <button type="button" data-v="orders">Kursant: zamówienia</button>
+  <button type="button" data-v="profile">Kursant: profil</button>
+  <a href="kurs-demo.html#t120" style="color:#e5e7eb;font-size:12.5px;white-space:nowrap">Kursant: lekcja (demo)</a>
+  <span class="sep"></span>
+  <button type="button" data-v="courses">Admin: kursy</button>
+  <button type="button" data-v="builder">Admin: kreator</button>
+  <span class="sep"></span><b>Grafika</b>
+  <button type="button" data-cv="dunkel">A ciemna</button><button type="button" data-cv="hell">B jasna</button><button type="button" data-cv="linie">C linia</button>
+</div>
+<div id="view"></div>
+<div class="scrim" id="scrim"><div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const ic = d => `<svg class="ic" viewBox="0 0 24 24">${d}</svg>`;
+  const I = {
+    check: ic('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+    next: ic('<path d="M9 6l6 6-6 6"/>'),
+    chev: ic('<path d="M6 9l6 6 6-6"/>'),
+    up: '<svg class="ic ic-s" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>',
+    down: '<svg class="ic ic-s" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>',
+    del: '<svg class="ic ic-s" viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg>',
+    plus: ic('<path d="M12 5v14M5 12h14"/>'),
+    lock: '<svg class="ic ic-s" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+    book: ic('<path d="M4 5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/>'),
+    users: ic('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.5-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.8.7 3 2.6 3.5 5.2"/>'),
+    cart: ic('<path d="M3 4h2l2.5 11h11L21 8H7"/><circle cx="9" cy="19" r="1.5"/><circle cx="18" cy="19" r="1.5"/>'),
+    award: ic('<circle cx="12" cy="9" r="6"/><path d="M8.5 14L7 21l5-3 5 3-1.5-7"/>'),
+    pin: ic('<path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>'),
+    tag: ic('<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8" r="1.5"/>'),
+    img: ic('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-6-6-9 9"/>'),
+    gear: ic('<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/>'),
+    chart: ic('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'),
+    eye: ic('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+    card: ic('<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>'),
+    video: ic('<rect x="3" y="5" width="14" height="14" rx="2"/><path d="M17 10l4-2v8l-4-2"/>'),
+    choice: ic('<circle cx="6" cy="7" r="2"/><circle cx="6" cy="17" r="2"/><path d="M11 7h9M11 17h9"/>'),
+    sort: ic('<path d="M4 6h7M4 12h7M4 18h7M15 8l3-3 3 3M18 5v14"/>'),
+    gap: ic('<path d="M3 12h4M17 12h4"/><rect x="8" y="9" width="8" height="6" rx="1"/>'),
+    person: ic('<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>'),
+    sim: ic('<path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/>'),
+    star: ic('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'),
+    list: ic('<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>'),
+    hot: ic('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/>'),
+    calendar: ic('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'),
+  };
+  let tt; const toast = m => { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 2200); };
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* ───────── sample data ───────── */
+  const LANGS = ['de', 'en', 'pl', 'uk'];
+  const L = (de, en = '', pl = '', uk = '') => ({ de, en, pl, uk });
+  const course = {
+    title: 'Staplerschein Theorie',
+    chapters: [
+      { title: 'Grundlagen & Vorschriften', lessons: [
+        { title: 'Lernziele', dur: 5, steps: 14 },
+        { title: '1.1 Warum eine Ausbildung vorgeschrieben ist', dur: 15, steps: 21 },
+        { title: '1.2 DGUV Vorschrift 68: Pflichten', dur: 15, open: true, stepList: [
+          { type: 'question', t: L('Wer sorgt dafür, dass im Lager sicher Stapler gefahren wird?', 'Who makes sure forklifts are driven safely in the warehouse?', 'Kto dba o to, żeby w magazynie bezpiecznie jeździło się wózkami?', 'Хто дбає про те, щоб на складі безпечно їздили навантажувачами?') },
+          { type: 'learn', t: L('Eine Vorschrift, zwei Seiten', 'One regulation, two sides', 'Jeden przepis, dwie strony', 'Одна постанова, дві сторони') },
+          { type: 'learn', t: L('Pflichten des Unternehmers', 'Duties of the employer', 'Obowiązki pracodawcy', 'Обов’язки роботодавця'), data: {
+            lead: L('Bevor du den ersten Meter fährst, muss dein Arbeitgeber einiges erledigt haben.', 'Before you drive the first metre, your employer must have taken care of several things.', 'Zanim przejedziesz pierwszy metr, twój pracodawca musi załatwić kilka rzeczy.', ''),
+            points: [
+              { k: L('Beauftragen:', 'Authorise:', 'Upoważnić:', ''), v: L('nur geeignete, ausgebildete Personen mit nachgewiesener Befähigung, und zwar schriftlich.', 'only suitable, trained people with proven competence, and in writing.', 'tylko osoby z predyspozycjami, przeszkolone i z potwierdzonymi kwalifikacjami, na piśmie.', '') },
+              { k: L('Betriebsanweisung', 'Operating instructions', 'Instrukcję zakładową', ''), v: L('schriftlich erstellen, verständlich formulieren, bekannt machen.', 'write them, word them clearly, make them known.', 'napisać, sformułować zrozumiale, ogłosić.', '') },
+              { k: L('Mängel beheben lassen,', 'Have defects repaired', 'Zlecić usunięcie usterek,', ''), v: L('bevor der Stapler weiter benutzt wird.', 'before the forklift is used again.', 'zanim wózek będzie dalej używany.', '') },
+              { k: L('Prüfen lassen:', 'Have it inspected:', 'Zlecić przegląd:', ''), v: L('mindestens einmal im Jahr durch einen Sachkundigen.', 'at least once a year by a competent person.', 'co najmniej raz w roku przez rzeczoznawcę.', '') },
+            ],
+            merke: L('Die Prüfplakette zeigt, wann die nächste jährliche Prüfung fällig ist.', 'The inspection sticker shows when the next annual inspection is due.', 'Naklejka przeglądu pokazuje, kiedy jest następny coroczny przegląd.', ''),
+            src: L('DGUV V68 §5, §7, §9 Abs. 2, §37', 'DGUV V68 §5, §7, §9 para. 2, §37', 'DGUV V68 §5, §7, §9 ust. 2, §37', ''),
+          } },
+          { type: 'learn', t: L('Pflichten des Fahrers', 'Duties of the driver', 'Obowiązki kierowcy', 'Обов’язки водія') },
+          { type: 'sort', t: L('Wer muss das tun?', 'Whose job is it?', 'Kto musi to zrobić?', 'Хто має це зробити?') },
+          { type: 'learn', t: L('Betriebsanleitung oder Betriebsanweisung?', 'Operating manual or operating instructions?', 'Betriebsanleitung czy Betriebsanweisung?', '') },
+          { type: 'sort', t: L('Anleitung oder Anweisung?', 'Manual or instructions?', 'Anleitung czy Anweisung?', 'Anleitung чи Anweisung?') },
+          { type: 'learn', t: L('Die tägliche Einsatzprüfung', 'The daily pre-use check', 'Codzienna kontrola przed pracą', 'Щоденна перевірка перед роботою') },
+          { type: 'video', t: L('Einsatzprüfung am echten Stapler', 'Pre-use check on a real forklift', 'Kontrola na prawdziwym wózku', 'Перевірка на справжньому навантажувачі') },
+          { type: 'sim', sim: 'Einsatzprüfung', t: L('Deine Einsatzprüfung', 'Your pre-use check', 'Twoja kontrola przed pracą', 'Твоя перевірка перед роботою') },
+          { type: 'choice', t: L('Riss an der Gabelzinke. Was tust du?', 'Crack in the fork arm. What do you do?', 'Pęknięte ramię wideł. Co robisz?', 'Тріщина в зубці вил. Що робиш?') },
+          { type: 'learn', t: L('So fährst du nach §12', 'How to drive under §12', 'Jak jeździć według §12', 'Як керувати за §12') },
+          { type: 'sim', sim: 'Rampe', t: L('Mit Last auf der Rampe', 'With a load on the ramp', 'Z ładunkiem na rampie', 'З вантажем на рампі') },
+          { type: 'sim', sim: 'Abstellen', t: L('Feierabend: Stell den Stapler ab', 'End of shift: park the forklift', 'Fajrant: odstaw wózek', 'Кінець зміни: припаркуй навантажувач') },
+          { type: 'choice', t: L('Kurztest', 'Quick test', 'Krótki test', 'Короткий тест') },
+          { type: 'summary', t: L('Das nimmst du mit', 'Key takeaways', 'Najważniejsze', 'Головне') },
+        ] },
+        { title: '1.3 Rechtliche Grundlagen', dur: 10, steps: 0 },
+        { title: '1.4 Folgen von Fehlverhalten', dur: 10, steps: 0 },
+      ], quiz: 'Test Kapitel 1' },
+      { title: 'Unfallgeschehen', lessons: [{ title: '2.1 Unfallstatistiken', steps: 0 }, { title: '2.2 Ausgewählte Unfälle', steps: 0 }] },
+      { title: 'Aufbau und Funktion', lessons: [{ title: '3.1 Aufbau des Gabelstaplers', steps: 0 }] },
+      { title: 'Standsicherheit', lessons: [] },
+    ],
+  };
+  const TYPES = {
+    learn: { n: 'Lernkarte', i: I.card, d: 'Wissen vermitteln: Titel, Einleitung, 3 bis 5 Kernpunkte, Merke und Quelle.' },
+    video: { n: 'Video', i: I.video, d: 'Eigenes Video hochladen oder Link einfügen, mit Untertiteln pro Sprache.' },
+    choice: { n: 'Frage mit Antworten', i: I.choice, d: 'Eine oder mehrere Fragen, eine richtige Antwort und Begründung.' },
+    sort: { n: 'Zuordnen', i: I.sort, d: 'Aussagen nacheinander einer von 2 bis 3 Gruppen zuordnen.' },
+    gap: { n: 'Lückentext', i: I.gap, d: 'Satz mit Lücken, Wörter der Reihe nach antippen.' },
+    case: { n: 'Fallkarten', i: I.person, d: 'Personen mit Steckbrief: Darf sie fahren? Wischen oder tippen.' },
+    question: { n: 'Einstiegsfrage', i: I.choice, d: 'Kurze Frage vor dem Thema mit Auflösung und Zitat.' },
+    sim: { n: 'Simulation', i: I.sim, d: 'Fertige Simulation aus der Bibliothek, Werte und Texte anpassbar.' },
+    hotspot: { n: 'Bild mit Punkten', i: I.hot, d: 'Eigenes Foto hochladen und Prüfpunkte darauf setzen.' },
+    self: { n: 'Selbsteinschätzung', i: I.star, d: 'Lernende bewerten ihr Wissen von 1 bis 5.' },
+    summary: { n: 'Zusammenfassung', i: I.list, d: 'Die wichtigsten Punkte am Ende des Themas.' },
+  };
+  const SIMS = ['Lenkung Auto und Stapler', 'Wippe und Kippen', 'Lastschwerpunktdiagramm', 'Fahrstellung', 'Rampe', 'Abstellen', 'Einsatzprüfung'];
+
+  /* ───────── state ───────── */
+  const st = { view: (location.hash.slice(1) || 'dash'), lang: 'de', sel: 2, saving: false, openCh: 0, cover: 'linie' };
+  const lesson = course.chapters[0].lessons[2];
+  const stepMissing = (s, l) => l !== 'de' && (!s.t[l] || (s.data && [s.data.lead, s.data.merke, s.data.src, ...s.data.points.flatMap(p => [p.k, p.v])].some(x => x.de && !x[l])));
+  const missing = l => lesson.stepList.filter(s => stepMissing(s, l)).length;
+
+  /* ───────── learner: dashboard ───────── */
+  const learnerTop = active => `<header class="top"><span class="logo"><i></i>Staplero</span>
+    <nav>${NAV.map(([h, t]) => `<a href="#${h}" class="${active === h ? 'on' : ''}">${t}</a>`).join('')}</nav>
+    <span class="sp"></span><div class="lang">${LANGS.map(l => `<button type="button" aria-pressed="${l === 'de'}">${l.toUpperCase()}</button>`).join('')}</div><span class="avatar" aria-label="Profil">JK</span></header>
+    <nav class="tabbar" aria-label="Hauptnavigation">${NAV.map(([h, t, i]) => `<a href="#${h}" class="${active === h ? 'on' : ''}">${i}<span>${t.replace('Meine ', '')}</span></a>`).join('')}</nav>`;
+  const NAV = [['dash', 'Übersicht', I.chart], ['course', 'Meine Kurse', I.book], ['certs', 'Zertifikate', I.award], ['orders', 'Bestellungen', I.cart], ['profile', 'Profil', I.person]];
+  const coverImg = (cls = '') => `<img class="${cls}" src="img/cover-${st.cover === 'linie' ? 'linie-hell' : st.cover}.webp" alt="" loading="lazy">`;
+  /* simplified marks for the mockup; production uses the official badge artwork from Apple and Google */
+  const APPLE_W = '<svg viewBox="0 0 814 1000" width="15" height="18" fill="currentColor" aria-hidden="true"><path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.5 0 663 0 541.8c0-207.5 135.4-317.5 268.4-317.5 99.8 0 183 65.8 245.8 65.8 59.2 0 152-69.1 269.1-69.1zm-135.2-84.8c-62 0-160 41.5-163.1 41.5-15.2 0-12.9-14.7-12.9-20.7 0-64.6 57.3-128.5 116.3-155.3 52.2-24 106.2-32.1 138-32.1 5.4 0 10.2.4 15.5 1.1 3.2 49.7-6.4 143.2-93.8 165.5z"/></svg>';
+  const GOOGLE_W = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>';
+  function viewDash() {
+    return `<div class="app">${learnerTop('dash')}<main class="page">
+      <div class="hello"><p class="muted">Dienstag, 21. Oktober</p><h1>Hallo Jonas, weiter geht’s.</h1></div>
+      <section class="card resume" aria-label="Weiterlernen">
+        <div class="vis">${coverImg()}</div>
+        <div class="body"><span class="lt">Weiterlernen · Staplerschein Theorie</span>
+          <h2>1.2 DGUV Vorschrift 68: Pflichten</h2>
+          <p class="muted">Kapitel 1 · Schritt 9 von 21 · noch ca. 7 Minuten · Zugang bis 20. November</p>
+          <div class="row"><div class="bar"><i style="width:43%"></i></div><span class="muted">43 %</span></div>
+          <div><a class="btn btn-p" href="kurs-demo.html#t128" style="text-decoration:none">Weiterlernen ${I.next}</a></div></div>
+      </section>
+      <section class="card path" aria-label="Dein Weg zum Staplerschein">
+        <div class="box-hd"><h3>Dein Weg zum Staplerschein</h3><span class="muted">Schritt 1 von 4</span></div>
+        <ol class="road">${[
+          ['cur', 'Online-Theorie', '18 % · Zugang bis 20. November', '<a href="#course">Zum Kurs</a>'],
+          ['', 'Theorieprüfung', 'online, nach allen 10 Kapiteln', ''],
+          ['', 'Praxistag', 'Di, 4. November · 08:00 · Berlin-Neukölln', '<a href="#dash" data-toast="Anfahrt, Checkliste, Kalender">Anfahrt und Checkliste</a>'],
+          ['', 'Staplerschein', 'als PDF und im Handy-Wallet', '<a href="#certs">Zertifikate</a>'],
+        ].map(([c, t, d, l]) => `<li class="${c}"><span class="dot"></span><b>${t}</b><span>${d}</span>${l}</li>`).join('')}</ol>
+      </section>
+      <div class="two">
+        <section class="card"><div class="box-hd"><h3>Meine Kurse</h3><a href="#course" class="muted" style="text-decoration:none">Alle</a></div>
+          ${[['Staplerschein Theorie', 'Online · Zugang noch 30 Tage', 18, 'Läuft', 'warn', 'course'], ['Praxistag Gabelstapler', 'Termin am 4. November, Berlin', 0, 'Gebucht', 'draft', 'dash'], ['Schubmaststapler (Stufe 2)', 'Freigeschaltet nach Stufe 1', 0, 'Gesperrt', 'draft', 'dash']].map(([t, s, p, pl, cls, h], k) => `
+          <a class="list-row" href="#${h}" style="text-decoration:none;color:inherit"><div class="thumb img">${coverImg(k ? 'dim' : '')}</div><div class="t"><b>${t}</b><span class="s">${s}</span>${p ? `<div class="bar" style="margin-top:8px;max-width:220px"><i style="width:${p}%"></i></div>` : ''}</div><span class="pill ${cls}">${pl}</span></a>`).join('')}
+        </section>
+        <section class="card"><div class="box-hd"><h3>Bestellungen</h3><a href="#orders" class="muted" style="text-decoration:none">Alle</a></div>
+          ${[['Staplerschein Komplett', 'ST-2026-0412 · 21. Oktober', '349,00 €', 'Bezahlt', 'ok'], ['Firmenschulung, 3 Teilnehmer', 'ST-2026-0398 · 14. Oktober', '897,00 €', 'Rechnung offen', 'warn']].map(([t, s, a, pl, cls]) => `
+          <a class="list-row" href="#orders" style="text-decoration:none;color:inherit"><div class="t"><b>${t}</b><span class="s">${s}</span></div><div style="text-align:right;display:grid;gap:4px;justify-items:end"><b style="font-size:14px;color:var(--g900)">${a}</b><span class="pill ${cls}">${pl}</span></div></a>`).join('')}
+          <div class="box-ft"><span class="muted">Rechnungen als PDF unter Bestellungen</span></div>
+        </section>
+      </div>
+    </main></div>`;
+  }
+
+  /* ───────── learner: course overview ───────── */
+  function viewCourse() {
+    const chs = [
+      { t: 'Grundlagen & Vorschriften', s: '6 Themen · Test', state: 'cur', les: [['Lernziele', 'done', '5 min'], ['1.1 Warum eine Ausbildung vorgeschrieben ist', 'done', '15 min'], ['1.2 DGUV Vorschrift 68: Pflichten', 'cur', '15 min'], ['1.3 Rechtliche Grundlagen', '', '10 min'], ['1.4 Folgen von Fehlverhalten', '', '10 min'], ['1.5 Aufbau des Staplerscheins', '', '5 min'], ['1.6 Das Stufensystem', '', '5 min'], ['Test Kapitel 1', 'test', '10 Fragen']] },
+      ...['Unfallgeschehen', 'Aufbau und Funktion', 'Antriebsarten', 'Standsicherheit', 'Betrieb allgemein', 'Regelmäßige Prüfung', 'Umgang mit Last', 'Sondereinsätze', 'Verkehrsregeln'].map(t => ({ t, s: 'Nach Kapitel davor', state: 'lock', les: [] })),
+    ];
+    return `<div class="app">${learnerTop('course')}<main class="page">
+      <div class="co-hd"><div style="display:grid;gap:10px"><a href="#dash" class="muted" style="text-decoration:none">← Übersicht</a><h1>Staplerschein Theorie</h1>
+        <p class="muted" style="max-width:560px">Allgemeine Ausbildung nach DGUV Grundsatz 308-001, Stufe 1. Danach folgen der Praxistag und die Prüfung.</p></div>
+        <div class="card stat"><span class="lt">Dein Fortschritt</span><div class="big">18 %</div><div class="bar"><i style="width:18%"></i></div><span class="muted">2 von 48 Themen · ca. 4 Std. übrig</span>
+          <a class="btn btn-p" href="kurs-demo.html#t128" style="text-decoration:none">Weiterlernen ${I.next}</a></div></div>
+      <section style="display:grid;gap:10px">${chs.map((c, i) => `
+        <div class="card chap ${c.state} ${st.openCh === i ? 'open' : ''}">
+          <button class="chap-hd" type="button" data-ch="${i}" aria-expanded="${st.openCh === i}" ${c.state === 'lock' ? 'disabled' : ''}>
+            <span class="n">${c.state === 'lock' ? I.lock : i + 1}</span><span class="t"><b>${c.t}</b><span class="s">${c.s}</span></span>${c.state === 'lock' ? '' : `<span class="chev">${I.chev}</span>`}</button>
+          <div class="lessons">${c.les.map(([t, s, d]) => s === 'test'
+            ? `<div class="les test"><span class="st" style="border-color:var(--amber500)"></span><span class="t">${t}</span><span class="d">${d}</span></div>`
+            : `<a class="les ${s}" href="kurs-demo.html#${t.startsWith('Lern') ? 'lz0' : t.startsWith('1.1') ? 't110' : 't120'}"><span class="st">${s === 'done' ? '<svg class="ic" viewBox="0 0 24 24" style="width:11px;height:11px;stroke-width:3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</span><span class="t">${t}</span><span class="d">${d}</span></a>`).join('')}</div>
+        </div>`).join('')}
+        <div class="card cert"><span style="color:var(--amber500)">${I.award}</span><div style="flex:1"><h3>Abschlussprüfung und Zertifikat</h3><p style="font-size:13.5px;color:#9ca3af">Ca. 50 Fragen, bestanden ab 70 %. Freigeschaltet nach allen Kapiteln.</p></div>${I.lock}</div>
+      </section></main></div>`;
+  }
+
+  /* ───────── learner: certificates, orders, profile ───────── */
+  const learnerPage = (active, title, sub, body) => `<div class="app">${learnerTop(active)}<main class="page"><div class="page-hd"><div><h1 style="font-size:26px">${title}</h1><p class="muted">${sub}</p></div></div>${body}</main></div>`;
+  function viewCerts() {
+    return learnerPage('certs', 'Zertifikate', 'Deine Nachweise zum Herunterladen und für das Handy-Wallet.', `
+      <div class="card certcard"><div class="face"><span>Staplero · Theorienachweis</span><b>Stufe 1 Theorie</b><span>Jonas Krämer · 18. Oktober 2026</span></div>
+        <div class="body"><div style="display:flex;gap:10px;align-items:center"><h3 style="font-size:16px">Theorienachweis Gabelstapler</h3><span class="pill ok">Gültig</span></div>
+          <p class="muted">Prüfung bestanden mit 86 % · Code ST-9F3K-21 · prüfbar unter staplero.de/verify</p>
+          <div class="wallet"><button class="wbtn pdf" type="button" data-toast="PDF wird geladen">PDF herunterladen</button><button class="wbtn" type="button" data-toast="Zu Apple Wallet hinzufügen">${APPLE_W}Zu Apple Wallet hinzufügen</button><button class="wbtn" type="button" data-toast="Zu Google Wallet hinzufügen">${GOOGLE_W}Zu Google Wallet hinzufügen</button></div></div></div>
+      <div class="card certcard" style="opacity:.75"><div class="face off"><span>Staplero · Fahrausweis</span><b>Staplerschein</b><span>nach dem Praxistag</span></div>
+        <div class="body"><div style="display:flex;gap:10px;align-items:center"><h3 style="font-size:16px">Staplerschein (Fahrausweis)</h3><span class="pill draft">Ausstehend</span></div>
+          <p class="muted">Wird nach bestandener Prüfungsfahrt am Praxistag (4. November) ausgestellt. Du bekommst eine E-Mail.</p></div></div>`);
+  }
+  function viewOrders() {
+    const rows = [['ST-2026-0412', '21.10.2026', 'Staplerschein Komplett', 'Jonas Krämer', '349,00 €', 'Bezahlt', 'ok'], ['ST-2026-0398', '14.10.2026', 'Firmenschulung, 3 Teilnehmer', 'Krämer Logistik GmbH', '897,00 €', 'Rechnung offen', 'warn']];
+    return learnerPage('orders', 'Bestellungen', 'Deine Käufe, Rechnungen und gebuchten Teilnehmer.', `
+      <div class="card" style="overflow-x:auto"><table class="table resp"><thead><tr><th>Bestellung</th><th>Produkt</th><th class="hide-m">Teilnehmer</th><th>Betrag</th><th>Status</th><th></th></tr></thead><tbody>
+        ${rows.map(r => `<tr><td><b style="color:var(--g900)">${r[0]}</b><div class="muted" style="font-size:12.5px">${r[1]}</div></td><td>${r[2]}</td><td class="hide-m">${r[3]}</td><td>${r[4]}</td><td><span class="pill ${r[6]}">${r[5]}</span></td>
+          <td><button class="btn btn-o btn-s" type="button" data-toast="Rechnung als PDF">Rechnung</button></td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="card" style="padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><b style="color:var(--g900)">Weitere Teilnehmer anmelden?</b><p class="muted">Für Firmen: Plätze kaufen und Mitarbeitern den Kurs zuweisen.</p></div><a class="btn btn-o" href="#orders" style="text-decoration:none">Zum Shop</a></div>`);
+  }
+  function viewProfile() {
+    const f = (l, v, t = 'text') => `<div class="fld"><label>${l}</label><input type="${t}" value="${v}"></div>`;
+    return learnerPage('profile', 'Profil', 'Diese Daten stehen auf deinem Zertifikat und deinen Rechnungen.', `
+      <section class="card" style="padding:20px"><h3 style="font-size:16px;margin-bottom:14px">Persönliche Daten</h3><div class="form2">${f('Vorname', 'Jonas')}${f('Nachname', 'Krämer')}${f('Geburtsdatum', '1998-04-12', 'date')}${f('Telefon', '+49 176 1234567')}</div>
+        <p class="help muted" style="font-size:12.5px">Name und Geburtsdatum stehen auf dem Staplerschein. Bitte genau wie im Ausweis.</p></section>
+      <section class="card" style="padding:20px"><h3 style="font-size:16px;margin-bottom:14px">Konto</h3><div class="form2">${f('E-Mail', 'jonas.kraemer@example.de', 'email')}<div class="fld"><label>Sprache im Kurs</label><select><option>Deutsch</option><option>English</option><option>Polski</option><option>Українська</option></select></div></div>
+        <button class="btn btn-o btn-s" type="button" data-toast="Link zum Ändern per E-Mail gesendet">Passwort ändern</button></section>
+      <section class="card" style="padding:20px"><h3 style="font-size:16px;margin-bottom:14px">Rechnungsadresse</h3><div class="form2">${f('Firma (optional)', 'Krämer Logistik GmbH')}${f('USt-IdNr. (optional)', '')}${f('Straße und Nr.', 'Hafenstraße 12')}${f('PLZ und Ort', '12057 Berlin')}</div></section>
+      <div style="display:flex;justify-content:end"><button class="btn btn-p" type="button" data-toast="Gespeichert">Speichern</button></div>`);
+  }
+
+  /* ───────── admin shell ───────── */
+  const admNav = on => `<aside class="adm-nav" aria-label="Admin-Navigation">
+    <div class="grp"><span class="lt">Lernen</span><a href="#courses" class="${on === 'courses' ? 'on' : ''}">${I.book}Kurse</a><a href="#courses">${I.img}Medien</a><a href="#courses">${I.chart}Auswertung</a></div>
+    <div class="grp"><span class="lt">Teilnehmer</span><a href="#courses">${I.users}Teilnehmer</a><a href="#courses">${I.calendar}Praxistermine</a><a href="#courses">${I.award}Zertifikate</a></div>
+    <div class="grp"><span class="lt">Verkauf</span><a href="#courses">${I.tag}Produkte</a><a href="#courses">${I.cart}Bestellungen</a><a href="#courses">${I.pin}Standorte</a></div>
+    <div class="grp"><a href="#courses">${I.gear}Einstellungen</a></div></aside>`;
+  const admTop = `<header class="top"><span class="logo"><i></i>Staplero</span><span class="pill dark">Admin</span><span class="sp"></span><span class="avatar">KL</span></header>`;
+  function viewCourses() {
+    const rows = [
+      ['Staplerschein Theorie', 'Stufe 1 · 10 Kapitel · 48 Themen', 'ok', 'Veröffentlicht', ['de', 'en', 'pl', 'uk'], ['full', 'full', 'part', 'part'], 124, 'vor 2 Std.'],
+      ['Schubmaststapler Zusatzausbildung', 'Stufe 2 · 3 Kapitel · 9 Themen', 'draft', 'Entwurf', ['de', 'en', 'pl', 'uk'], ['part', 'none', 'none', 'none'], 0, 'gestern'],
+      ['Unterweisung Mitgänger-Flurförderzeuge', 'Unterweisung · 1 Kapitel · 4 Themen', 'draft', 'Entwurf', ['de', 'en', 'pl', 'uk'], ['full', 'none', 'none', 'none'], 0, 'vor 5 Tagen'],
+    ];
+    return `<div class="app">${admTop}<div class="adm">${admNav('courses')}<main class="adm-main"><div class="page">
+      <div class="page-hd"><div><h1>Kurse</h1><p class="muted">Alle Online-Kurse. Klicke auf einen Kurs, um Inhalte zu bearbeiten.</p></div>
+        <div style="display:flex;gap:8px"><button class="btn btn-o" type="button" data-toast="Import aus Datei: Kurs als Paket hochladen">Importieren</button><button class="btn btn-p" type="button" id="newCourse">${I.plus}Neuer Kurs</button></div></div>
+      <div class="card" style="overflow-x:auto"><table class="table"><thead><tr><th>Kurs</th><th>Status</th><th class="hide-m">Sprachen</th><th class="hide-m">Teilnehmer</th><th class="hide-m">Geändert</th></tr></thead><tbody>
+        ${rows.map(r => `<tr class="click" data-open="1"><td><div class="ctitle"><div class="thumb"><i></i></div><div><b>${r[0]}</b><span>${r[1]}</span></div></div></td>
+          <td><span class="pill ${r[2]}">${r[3]}</span></td>
+          <td class="hide-m"><div class="langs">${r[4].map((l, i) => `<span class="lg ${r[5][i] === 'full' ? '' : r[5][i]}" title="${r[5][i] === 'full' ? 'vollständig' : r[5][i] === 'part' ? 'teilweise übersetzt' : 'nicht übersetzt'}">${l.toUpperCase()}</span>`).join('')}</div></td>
+          <td class="hide-m">${r[6]}</td><td class="hide-m muted">${r[7]}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="muted"><span class="lg">DE</span> vollständig &nbsp; <span class="lg part">EN</span> teilweise übersetzt &nbsp; <span class="lg none">PL</span> nicht übersetzt</p>
+    </div></main></div></div>`;
+  }
+
+  /* ───────── admin: builder ───────── */
+  function treeHTML() {
+    return course.chapters.map((c, ci) => `<div class="tree-ch">
+      <button class="tree-row ch" type="button"><span class="tx">${ci + 1}. ${esc(c.title)}</span></button>
+      ${c.lessons.map((l, li) => {
+        const isCur = l === lesson;
+        return `<button class="tree-row les ${isCur ? '' : ''}" type="button" ${isCur ? '' : 'data-toast="Thema öffnen"'}><span class="tx" style="${isCur ? 'font-weight:600;color:var(--g900)' : ''}">${esc(l.title)}</span><span class="ty">${isCur ? lesson.stepList.length : l.steps || 'leer'}</span></button>
+        ${isCur ? lesson.stepList.map((s, si) => `<button class="tree-row step ${si === st.sel ? 'sel' : ''}" type="button" data-step="${si}">
+            ${stepMissing(s, st.lang) ? '<span class="miss" title="Übersetzung fehlt"></span>' : ''}
+            <span class="tyi" title="${TYPES[s.type].n}" aria-label="${TYPES[s.type].n}">${TYPES[s.type].i}</span><span class="tx">${esc(s.t[st.lang] || s.t.de)}</span>
+            <span class="mv"><span role="button" aria-label="Nach oben" data-mv="-1" data-i="${si}">${I.up}</span><span role="button" aria-label="Nach unten" data-mv="1" data-i="${si}">${I.down}</span></span></button>`).join('')
+          + `<button class="tree-add" type="button" id="addStep">${I.plus}Schritt hinzufügen</button>` : ''}`;
+      }).join('')}
+      <button class="tree-add l" type="button" data-toast="Neues Thema in Kapitel ${ci + 1}">${I.plus}Thema</button>
+    </div>`).join('') + `<button class="tree-add l" type="button" data-toast="Neues Kapitel" style="padding-left:8px">${I.plus}Kapitel</button>`;
+  }
+  const val = (o, l) => o[l] || '';
+  function fieldHTML(key, label, obj, { area = false, help = '', req = true } = {}) {
+    const l = st.lang, v = val(obj, l), empty = !v && req;
+    return `<div class="fld ${empty && l !== 'de' ? '' : empty ? 'bad' : ''}"><label for="f_${key}">${label}${l !== 'de' ? '<small>Übersetzung</small>' : ''}</label>
+      ${l !== 'de' ? `<div class="src-de"><b>DE</b>${esc(obj.de)}</div>` : ''}
+      ${area ? `<textarea id="f_${key}" data-k="${key}">${esc(v)}</textarea>` : `<input id="f_${key}" data-k="${key}" value="${esc(v)}">`}
+      ${empty && l === 'de' ? '<span class="err">Pflichtfeld: Ohne diesen Text kann das Thema nicht veröffentlicht werden.</span>' : empty ? '<span class="help" style="color:var(--amber700)">Noch nicht übersetzt. Teilnehmer sehen hier den deutschen Text.</span>' : help ? `<span class="help">${help}</span>` : ''}</div>`;
+  }
+  function editorHTML() {
+    const s = lesson.stepList[st.sel], T = TYPES[s.type];
+    const head = `<div class="ed-hd"><span class="ty">${T.n}</span><h2>${esc(s.t[st.lang] || s.t.de)}</h2>
+      <button class="btn btn-g btn-s" type="button" data-toast="Schritt dupliziert">Duplizieren</button><button class="btn btn-g btn-s" type="button" data-toast="Schritt gelöscht, Rückgängig möglich" aria-label="Schritt löschen">${I.del}</button></div>`;
+    const ai = st.lang !== 'de' && missing(st.lang) ? `<div class="ai"><span><b>${missing(st.lang)} Schritte</b> in diesem Thema sind noch nicht auf ${({ en: 'Englisch', pl: 'Polnisch', uk: 'Ukrainisch' })[st.lang]} übersetzt.</span><button class="btn btn-d btn-s" type="button" data-toast="Entwurf der Übersetzung erstellt. Bitte prüfen.">Mit KI vorübersetzen</button></div>` : '';
+    if (s.type === 'learn' && s.data) {
+      const d = s.data;
+      return head + ai + fieldHTML('title', 'Titel', s.t) + fieldHTML('lead', 'Einleitung', d.lead, { area: true, help: 'Ein bis zwei Sätze, worum es geht.' }) +
+        `<div class="fld"><span class="lab">Kernpunkte <small>3 bis 5 Punkte · Stichwort wird fett</small></span><div class="pts">${d.points.map((p, i) => `
+          <div class="pt"><span class="n">${i + 1}</span><input data-p="${i}" data-pk="k" aria-label="Stichwort ${i + 1}" value="${esc(val(p.k, st.lang))}" placeholder="${st.lang !== 'de' ? esc(p.k.de) : 'Stichwort'}">
+          <textarea data-p="${i}" data-pk="v" aria-label="Text ${i + 1}" placeholder="${st.lang !== 'de' ? esc(p.v.de) : ''}">${esc(val(p.v, st.lang))}</textarea>
+          <span class="act"><button type="button" aria-label="Punkt nach oben" data-pm="-1" data-i="${i}">${I.up}</button><button type="button" aria-label="Punkt nach unten" data-pm="1" data-i="${i}">${I.down}</button><button type="button" aria-label="Punkt löschen" data-pd="${i}">${I.del}</button></span></div>`).join('')}</div>
+          ${d.points.length < 5 ? `<button class="link-add" type="button" id="addPt">${I.plus}Punkt hinzufügen</button>` : '<span class="help">Maximal 5 Punkte, damit die Karte auf einen Bildschirm passt.</span>'}</div>` +
+        fieldHTML('merke', 'Merke', d.merke, { area: true, help: 'Ein Satz, den sich Lernende merken sollen. Optional.', req: false }) +
+        fieldHTML('src', 'Quelle', d.src, { help: 'Vorschrift oder Grundsatz, z. B. DGUV V68 §7 Abs. 1.' });
+    }
+    if (s.type === 'sim') {
+      return head + `<div class="fld"><label for="simSel">Simulation</label><select id="simSel">${SIMS.map(x => `<option ${x === s.sim ? 'selected' : ''}>${x}</option>`).join('')}</select><span class="help">Simulationen sind fertig programmiert. Du passt hier nur Texte und Werte an.</span></div>` +
+        fieldHTML('title', 'Titel', s.t) + `<div class="fld"><span class="lab">Werte</span><div class="src-de">Beispiel Rampe: Fahrt hinauf, Fahrt hinunter, richtige Richtung je Fahrt. Feedbacktexte pro Sprache.</div></div>`;
+    }
+    return head + fieldHTML('title', 'Titel', s.t) + `<div class="empty"><b>Inhalte dieses Schritts</b><span class="muted">In der Makieta ist nur die Lernkarte „Pflichten des Unternehmers“ voll ausgearbeitet.</span><button class="btn btn-o btn-s" type="button" data-step-go="2">Zur Lernkarte</button></div>`;
+  }
+  function previewHTML() {
+    const s = lesson.stepList[st.sel], l = st.lang, tx = o => esc(o[l] || o.de);
+    const n = lesson.stepList.length;
+    const UI = { de: ['Zurück', 'Weiter', 'Merke', 'Quelle'], en: ['Back', 'Next', 'Remember', 'Source'], pl: ['Wstecz', 'Dalej', 'Zapamiętaj', 'Źródło'], uk: ['Назад', 'Далі', 'Запам’ятай', 'Джерело'] }[l];
+    let body = '', act = `<div class="ph-act"><span class="o">${UI[0]}</span><span class="p">${UI[1]}</span></div>`;
+    if (s.type === 'learn' && s.data) {
+      const d = s.data;
+      body = `<div class="q">${tx(s.t)}</div><p class="lead">${tx(d.lead) || '<span class="placeholder">Einleitung fehlt</span>'}</p>
+        <ul class="kp">${d.points.map((p, i) => `<li><span class="n">${i + 1}</span><span><b>${tx(p.k)}</b> ${tx(p.v)}</span></li>`).join('')}</ul>
+        ${(d.merke[l] || d.merke.de) ? `<div class="merke"><b>${UI[2]}</b>${tx(d.merke)}</div>` : ''}<p class="src">${UI[3]}: ${tx(d.src)}</p>`;
+    } else if (s.type === 'video') body = `<div class="q">${tx(s.t)}</div><div class="video">VIDEO</div>`;
+    else if (s.type === 'sort') { body = `<div class="q">${tx(s.t)}</div><div class="stmt">Den Stapler vor Schichtbeginn auf Mängel prüfen</div>`; act = `<div class="ph-act two" style="grid-template-columns:1fr 1fr"><span class="o">Unternehmer</span><span class="d">Fahrer</span></div>`; }
+    else if (s.type === 'choice' || s.type === 'question') body = `<div class="q">${tx(s.t)}</div><div class="opt">Antwort A</div><div class="opt">Antwort B</div><div class="opt">Antwort C</div>`;
+    else body = `<div class="q">${tx(s.t)}</div><div class="video" style="background:var(--g100);color:var(--g400)">${s.type === 'sim' ? 'SIMULATION: ' + esc(s.sim).toUpperCase() : TYPES[s.type].n.toUpperCase()}</div>`;
+    return `<span class="lt">Vorschau · ${l.toUpperCase()} · Handy</span>
+      <div class="phone" aria-label="Vorschau"><div class="ph-top"><div class="r"><b>1.2 DGUV Vorschrift 68</b><span>${st.sel + 1} / ${n}</span></div><div class="segs">${lesson.stepList.map((_, i) => `<i class="${i <= st.sel ? 'on' : ''}"></i>`).join('')}</div></div>
+      <div class="ph-body">${body}</div>${act}</div>
+      <button class="btn btn-o btn-s" type="button" data-toast="Öffnet das Thema wie bei Teilnehmern">${I.eye}Als Teilnehmer testen</button>`;
+  }
+  function viewBuilder() {
+    return `<div class="bld">
+      <div class="bld-top"><div class="crumb"><a href="#courses">Kurse</a><span>/</span><b>Staplerschein Theorie</b></div>
+        <span class="pill warn" title="Seit der letzten Veröffentlichung geändert">Entwurf · 3 Änderungen</span><span class="sp" style="flex:1"></span>
+        <span class="saved ${st.saving ? 'busy' : ''}" id="saved" aria-live="polite"><i></i>${st.saving ? 'Wird gespeichert …' : 'Alle Änderungen gespeichert'}</span>
+        <div class="bld-lang" role="group" aria-label="Sprache bearbeiten">${LANGS.map(l => { const m = missing(l); return `<button type="button" data-lang="${l}" aria-pressed="${st.lang === l}">${l.toUpperCase()}${m ? `<em title="${m} Schritte ohne Übersetzung">${m}</em>` : ''}</button>`; }).join('')}</div>
+        <button class="btn btn-p btn-s" type="button" id="publish">Veröffentlichen</button></div>
+      <div class="bld-body"><nav class="tree" aria-label="Kursstruktur">${treeHTML()}</nav>
+        <section class="editor" id="editor">${editorHTML()}</section>
+        <aside class="preview" id="preview">${previewHTML()}</aside></div></div>`;
+  }
+
+  /* ───────── modals ───────── */
+  function openModal(html) { $('modal').innerHTML = html; $('scrim').classList.add('on'); const f = $('modal').querySelector('button, input'); if (f) f.focus(); }
+  const closeModal = () => $('scrim').classList.remove('on');
+  $('scrim').addEventListener('click', e => { if (e.target.id === 'scrim' || e.target.closest('[data-close]')) closeModal(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  function stepPicker() {
+    const grp = (t, keys) => `<div class="types-grp"><span class="lt">${t}</span><div class="types">${keys.map(k => `<button class="tp" type="button" data-add="${k}"><span class="h"><span class="ico">${TYPES[k].i}</span>${TYPES[k].n}</span><p>${TYPES[k].d}</p></button>`).join('')}</div></div>`;
+    openModal(`<div class="modal-hd"><div><h2 id="mTitle">Schritt hinzufügen</h2><p class="muted">Wähle, was Lernende auf diesem Bildschirm sehen. Du kannst den Schritt danach jederzeit verschieben.</p></div><button class="btn btn-g btn-s" type="button" data-close aria-label="Schließen">${ic('<path d="M6 6l12 12M18 6L6 18"/>')}</button></div>
+      ${grp('Wissen', ['learn', 'video', 'summary'])}${grp('Üben', ['choice', 'sort', 'gap', 'case', 'question', 'hotspot'])}${grp('Erleben', ['sim', 'self'])}`);
+  }
+  function newCourseModal() {
+    openModal(`<div class="modal-hd"><div><h2 id="mTitle">Neuer Kurs</h2><p class="muted">Du kannst alles später ändern. Der Kurs bleibt Entwurf, bis du ihn veröffentlichst.</p></div><button class="btn btn-g btn-s" type="button" data-close aria-label="Schließen">${ic('<path d="M6 6l12 12M18 6L6 18"/>')}</button></div>
+      <div class="fld"><label for="nc1">Titel des Kurses</label><input id="nc1" placeholder="z. B. Schubmaststapler Zusatzausbildung"></div>
+      <div class="fld"><span class="lab">Vorlage</span><div class="types">${[['Leer', 'Ohne Kapitel starten.'], ['Wie Staplerschein Theorie', 'Kapitel und Themen als Gerüst übernehmen, ohne Inhalte.'], ['Unterweisung', 'Ein Kapitel mit Lernkarten und Abschlussfragen.']].map(([t, d], i) => `<button class="tp" type="button" style="${i === 0 ? 'box-shadow:inset 0 0 0 1.5px var(--g900)' : ''}"><span class="h">${t}</span><p>${d}</p></button>`).join('')}</div></div>
+      <div class="fld"><span class="lab">Sprachen</span><div style="display:flex;gap:16px">${['Deutsch (Original)', 'Englisch', 'Polnisch', 'Ukrainisch'].map((l, i) => `<label style="display:flex;gap:6px;align-items:center;font-weight:500"><input type="checkbox" checked ${i === 0 ? 'disabled' : ''} style="width:auto">${l}</label>`).join('')}</div></div>
+      <div style="display:flex;justify-content:end;gap:8px"><button class="btn btn-o" type="button" data-close>Abbrechen</button><button class="btn btn-p" type="button" data-close data-toast="Kurs angelegt">Kurs anlegen</button></div>`);
+  }
+  function publishModal() {
+    const miss = LANGS.filter(l => missing(l));
+    openModal(`<div class="modal-hd"><div><h2 id="mTitle">Änderungen veröffentlichen?</h2><p class="muted">Teilnehmer sehen die neue Version ab sofort. Ihr Fortschritt bleibt erhalten.</p></div></div>
+      <div class="card" style="padding:4px 0">${[['Geändert', '1.2 DGUV Vorschrift 68: Pflichten · 3 Schritte'], ['Neu', 'Video „Einsatzprüfung am echten Stapler“'], ...miss.map(l => ['Hinweis', `${missing(l)} Schritte ohne Übersetzung ${l.toUpperCase()}: Teilnehmer sehen dort Deutsch`])].map(([a, b]) => `<div class="list-row"><span class="pill ${a === 'Hinweis' ? 'warn' : a === 'Neu' ? 'ok' : 'draft'}">${a}</span><div class="t">${b}</div></div>`).join('')}</div>
+      <div style="display:flex;justify-content:end;gap:8px"><button class="btn btn-o" type="button" data-close>Abbrechen</button><button class="btn btn-p" type="button" data-close data-toast="Veröffentlicht">Jetzt veröffentlichen</button></div>`);
+  }
+
+  /* ───────── render + events ───────── */
+  const views = { dash: viewDash, course: viewCourse, certs: viewCerts, orders: viewOrders, profile: viewProfile, courses: viewCourses, builder: viewBuilder };
+  function render() {
+    if (!views[st.view]) st.view = 'dash';
+    $('view').innerHTML = views[st.view]();
+    document.querySelectorAll('.mk-bar [data-v]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === st.view)));
+    document.querySelectorAll('.mk-bar [data-cv]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cv === st.cover)));
+    bind();
+  }
+  function saveFlash() {
+    st.saving = true; const s = $('saved'); if (s) { s.classList.add('busy'); s.innerHTML = '<i></i>Wird gespeichert …'; }
+    clearTimeout(saveFlash.t); saveFlash.t = setTimeout(() => { st.saving = false; const s2 = $('saved'); if (s2) { s2.classList.remove('busy'); s2.innerHTML = '<i></i>Alle Änderungen gespeichert'; } }, 700);
+  }
+  const refreshSide = () => { $('preview').innerHTML = previewHTML(); };
+  function bind() {
+    document.querySelectorAll('[data-ch]').forEach(b => b.onclick = () => { st.openCh = st.openCh === +b.dataset.ch ? -1 : +b.dataset.ch; render(); });
+    document.querySelectorAll('[data-open]').forEach(r => r.onclick = () => { location.hash = 'builder'; });
+    const nc = $('newCourse'); if (nc) nc.onclick = newCourseModal;
+    if (st.view !== 'builder') return;
+    document.querySelectorAll('[data-step]').forEach(b => b.onclick = e => {
+      const mv = e.target.closest('[data-mv]');
+      if (mv) { const i = +mv.dataset.i, j = i + +mv.dataset.mv, a = lesson.stepList; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; st.sel = j; saveFlash(); render(); return; }
+      st.sel = +b.dataset.step; render();
+    });
+    document.querySelectorAll('[data-step-go]').forEach(b => b.onclick = () => { st.sel = +b.dataset.stepGo; render(); });
+    document.querySelectorAll('[data-lang]').forEach(b => b.onclick = () => { st.lang = b.dataset.lang; render(); });
+    $('addStep').onclick = stepPicker;
+    $('publish').onclick = publishModal;
+    const s = lesson.stepList[st.sel];
+    const ed = $('editor');
+    ed.querySelectorAll('[data-k]').forEach(inp => inp.addEventListener('input', () => {
+      const k = inp.dataset.k, target = k === 'title' ? s.t : s.data[k];
+      target[st.lang] = inp.value; saveFlash(); refreshSide();
+      if (k === 'title') { const row = document.querySelector(`[data-step="${st.sel}"] .tx`); if (row) row.textContent = inp.value || s.t.de; ed.querySelector('.ed-hd h2').textContent = inp.value || s.t.de; }
+    }));
+    ed.querySelectorAll('[data-p]').forEach(inp => inp.addEventListener('input', () => { s.data.points[+inp.dataset.p][inp.dataset.pk][st.lang] = inp.value; saveFlash(); refreshSide(); }));
+    ed.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => { const p = s.data.points, i = +b.dataset.i, j = i + +b.dataset.pm; if (j < 0 || j >= p.length) return; [p[i], p[j]] = [p[j], p[i]]; saveFlash(); render(); });
+    ed.querySelectorAll('[data-pd]').forEach(b => b.onclick = () => { s.data.points.splice(+b.dataset.pd, 1); saveFlash(); render(); toast('Punkt gelöscht'); });
+    const ap = $('addPt'); if (ap) ap.onclick = () => { s.data.points.push({ k: L(''), v: L('') }); saveFlash(); render(); };
+  }
+  document.addEventListener('click', e => {
+    const add = e.target.closest('[data-add]');
+    if (add) { lesson.stepList.splice(st.sel + 1, 0, { type: add.dataset.add, t: L('Neuer Schritt: ' + TYPES[add.dataset.add].n) }); st.sel++; closeModal(); saveFlash(); render(); return; }
+    const t = e.target.closest('[data-toast]'); if (t) toast(t.dataset.toast);
+  });
+  document.querySelectorAll('.mk-bar [data-v]').forEach(b => b.onclick = () => { location.hash = b.dataset.v; });
+  document.querySelectorAll('.mk-bar [data-cv]').forEach(b => b.onclick = () => { st.cover = b.dataset.cv; render(); });
+  addEventListener('hashchange', () => { st.view = location.hash.slice(1) || 'dash'; render(); scrollTo(0, 0); });
+  render();
+})();
+</script>
+</body>
+</html>
