@@ -127,8 +127,7 @@ const QuizQuestionView = ({ question, labels, nextLabel, onAnswered, onNext }: P
                 })}
             </fieldset>
 
-            {/* mt-auto: w kontenerze o stałej wysokości (teaser) przycisk zostaje na dole */}
-            <div className="mt-auto">
+            <div>
                 {checked ? (
                     <Button size="lg" onClick={onNext} autoFocus>{nextLabel}</Button>
                 ) : (

@@ -134,8 +134,8 @@ const QuizTeaser = () => {
                         <div className="h-1.5 bg-border" aria-hidden>
                             <div className="h-full bg-primary transition-[width] duration-300" style={{ width: `${((done ? questions.length : index) / questions.length) * 100}%` }} />
                         </div>
-                        {/* Stała wysokość = najwyższy stan (pytanie z wyjaśnieniami), zmierzona dla 4 języków — sekcja nie skacze */}
-                        <div className="flex flex-col px-4 py-6 md:px-8 md:py-8 min-h-[940px] sm:min-h-[670px] md:min-h-[700px] lg:min-h-[780px] xl:min-h-[700px]">
+                        {/* Wysokość według treści: pytania bez ilustracji mają podobną długość, karta rośnie tylko po sprawdzeniu odpowiedzi */}
+                        <div className="flex flex-col px-4 py-6 md:px-8 md:py-8">
                             {!done ? (
                                 <QuizQuestionView
                                     key={`${language}-${questions[index].id}`}
@@ -146,7 +146,7 @@ const QuizTeaser = () => {
                                     onNext={next}
                                 />
                             ) : (
-                                <div className="flex flex-1 flex-col justify-center">
+                                <div className="flex min-h-[460px] flex-col justify-center">
                                     <p className="font-display text-6xl font-extrabold text-foreground mb-3">{score}/{questions.length}</p>
                                     <p className="text-muted-foreground mb-6 max-w-lg">{ui.resultText}</p>
                                     <div className="flex flex-wrap gap-3">
