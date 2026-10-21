@@ -10,7 +10,7 @@ import {
     Shield, Clock, Award, ChevronRight, Check, Users, Star,
     Building2, Phone, Mail, Globe, Send, Calendar,
     Languages, MonitorPlay, Presentation, CalendarCheck, BadgeCheck, GraduationCap,
-    Timer, Receipt, UserCheck, Zap, Facebook, Instagram, Linkedin,
+    Timer, Receipt, UserCheck, Zap, Facebook, Instagram, Linkedin, ArrowRight,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -22,6 +22,7 @@ import controlsImage from "@/assets/forklift-controls.jpg";
 import trainingImage from "@/assets/sala.jpg";
 import { useLanguage } from "@/contexts/LanguageContext";
 import ProductCard from "@/components/ProductCard";
+import QuizTeaser from "@/components/quiz/QuizTeaser";
 import { getProducts } from "@/api/product.api";
 import { Product } from "@/types/product.types";
 import { SealBadge, IconForklift, IconPin } from "@/components/BrandIcons";
@@ -309,7 +310,7 @@ const Index = () => {
                             </div>
 
                             {/* Dwa przyciski tej samej wielkości: 1 kolumna na mobile, 2 równe kolumny od sm */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mb-10 animate-fade-in" style={{ animationDelay: "0.25s" }}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mb-5 animate-fade-in" style={{ animationDelay: "0.25s" }}>
                                 <Link to="/kursy" className="block">
                                     <Button variant="hero" size="xl" className="w-full"><CalendarCheck className="w-5 h-5" />{t('hero.ctaCourses')}</Button>
                                 </Link>
@@ -319,6 +320,16 @@ const Index = () => {
                                     </Button>
                                 </Link>
                             </div>
+
+                            {/* Lekki odnośnik do quizu — nie konkuruje z dwoma głównymi przyciskami */}
+                            <a
+                                href="#quiz"
+                                className="group mb-10 inline-flex items-center gap-2 text-sm font-medium text-primary-foreground/80 underline-offset-4 hover:text-primary hover:underline animate-fade-in"
+                                style={{ animationDelay: "0.28s" }}
+                            >
+                                {t('hero.quizLink')}
+                                <ArrowRight className="w-4 h-4 text-primary transition-transform group-hover:translate-x-0.5" />
+                            </a>
 
                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-primary-foreground/70 animate-fade-in" style={{ animationDelay: "0.3s" }}>
                                 <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-primary" />{t('hero.stat48h')}</span>
@@ -375,6 +386,9 @@ const Index = () => {
                     </div>
                 </div>
             </section>
+
+            {/* ── Staplerschein-Test: 3 Beispielfragen + Link zum kompletten Quiz ── */}
+            <QuizTeaser />
 
             {/* ── Why Choose Us ────────────────────────────────────────────── */}
             <section id="features" className="relative py-24 bg-background overflow-hidden">

@@ -37,6 +37,7 @@ export const translations = {
     ctaMain:        { de: 'Jetzt starten',   en: 'Get Started Now', uk: 'Розпочати зараз',    pl: 'Zacznij teraz' },
     ctaCourses:     { de: 'Kurs buchen',    en: 'Book a Course',   uk: 'Забронювати курс',   pl: 'Zarezerwuj kurs' },
     ctaB2B:         { de: 'für Firmen',      en: 'For Companies',   uk: 'Для компаній',       pl: 'Dla firm' },
+    quizLink:       { de: 'Kostenloser Staplerschein-Test: Wie fit sind Sie?', en: 'Free forklift licence test: how fit are you?', uk: 'Безкоштовний тест: наскільки добре ви знаєте навантажувач?', pl: 'Darmowy test na wózki: jak dobrze znasz wózek?' },
     stat48h:        { de: '48h zum Schein',  en: '48h to License',  uk: '48 год до прав',     pl: '48h do uprawnień' },
     statValid:      { de: 'Allgemein gültig',en: 'Universally valid',uk: 'Загальновизнаний',  pl: 'Ogólnie uznawany' },
     statStudents:   { de: '1.000+ Absolventen', en: '1,000+ Graduates', uk: '1 000+ випускників', pl: '1 000+ absolwentów' },

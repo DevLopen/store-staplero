@@ -19,6 +19,7 @@ import TopicEditor from "./pages/TopicEditor";
 import Admin from "./pages/Admin";
 import PracticalCourse from "./pages/PracticalCourse";
 import FirmenschulungBerlin from "./pages/FirmenschulungBerlin";
+import StaplerQuiz from "./pages/StaplerQuiz";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Products from "./pages/Products";
@@ -69,6 +70,7 @@ const AppContent = () => {
           <Route path="/practical-course" element={<PracticalCourse />} />
           <Route path="/kursy" element={<Products />} />
           <Route path="/firmenschulung-berlin" element={<FirmenschulungBerlin />} />
+          <Route path="/staplerschein-test" element={<StaplerQuiz />} />
           <Route path="/kursy/:slug" element={<ProductDetail />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/checkout/success" element={<CheckoutSuccess />} />

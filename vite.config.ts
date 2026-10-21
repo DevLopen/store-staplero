@@ -3,7 +3,11 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import fs from "fs";
 import { componentTagger } from "lovable-tagger";
-import { SEO, PAGE_PATH, PAGE_URL, OG_IMAGE, buildJsonLd } from "./src/seo/firmenschulung.seo";
+import * as firmenschulung from "./src/seo/firmenschulung.seo";
+import * as staplerQuiz from "./src/seo/staplerQuiz.seo";
+
+// Strony, które dostają własny statyczny index.html z meta (patrz prerenderPageMeta)
+const PRERENDERED_PAGES = [firmenschulung, staplerQuiz];
 
 const escapeAttr = (v: string) => v.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 
@@ -16,15 +20,15 @@ const replaceMeta = (html: string, key: string, value: string) =>
 
 /**
  * SPA ma jeden index.html, więc crawlery bez JavaScriptu (podglądy w social media, część botów)
- * widziałyby meta strony głównej na każdym adresie. Po buildzie generujemy dla strony
- * "Firmenschulung Berlin" osobny plik dist/<path>/index.html z jej własnym title, description,
+ * widziałyby meta strony głównej na każdym adresie. Po buildzie generujemy dla każdej strony
+ * z PRERENDERED_PAGES osobny plik dist/<path>/index.html z jej własnym title, description,
  * canonical, Open Graph i JSON-LD. Aplikacja React nadal hydratuje się jak zwykle.
  */
-const prerenderB2bMeta = (): Plugin => {
+const prerenderPageMeta = (): Plugin => {
   let outDir = "dist";
   let root = process.cwd();
   return {
-    name: "prerender-b2b-meta",
+    name: "prerender-page-meta",
     apply: "build",
     configResolved(config) {
       outDir = config.build.outDir;
@@ -35,25 +39,29 @@ const prerenderB2bMeta = (): Plugin => {
       const indexFile = path.join(distDir, "index.html");
       if (!fs.existsSync(indexFile)) return;
 
-      let html = fs.readFileSync(indexFile, "utf-8");
-      html = html.replace(/<title>[^<]*<\/title>/i, `<title>${escapeAttr(SEO.title)}</title>`);
-      html = replaceMeta(html, "description", SEO.description);
-      html = replaceMeta(html, "og:url", PAGE_URL);
-      html = replaceMeta(html, "og:title", SEO.title);
-      html = replaceMeta(html, "og:description", SEO.description);
-      html = replaceMeta(html, "og:image", OG_IMAGE);
-      html = replaceMeta(html, "twitter:title", SEO.title);
-      html = replaceMeta(html, "twitter:description", SEO.description);
-      html = html.replace(/(<link\s+rel="canonical"\s+href=")[^"]*(")/i, `$1${PAGE_URL}$2`);
+      const baseHtml = fs.readFileSync(indexFile, "utf-8");
 
-      const jsonLd = buildJsonLd()
-        .map((d) => `<script type="application/ld+json">${JSON.stringify(d).replace(/</g, "\\u003c")}</script>`)
-        .join("\n");
-      html = html.replace("</head>", `${jsonLd}\n</head>`);
+      for (const { SEO, PAGE_PATH, PAGE_URL, OG_IMAGE, buildJsonLd } of PRERENDERED_PAGES) {
+        let html = baseHtml;
+        html = html.replace(/<title>[^<]*<\/title>/i, `<title>${escapeAttr(SEO.title)}</title>`);
+        html = replaceMeta(html, "description", SEO.description);
+        html = replaceMeta(html, "og:url", PAGE_URL);
+        html = replaceMeta(html, "og:title", SEO.title);
+        html = replaceMeta(html, "og:description", SEO.description);
+        html = replaceMeta(html, "og:image", OG_IMAGE);
+        html = replaceMeta(html, "twitter:title", SEO.title);
+        html = replaceMeta(html, "twitter:description", SEO.description);
+        html = html.replace(/(<link\s+rel="canonical"\s+href=")[^"]*(")/i, `$1${PAGE_URL}$2`);
 
-      const target = path.join(distDir, PAGE_PATH);
-      fs.mkdirSync(target, { recursive: true });
-      fs.writeFileSync(path.join(target, "index.html"), html);
+        const jsonLd = buildJsonLd()
+          .map((d) => `<script type="application/ld+json">${JSON.stringify(d).replace(/</g, "\\u003c")}</script>`)
+          .join("\n");
+        html = html.replace("</head>", `${jsonLd}\n</head>`);
+
+        const target = path.join(distDir, PAGE_PATH);
+        fs.mkdirSync(target, { recursive: true });
+        fs.writeFileSync(path.join(target, "index.html"), html);
+      }
     },
   };
 };
@@ -64,7 +72,7 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
-  plugins: [react(), mode === "development" && componentTagger(), prerenderB2bMeta()].filter(Boolean),
+  plugins: [react(), mode === "development" && componentTagger(), prerenderPageMeta()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

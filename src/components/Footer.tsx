@@ -67,6 +67,11 @@ const Footer = () => {
                   Firmenschulung Berlin
                 </Link>
               </li>
+              <li>
+                <Link to="/staplerschein-test" className="text-primary-foreground/70 hover:text-primary text-sm transition-colors">
+                  Staplerschein Test
+                </Link>
+              </li>
             </ul>
           </div>
 
