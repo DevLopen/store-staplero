@@ -46,7 +46,15 @@ export interface Product {
 
   createdAt: string;
   updatedAt: string;
+
+  // tylko w publicznej liście, dla kursów z terminami
+  nextDate?: { startDate: string; city: string; languages: CourseLanguage[] } | null;
+  languages?: CourseLanguage[];
 }
+
+/** Języki, w których prowadzony jest termin kursu */
+export type CourseLanguage = "de" | "en" | "pl" | "uk" | "ru" | "ro";
+export const COURSE_LANGUAGES: CourseLanguage[] = ["de", "en", "pl", "uk", "ru", "ro"];
 
 export interface ProductLocationDate {
   id: string;
@@ -54,6 +62,7 @@ export interface ProductLocationDate {
   endDate: string;
   time: string;
   availableSpots: number;
+  languages?: CourseLanguage[];
 }
 
 export interface ProductLocation {
@@ -87,3 +96,23 @@ export function localizeList(list: LocalizedList | undefined, lang: string): str
 export function currentPrice(product: Product): number {
   return product.isPromoActive && product.promoPrice != null ? product.promoPrice : product.price;
 }
+
+const DATE_LOCALE: Record<string, string> = { de: "de-DE", en: "en-GB", pl: "pl-PL", uk: "uk-UA" };
+
+/** Krótki zapis terminu w języku strony, np. „Mi., 12. Nov.” albo „12.–14. Nov.” */
+export function formatCourseDate(startDate: string, endDate: string, lang: string, withWeekday = true): string {
+  const locale = DATE_LOCALE[lang] || "de-DE";
+  const start = new Date(startDate);
+  if (!endDate || startDate === endDate) {
+    return start.toLocaleDateString(locale, {
+      ...(withWeekday && { weekday: "short" }), day: "numeric", month: "short",
+    });
+  }
+  const end = new Date(endDate);
+  const fmt = (d: Date) => d.toLocaleDateString(locale, { day: "numeric", month: "short" });
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+export const VAT_RATE = 0.19;
+export const grossOf = (net: number) => Math.round(net * (1 + VAT_RATE) * 100) / 100;
+export const formatEuro = (value: number) => `€${value.toFixed(2)}`;

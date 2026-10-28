@@ -6,6 +6,7 @@ export interface CourseDate {
     endDate: string;
     time: string;
     availableSpots: number;
+    languages: string[];   // języki prowadzenia terminu, kody: de, en, pl, uk, ru, ro
 }
 
 export interface LocationDoc extends Document {
@@ -34,6 +35,11 @@ const CourseDateSchema = new Schema<CourseDate>({
             validator: Number.isInteger,
             message: 'Available spots must be an integer'
         }
+    },
+    languages: {
+        type: [String],
+        enum: ['de', 'en', 'pl', 'uk', 'ru', 'ro'],
+        default: []
     }
 });
 

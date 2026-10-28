@@ -4,6 +4,7 @@ export interface CourseDate {
   endDate: string;
   time: string;
   availableSpots: number;
+  languages?: string[];
 }
 
 export interface Location {

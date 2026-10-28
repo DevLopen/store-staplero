@@ -259,7 +259,7 @@ const berlinArrivalSteps = [
     { image: "anfahrt-berlin-1.jpg", alt: "Neuköllnische Allee", title: "Über die Neuköllnische Allee", text: "Fahren Sie bis zur Hausnummer 80." },
     { image: "anfahrt-berlin-2.jpg", alt: "Gebäude NLND Berlin", title: "Zum Haupteingang NLND Berlin", text: "Das Gebäude mit dem NLND-Schriftzug." },
     { image: "anfahrt-berlin-3.jpg", alt: "Tor mit Hausnummer 80", title: "An der Wache melden", text: "Am Tor mit der Nummer 80 bzw. am Empfang." },
-    { image: "anfahrt-berlin-4.jpg", alt: "Wartebereich am Eingang", title: "Im Eingangsbereich warten", text: `Ein Ausbilder holt Sie ab. Verspätet? Rufen Sie uns an: <a href="tel:+4917622067783" style="color:#111111;font-weight:700;">+49 176 22067783</a>` },
+    { image: "anfahrt-berlin-4.jpg", alt: "Wartebereich am Eingang", title: "Im Eingangsbereich warten", text: `Ein Ausbilder holt Sie ab. Verspätet? Rufen Sie uns an: <a href="tel:+4916092490070" style="color:#111111;font-weight:700;">+49 160 92490070</a> oder <a href="tel:+4917622067783" style="color:#111111;font-weight:700;">+49 176 22067783</a>` },
 ];
 
 const addDays = (d: Date, days: number) => {
@@ -387,7 +387,7 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
 
       ${twoColumns(
           callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#707072;">Stornierung</span><br>Kostenfrei bis<br>${strong(longDate(cancelUntil))}<br><span style="font-size:13px;color:#707072;">Danach fällt eine Stornogebühr von 100&nbsp;% an.</span>`, "gray"),
-          callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c25e00;">Fragen? Wir helfen</span><br>${strong(`<a href="tel:+4917622067783" style="color:#111111;text-decoration:none;">+49 176 22067783</a>`)}<br>${strong(`<a href="tel:+4916092490070" style="color:#111111;text-decoration:none;">+49 160 92490070</a>`)}<br><a href="https://wa.me/4917622067783" target="_blank" style="color:#111111;font-weight:700;">Per WhatsApp schreiben</a>`, "orange"),
+          callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c25e00;">Fragen? Wir helfen</span><br>${strong(`<a href="tel:+4916092490070" style="color:#111111;text-decoration:none;">+49 160 92490070</a>`)}<br>${strong(`<a href="tel:+4917622067783" style="color:#111111;text-decoration:none;">+49 176 22067783</a>`)}<br><a href="https://wa.me/4917622067783" target="_blank" style="color:#111111;font-weight:700;">Per WhatsApp schreiben</a>`, "orange"),
       )}
 
       ${p(`Bis bald in ${loc}!<br>${strong("Ihr STAPLERO Team")}`)}

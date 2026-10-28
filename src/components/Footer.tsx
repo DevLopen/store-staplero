@@ -82,8 +82,8 @@ const Footer = () => {
             </h4>
             <ul className="space-y-2 text-sm text-primary-foreground/70">
               <li>info@staplero.com</li>
-              <li>+49 176 22067783</li>
               <li>+49 160 92490070</li>
+              <li>+49 176 22067783</li>
               <li>{t.hours}</li>
             </ul>
           </div>

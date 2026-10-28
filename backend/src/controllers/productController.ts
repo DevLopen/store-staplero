@@ -46,7 +46,32 @@ export const getPublicProducts = async (req: Request, res: Response) => {
     if (featured === "true") filter.featured = true;
 
     const products = await Product.find(filter).sort({ order: 1, createdAt: -1 }).lean();
-    res.json({ products });
+
+    // Kafelek pokazuje najbliższy wolny termin i języki, więc klient widzi je już na liście
+    const locationIds = [...new Set(products.flatMap((p) => p.locationIds || []))];
+    const locations = locationIds.length
+      ? await Location.find({ _id: { $in: locationIds }, isActive: true }).lean()
+      : [];
+    const today = new Date().toISOString().slice(0, 10);
+
+    const withSchedule = products.map((p) => {
+      if (p.type !== "normal") return p;
+      const productLocations = locations.filter((l) => p.locationIds.includes(String(l._id)));
+      const dates = productLocations
+        .flatMap((l) =>
+          l.dates
+            .filter((d) => d.availableSpots > 0 && d.startDate >= today)
+            .map((d) => ({ startDate: d.startDate, city: l.city, languages: d.languages || [] }))
+        )
+        .sort((a, b) => a.startDate.localeCompare(b.startDate));
+      return {
+        ...p,
+        nextDate: dates[0] || null,
+        languages: [...new Set(dates.flatMap((d) => d.languages))],
+      };
+    });
+
+    res.json({ products: withSchedule });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err });
   }
@@ -107,6 +132,8 @@ export const adminCreateProduct = async (req: Request, res: Response) => {
 
     const baseForSlug = body.slug || body.title?.de || body.title?.en || body.title?.pl || body.title?.uk;
     const slug = await ensureUniqueSlug(baseForSlug);
+    // Nowy produkt trafia na koniec listy, chyba że admin poda kolejność
+    const last = await Product.findOne({}).sort({ order: -1 }).select("order").lean();
 
     const product = await Product.create({
       slug,
@@ -123,7 +150,7 @@ export const adminCreateProduct = async (req: Request, res: Response) => {
       priceUnit: body.priceUnit ?? "person",
       status: body.status ?? "draft",
       featured: !!body.featured,
-      order: body.order ?? 0,
+      order: body.order ?? (last ? last.order + 1 : 0),
       courseId: body.courseId,
       locationIds: body.locationIds ?? [],
       includesOnlineAccess: !!body.includesOnlineAccess,
@@ -163,6 +190,22 @@ export const adminUpdateProduct = async (req: Request, res: Response) => {
 
     await product.save();
     res.json(product);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || "Server error", error: err });
+  }
+};
+
+/** Zapisuje kolejność produktów na liście: body.ids w docelowej kolejności */
+export const adminReorderProducts = async (req: Request, res: Response) => {
+  try {
+    const ids: unknown = req.body?.ids;
+    if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string")) {
+      return res.status(400).json({ message: "Nieprawidłowa lista produktów" });
+    }
+    await Product.bulkWrite(
+      ids.map((id, index) => ({ updateOne: { filter: { _id: id }, update: { $set: { order: index } } } }))
+    );
+    res.json({ message: "Kolejność zapisana" });
   } catch (err: any) {
     res.status(500).json({ message: err.message || "Server error", error: err });
   }

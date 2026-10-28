@@ -30,6 +30,9 @@ export const adminCreateProduct = (data: Partial<Product>): Promise<Product> =>
 export const adminUpdateProduct = (productId: string, data: Partial<Product>): Promise<Product> =>
   apiFetch(`${base}/admin/${productId}`, { method: "PUT", body: JSON.stringify(data) });
 
+export const adminReorderProducts = (ids: string[]): Promise<void> =>
+  apiFetch(`${base}/admin/reorder`, { method: "PUT", body: JSON.stringify({ ids }) });
+
 export const adminDeleteProduct = (productId: string): Promise<void> =>
   apiFetch(`${base}/admin/${productId}`, { method: "DELETE" });
 

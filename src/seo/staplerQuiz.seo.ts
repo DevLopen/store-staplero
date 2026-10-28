@@ -15,7 +15,10 @@ export const OG_IMAGE = `${SITE_URL}/og-image.jpg`;
 
 export const CONTACT = {
   email: "info@staplero.com",
-  phone: { display: "+49 176 22067783", href: "+4917622067783" },
+  phones: [
+    { display: "+49 160 92490070", href: "+4916092490070" },
+    { display: "+49 176 22067783", href: "+4917622067783" },
+  ],
 };
 
 export const SEO = {
@@ -281,7 +284,7 @@ const organization = {
   url: `${SITE_URL}/`,
   logo: `${SITE_URL}/staplero_logo.jpeg`,
   email: CONTACT.email,
-  telephone: CONTACT.phone.href,
+  telephone: CONTACT.phones[0].href,
 };
 
 /** Strukturierte Daten: Quiz (mit allen Fragen und richtigen Antworten) + BreadcrumbList. */

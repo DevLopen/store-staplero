@@ -200,7 +200,7 @@ const ChatWidget = () => {
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg transition-all duration-300 flex items-center justify-center",
+                    "fixed bottom-[calc(1.5rem+var(--cta-bar-h,0px))] right-6 z-50 w-14 h-14 rounded-full shadow-lg transition-all duration-300 flex items-center justify-center",
                     "bg-gradient-to-r from-primary to-accent text-primary-foreground",
                     "hover:scale-110 hover:shadow-xl",
                     isOpen && "rotate-90",
@@ -220,13 +220,13 @@ const ChatWidget = () => {
 
             {/* Pulse indicator when closed */}
             {!isOpen && !isBlocked && (
-                <div className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-primary/30 animate-ping pointer-events-none" />
+                <div className="fixed bottom-[calc(1.5rem+var(--cta-bar-h,0px))] right-6 z-40 w-14 h-14 rounded-full bg-primary/30 animate-ping pointer-events-none" />
             )}
 
             {/* Chat Window */}
             <div
                 className={cn(
-                    "fixed bottom-24 right-6 z-50 w-[360px] max-w-[calc(100vw-48px)] rounded-2xl shadow-2xl transition-all duration-300 origin-bottom-right",
+                    "fixed bottom-[calc(6rem+var(--cta-bar-h,0px))] right-6 z-50 w-[360px] max-w-[calc(100vw-48px)] rounded-2xl shadow-2xl transition-all duration-300 origin-bottom-right",
                     "bg-card border border-border overflow-hidden",
                     isOpen ? "scale-100 opacity-100" : "scale-95 opacity-0 pointer-events-none"
                 )}

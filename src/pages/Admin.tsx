@@ -22,6 +22,15 @@ import AdminParticipants from "@/components/admin/AdminParticipants";
 import AdminOrders from "@/components/admin/AdminOrders";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminProducts from "@/components/admin/AdminProducts";
+
+const COURSE_LANGUAGE_OPTIONS = [
+  { code: "de", label: "Deutsch" },
+  { code: "en", label: "Englisch" },
+  { code: "pl", label: "Polnisch" },
+  { code: "uk", label: "Ukrainisch" },
+  { code: "ru", label: "Russisch" },
+  { code: "ro", label: "Rumänisch" },
+];
 import {
   Plus,
   Edit,
@@ -73,7 +82,8 @@ const Admin = () => {
     startDate: "",
     endDate: "",
     time: "08:00 - 16:00",
-    availableSpots: "10"
+    availableSpots: "10",
+    languages: ["de"] as string[]
   });
 
   const [participantsDialog, setParticipantsDialog] = useState({
@@ -1403,6 +1413,7 @@ const Admin = () => {
                                       </p>
                                       <p className="text-sm text-muted-foreground">
                                         {date.time} • {date.availableSpots} Plätze verfügbar
+                                        {date.languages?.length ? ` • ${date.languages.map(l => l.toUpperCase()).join(", ")}` : " • Sprache fehlt"}
                                         {date.availableSpots === 0 && (
                                             <span className="ml-2 text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded">
               VOLL
@@ -1429,7 +1440,8 @@ const Admin = () => {
                                         startDate: date.startDate,
                                         endDate: date.endDate,
                                         time: date.time,
-                                        availableSpots: date.availableSpots.toString()
+                                        availableSpots: date.availableSpots.toString(),
+                                        languages: date.languages || []
                                       });
                                       setIsDateDialogOpen(true);
                                     }}>
@@ -1481,7 +1493,8 @@ const Admin = () => {
                                     startDate: "",
                                     endDate: "",
                                     time: "08:00 - 16:00",
-                                    availableSpots: "10"
+                                    availableSpots: "10",
+                                    languages: ["de"]
                                   });
                                   setIsDateDialogOpen(true);
                                 }}
@@ -1844,6 +1857,31 @@ const Admin = () => {
                   0 = Termin ist voll (für Benutzer nicht auswählbar)
                 </p>
               </div>
+              <div className="space-y-2">
+                <Label>Kurssprache</Label>
+                <div className="flex flex-wrap gap-2">
+                  {COURSE_LANGUAGE_OPTIONS.map(({ code, label }) => {
+                    const active = dateForm.languages.includes(code);
+                    return (
+                      <button
+                        key={code}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setDateForm(prev => ({
+                          ...prev,
+                          languages: active ? prev.languages.filter(l => l !== code) : [...prev.languages, code]
+                        }))}
+                        className={`px-3 py-1.5 rounded-full border text-sm ${active ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted"}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Kunden sehen die Sprachen beim Termin und können danach filtern.
+                </p>
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsDateDialogOpen(false)}>Abbrechen</Button>
@@ -1873,7 +1911,8 @@ const Admin = () => {
                               startDate: dateForm.startDate,
                               endDate: dateForm.endDate,
                               time: dateForm.time,
-                              availableSpots: spots
+                              availableSpots: spots,
+                              languages: dateForm.languages
                             }
                             : d
                     );
@@ -1883,7 +1922,8 @@ const Admin = () => {
                       startDate: dateForm.startDate,
                       endDate: dateForm.endDate,
                       time: dateForm.time,
-                      availableSpots: spots
+                      availableSpots: spots,
+                      languages: dateForm.languages
                     };
                     updatedDates = [...location.dates, newDate];
                   }

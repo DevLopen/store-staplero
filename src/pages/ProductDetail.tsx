@@ -1,37 +1,42 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
-  Loader2, MapPin, Calendar, Clock, Users, CreditCard, Award,
-  CheckCircle, AlertCircle, ArrowLeft, Check, BellRing, Mail, Plus, Minus,
+  Loader2, MapPin, CalendarDays, Clock, CreditCard, Award,
+  CheckCircle, ArrowLeft, Check, BellRing, Mail, Plus, Minus, ChevronDown, ShieldCheck,
 } from "lucide-react";
-import { SealBadge, IconCertificate, IconForklift } from "@/components/BrandIcons";
 import { Blob } from "@/components/SectionDecor";
+import CourseLanguageFlags from "@/components/CourseLanguageFlags";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getProductBySlug, createNotifyRequest } from "@/api/product.api";
+import { cn } from "@/lib/utils";
 import {
-  Product, ProductLocation, ProductLocationDate,
-  localize, localizeList, currentPrice,
+  Product, ProductLocation, ProductLocationDate, CourseLanguage, COURSE_LANGUAGES,
+  localize, localizeList, currentPrice, formatCourseDate, grossOf, formatEuro,
 } from "@/types/product.types";
 
-const VAT_RATE = 0.19;
-const grossOf = (net: number) => Math.round(net * (1 + VAT_RATE) * 100) / 100;
-
-const formatDate = (startDate: string, endDate: string) => {
-  if (startDate === endDate) {
-    return new Date(startDate).toLocaleDateString("de-DE", {
-      weekday: "long", year: "numeric", month: "long", day: "numeric",
-    });
-  }
-  return `${new Date(startDate).toLocaleDateString("de-DE", { day: "numeric", month: "numeric", year: "numeric" })} - ${new Date(endDate).toLocaleDateString("de-DE", { day: "numeric", month: "numeric", year: "numeric" })}`;
-};
-
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_ADDITIONAL_PARTICIPANTS = 5;
+/** Kod pod flagą; Ukraina jako UA, żeby nie myliło się z Wielką Brytanią */
+const LANGUAGE_CODE_LABEL: Record<CourseLanguage, string> = {
+  de: "DE", en: "EN", pl: "PL", uk: "UA", ru: "RU", ro: "RO",
+};
+/** Ile terminów widać od razu, reszta pod „Alle Termine anzeigen” */
+const INITIAL_DATES = 5;
+
+interface DateOption {
+  date: ProductLocationDate;
+  location: ProductLocation;
+}
+
+const localToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 interface NotifyFormProps {
   slug: string;
@@ -73,7 +78,7 @@ const NotifyForm = ({ slug, locationId, locationCity }: NotifyFormProps) => {
 
   if (isDone) {
     return (
-      <div className="flex items-center gap-2 text-sm text-success bg-success/10 rounded-lg p-3">
+      <div className="flex items-center gap-2 text-sm text-success bg-success/10 rounded-lg p-4">
         <CheckCircle className="w-4 h-4 shrink-0" />
         <span>{t("products.notifySuccess")}</span>
       </div>
@@ -81,7 +86,7 @@ const NotifyForm = ({ slug, locationId, locationCity }: NotifyFormProps) => {
   }
 
   return (
-    <div className="p-4 border border-dashed border-border rounded-xl bg-muted/30">
+    <div className="p-4 rounded-lg bg-muted/70">
       <div className="flex items-center gap-2 mb-1">
         <BellRing className="w-4 h-4 text-primary" />
         <p className="font-medium text-foreground text-sm">{t("products.notifyTitle")}</p>
@@ -99,13 +104,59 @@ const NotifyForm = ({ slug, locationId, locationCity }: NotifyFormProps) => {
             required
           />
         </div>
-        <Button type="submit" size="sm" disabled={isSubmitting}>
+        <Button type="submit" variant="outline" className="bg-background" disabled={isSubmitting}>
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : t("products.notifyButton")}
         </Button>
       </form>
     </div>
   );
 };
+
+/** Opis kursu: na start kilka linijek, reszta po kliknięciu „Mehr lesen” */
+const ExpandableText = ({ text, expanded, onToggle }: { text: string; expanded: boolean; onToggle: () => void }) => {
+  const { t } = useLanguage();
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el && !expanded) setOverflows(el.scrollHeight > el.clientHeight + 1);
+  }, [text, expanded]);
+
+  return (
+    <div>
+      <p ref={ref} className={cn("text-muted-foreground whitespace-pre-line", !expanded && "line-clamp-4")}>
+        {text}
+      </p>
+      {(overflows || expanded) && (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className="mt-1 inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary hover:underline"
+        >
+          {expanded ? t("products.readLess") : t("products.readMore")}
+          <ChevronDown className={cn("w-4 h-4 transition-transform", expanded && "rotate-180")} />
+        </button>
+      )}
+    </div>
+  );
+};
+
+/** Zakładka lokalizacji, pokazywana tylko gdy kurs ma więcej niż jedno miasto */
+const LocationTab = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-pressed={active}
+    className={cn(
+      "-mb-px border-b-2 px-1 pb-1.5 text-sm font-medium transition-colors",
+      active ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+    )}
+  >
+    {children}
+  </button>
+);
 
 const ProductDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -118,12 +169,18 @@ const ProductDetail = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedLocation, setSelectedLocation] = useState<ProductLocation | null>(null);
-  const [selectedDate, setSelectedDate] = useState<ProductLocationDate | null>(null);
+  const [selected, setSelected] = useState<DateOption | null>(null);
+  const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [languageFilter, setLanguageFilter] = useState<CourseLanguage | "all">("all");
+  const [showAllDates, setShowAllDates] = useState(false);
+  const [showNotify, setShowNotify] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [participantCount, setParticipantCount] = useState(1);
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
 
-  const MAX_ADDITIONAL_PARTICIPANTS = 5;
+  // Pasek z przyciskiem na dole ekranu (mobile) chowa się, gdy główny przycisk jest widoczny
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const [ctaVisible, setCtaVisible] = useState(true);
 
   useEffect(() => {
     if (!slug) return;
@@ -145,6 +202,51 @@ const ProductDetail = () => {
       cancelled = true;
     };
   }, [slug]);
+
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setCtaVisible(entry.isIntersecting));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [product, isLoading]);
+
+  const showStickyBar = !!product && !ctaVisible;
+  useEffect(() => {
+    // Czat (prawy dolny róg) przesuwa się nad pasek, żeby go nie zasłaniał
+    document.documentElement.style.setProperty("--cta-bar-h", showStickyBar ? "4.5rem" : "0px");
+    return () => {
+      document.documentElement.style.removeProperty("--cta-bar-h");
+    };
+  }, [showStickyBar]);
+
+  // Wszystkie przyszłe terminy ze wszystkich lokalizacji, od najbliższego
+  const allDates = useMemo<DateOption[]>(() => {
+    const today = localToday();
+    return locations
+      .flatMap((location) =>
+        location.dates
+          .filter((date) => (date.endDate || date.startDate) >= today)
+          .map((date) => ({ date, location }))
+      )
+      .sort((a, b) => a.date.startDate.localeCompare(b.date.startDate));
+  }, [locations]);
+
+  const availableLanguages = useMemo(
+    () => COURSE_LANGUAGES.filter((code) => allDates.some(({ date }) => date.languages?.includes(code))),
+    [allDates]
+  );
+
+  const filteredDates = allDates.filter(
+    ({ date, location }) =>
+      (locationFilter === "all" || location._id === locationFilter) &&
+      (languageFilter === "all" || date.languages?.includes(languageFilter))
+  );
+
+  // Wybrany termin znika z listy po zmianie filtra, więc wybór też się kasuje
+  useEffect(() => {
+    if (selected && !filteredDates.some(({ date }) => date.id === selected.date.id)) setSelected(null);
+  }, [filteredDates, selected]);
 
   if (isLoading) {
     return (
@@ -176,46 +278,41 @@ const ProductDetail = () => {
     );
   }
 
+  const isOnline = product.type === "online";
   const title = localize(product.title, language);
   const description = localize(product.description, language);
   const shortDescription = localize(product.shortDescription, language);
-  const benefits = localizeList(product.benefits, language);
+  const benefits = localizeList(product.benefits, language).filter(Boolean);
 
   const netPrice = currentPrice(product);
+  const grossPrice = grossOf(netPrice);
   const hasPromo = product.isPromoActive && product.promoPrice != null;
-  const Icon = product.type === "online" ? IconCertificate : IconForklift;
 
-  const handleLocationSelect = (location: ProductLocation) => {
-    if (!location.isActive) return;
-    setSelectedLocation(location);
-    setSelectedDate(null);
-    setParticipantCount(1);
-  };
-
-  const handleDateSelect = (date: ProductLocationDate) => {
-    if (date.availableSpots === 0) {
-      toast({
-        title: t("common.error") || "Fehler",
-        description: "Dieser Termin ist leider ausgebucht.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setSelectedDate(date);
-    setParticipantCount(1);
-  };
+  const bookableDates = allDates.filter(({ date }) => date.availableSpots > 0);
+  const visibleDates = showAllDates ? filteredDates : filteredDates.slice(0, INITIAL_DATES);
+  // Przy jednej lokalizacji miasto nic nie mówi klientowi, więc go nie pokazujemy
+  const multipleLocations = locations.length > 1;
+  const filterLocation = locations.find((l) => l._id === locationFilter);
 
   // Maksymalna liczba uczestników łącznie: mniejsza z (1 + limit 5) i (dostępnych miejsc)
-  const maxTotalParticipants = selectedDate
-    ? Math.max(1, Math.min(1 + MAX_ADDITIONAL_PARTICIPANTS, selectedDate.availableSpots))
+  const maxTotalParticipants = selected
+    ? Math.max(1, Math.min(1 + MAX_ADDITIONAL_PARTICIPANTS, selected.date.availableSpots))
     : 1;
+  const total = Math.round(grossPrice * participantCount * 100) / 100;
 
-  const incrementParticipants = () => {
-    setParticipantCount((c) => Math.min(maxTotalParticipants, c + 1));
+  const handleDateSelect = (option: DateOption) => {
+    if (option.date.availableSpots === 0) return;
+    setSelected(option);
+    setParticipantCount(1);
   };
 
-  const decrementParticipants = () => {
-    setParticipantCount((c) => Math.max(1, c - 1));
+  const openCourseInfo = () => {
+    setDescriptionOpen(true);
+    document.getElementById("kursinfo")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const scrollToDates = () => {
+    document.getElementById("booking-dates")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const handleOnlineCheckout = () => {
@@ -226,395 +323,502 @@ const ProductDetail = () => {
         productId: product._id,
         courseId: product.courseId,
         courseName: title,
-        price: grossOf(netPrice),
+        price: grossPrice,
         netPrice,
       },
     });
   };
 
   const handlePracticalCheckout = () => {
-    if (!selectedLocation || !selectedDate) {
+    if (!selected) {
       toast({
         title: t("common.error") || "Fehler",
-        description: "Bitte wählen Sie einen Standort und Termin aus.",
+        description: t("practical.selectDateWarn"),
         variant: "destructive",
       });
+      scrollToDates();
       return;
     }
 
-    const finalPrice = Math.round(grossOf(netPrice) * participantCount * 100) / 100;
+    const { location, date } = selected;
     setIsProcessing(true);
     navigate("/checkout", {
       state: {
         type: "practical",
         productId: product._id,
         courseName: title,
-        price: finalPrice,
+        price: total,
         practicalCourse: {
-          locationId: selectedLocation._id,
-          locationName: selectedLocation.city,
-          locationAddress: selectedLocation.address,
-          dateId: selectedDate.id,
-          startDate: selectedDate.startDate,
-          endDate: selectedDate.endDate,
-          time: selectedDate.time,
-          availableSpots: selectedDate.availableSpots,
+          locationId: location._id,
+          locationName: location.city,
+          locationAddress: location.address,
+          dateId: date.id,
+          startDate: date.startDate,
+          endDate: date.endDate,
+          time: date.time,
+          availableSpots: date.availableSpots,
           basePrice: netPrice,
-          price: finalPrice,
+          price: total,
           participantCount,
         },
       },
     });
   };
 
+  const spotsLabel = (spots: number) =>
+    spots === 0
+      ? t("products.soldOut")
+      : (spots < 5 ? t("products.fewSpots") : t("products.spotsLeft")).replace("{n}", String(spots));
+
+  // Nagłówek karty rezerwacji: cena oddzielona od wyboru miejsca, języka i terminu
+  const priceBlock = (
+    <div className="border-b border-border bg-muted/40 px-4 py-3 sm:px-5 sm:py-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            {hasPromo && (
+              <span className="text-muted-foreground line-through">{formatEuro(grossOf(product.price))}</span>
+            )}
+            <span className="font-display text-3xl font-bold leading-none text-foreground">{formatEuro(grossPrice)}</span>
+          </div>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            {product.priceUnit === "monthly" ? t("pricing.perMonth") : t("products.perPersonGross")}
+            {" · "}
+            {t("practical.courseNet") || "Netto"} {formatEuro(netPrice)}
+          </p>
+        </div>
+        {hasPromo && (
+          <span className="shrink-0 rounded bg-primary px-2 py-0.5 text-xs font-semibold text-[hsl(var(--on-primary))]">
+            {t("pricing.promo") || "Aktion"}
+          </span>
+        )}
+      </div>
+      {!isOnline && locations.length > 0 && (
+        <p className="mt-3 flex items-start gap-1.5 text-sm">
+          <MapPin className="mt-0.5 w-4 h-4 shrink-0 text-primary" aria-label={t("products.courseLocation")} />
+          {multipleLocations ? (
+            <span className="font-semibold text-foreground">{locations.map((l) => l.city).join(", ")}</span>
+          ) : (
+            <span>
+              <span className="font-semibold text-foreground">{locations[0].city}</span>
+              {locations[0].address && <span className="text-muted-foreground"> · {locations[0].address}</span>}
+            </span>
+          )}
+        </p>
+      )}
+    </div>
+  );
+
+  const trustBlock = (
+    <div className="space-y-2 pt-4 border-t border-border">
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <ShieldCheck className="w-4 h-4 text-success shrink-0" />
+        {t("products.securePayment")}
+      </p>
+      {product.includesOnlineAccess && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Award className="w-4 h-4 text-success shrink-0" />
+          {t("products.includesOnline") || "Inkl. Zugang zum Online-Kurs"}
+        </p>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      <main className="relative pt-24 pb-16 overflow-hidden">
+      <main className="relative pt-20 md:pt-24 pb-24 overflow-hidden">
         <Blob tone="primary" className="w-[28rem] h-[28rem] -top-40 -right-40" />
-        {/* Hero */}
-        <section className="container mx-auto px-4 mb-10">
-          <Link to="/kursy" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
+
+        <div className="container mx-auto px-4 relative">
+          <Link to="/kursy" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 md:mb-6">
             <ArrowLeft className="w-4 h-4" />
             {t("products.backToList") || "Zurück zur Übersicht"}
           </Link>
-          <div className="flex items-start gap-4 max-w-3xl">
-            <SealBadge tone="primary" rotate={-6} className="shrink-0">
-              <Icon className="w-7 h-7 text-primary-foreground" />
-            </SealBadge>
-            <div>
-              <p className="text-sm text-primary font-medium mb-1">
-                {product.type === "online"
-                  ? t("pricing.onlineLabel") || "Kurs online"
-                  : t("pricing.practicalLabel") || "Kurs praktyczny"}
-              </p>
-              <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-2">
-                {title}
-              </h1>
-              {shortDescription && (
-                <p className="text-muted-foreground text-lg">{shortDescription}</p>
-              )}
-            </div>
-          </div>
-        </section>
 
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left column — description, benefits, location/date selection */}
-            <div className="lg:col-span-2 space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 lg:grid-rows-[auto_1fr] gap-6 lg:gap-x-10">
+            {/* Nagłówek: co to za kurs, gdzie i w jakich językach */}
+            <header className="lg:col-span-7">
+              {/* Mobile: zdjęcie na górze, żeby klient od razu wiedział, czego dotyczy kurs */}
               {product.thumbnailUrl && (
                 <img
                   src={product.thumbnailUrl}
                   alt={title}
-                  className="w-full h-64 object-cover rounded-2xl border border-border"
+                  className="lg:hidden mb-4 w-full aspect-[16/9] object-cover rounded-xl border border-border"
                 />
               )}
-
-              {description && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t("products.description") || "Beschreibung"}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground whitespace-pre-line">{description}</p>
-                  </CardContent>
-                </Card>
+              <p className="text-sm text-primary font-semibold mb-0.5">
+                {isOnline ? t("pricing.onlineLabel") : t("pricing.practicalLabel")}
+              </p>
+              <h1 className="font-display text-2xl md:text-4xl font-bold leading-tight text-foreground [text-wrap:balance]">{title}</h1>
+              {shortDescription && (
+                <p className="mt-3 text-muted-foreground md:text-lg">{shortDescription}</p>
+              )}
+              {!isOnline && multipleLocations && (
+                <p className="mt-4 flex items-center gap-1.5 text-sm text-foreground">
+                  <MapPin className="w-4 h-4 text-primary" />
+                  {locations.map((l) => l.city).join(", ")}
+                </p>
               )}
 
-              {benefits.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t("products.included") || "Im Preis enthalten"}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {benefits.map((benefit, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <div className="w-5 h-5 rounded-full bg-success flex items-center justify-center shrink-0">
-                            <Check className="w-3 h-3 text-success-foreground" />
-                          </div>
-                          <span className="text-foreground text-sm">{benefit}</span>
-                        </div>
+              {/* Mobile: najważniejsze punkty i skrót do pełnego opisu pod rezerwacją */}
+              {(benefits.length > 0 || description) && (
+                <div className="lg:hidden mt-4 space-y-2">
+                  {benefits.length > 0 && (
+                    <ul className="space-y-1.5">
+                      {benefits.slice(0, 3).map((benefit, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                          <Check className="w-4 h-4 mt-0.5 text-success shrink-0" />
+                          {benefit}
+                        </li>
                       ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                    </ul>
+                  )}
+                  <button
+                    type="button"
+                    onClick={openCourseInfo}
+                    className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-primary"
+                  >
+                    {t("products.seeDetails")}
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </div>
               )}
+            </header>
 
-              {product.type === "normal" && (
-                <>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <MapPin className="w-5 h-5 text-primary" />
-                        {t("practical.selectLocation") || "Standort wählen"}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {locations.length === 0 ? (
-                        <div className="space-y-4">
-                          <p className="text-muted-foreground text-sm">
-                            {t("products.noLocations")}
-                          </p>
-                          <NotifyForm slug={product.slug} />
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {locations.map((location) => (
-                            <Card
-                              key={location._id}
-                              className={`cursor-pointer transition-all ${
-                                !location.isActive
-                                  ? "opacity-60 cursor-not-allowed"
-                                  : selectedLocation?._id === location._id
-                                  ? "ring-2 ring-primary shadow-md"
-                                  : "hover:shadow-md"
-                              }`}
-                              onClick={() => handleLocationSelect(location)}
-                            >
-                              <CardContent className="p-4">
-                                <h3 className="font-semibold text-foreground mb-1">{location.city}</h3>
-                                <p className="text-sm text-muted-foreground">{location.address}</p>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+            {/* Rezerwacja: na mobile zaraz pod tytułem, na desktopie po prawej */}
+            <aside className="lg:col-span-5 lg:col-start-8 lg:row-start-1 lg:row-span-2">
+              <div className="overflow-hidden rounded-[1.25rem_0.5rem_1.25rem_0.5rem] border-2 border-border bg-card shadow-sm">
+                {priceBlock}
+                <div className="space-y-4 p-4 sm:p-5">
 
-                  {selectedLocation && selectedLocation.isActive && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Calendar className="w-5 h-5 text-primary" />
-                          {t("practical.selectDate") || "Termin wählen"} - {selectedLocation.city}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {selectedLocation.dates.length === 0 ? (
-                          <>
-                            <p className="text-muted-foreground text-sm">
-                              {t("products.noDates")}
-                            </p>
-                            <NotifyForm
-                              slug={product.slug}
-                              locationId={selectedLocation._id}
-                              locationCity={selectedLocation.city}
-                            />
-                          </>
-                        ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {selectedLocation.dates.map((date) => (
-                              <Card
-                                key={date.id}
-                                className={`cursor-pointer transition-all ${
-                                  date.availableSpots === 0
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : selectedDate?.id === date.id
-                                    ? "ring-2 ring-primary bg-primary/5"
-                                    : "hover:bg-muted/50"
-                                }`}
-                                onClick={() => handleDateSelect(date)}
-                              >
-                                <CardContent className="p-4">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <p className="font-medium text-foreground">{formatDate(date.startDate, date.endDate)}</p>
-                                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        {date.time}
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center gap-1 text-sm">
-                                      <Users className="w-4 h-4" />
-                                      <span
-                                        className={
-                                          date.availableSpots === 0
-                                            ? "text-destructive font-semibold"
-                                            : date.availableSpots < 5
-                                            ? "text-orange-500"
-                                            : "text-muted-foreground"
-                                        }
-                                      >
-                                        {date.availableSpots === 0 ? "Ausgebucht" : `${date.availableSpots} Plätze`}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
+                {!isOnline && (
+                  <section id="booking-dates" className="scroll-mt-24 space-y-4">
+                    <h2 className="font-display text-xl font-bold text-foreground">{t("products.datesTitle")}</h2>
+
+                    {bookableDates.length === 0 ? (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          {locations.length === 0 ? t("products.noLocations") : t("products.noDates")}
+                        </p>
+                        <NotifyForm slug={product.slug} />
+                      </>
+                    ) : (
+                      <>
+                        {multipleLocations && (
+                          <div className="flex flex-wrap gap-x-4 border-b border-border">
+                            <LocationTab active={locationFilter === "all"} onClick={() => setLocationFilter("all")}>
+                              {t("products.allLocations")}
+                            </LocationTab>
+                            {locations.map((l) => (
+                              <LocationTab key={l._id} active={locationFilter === l._id} onClick={() => setLocationFilter(l._id)}>
+                                {l.city}
+                              </LocationTab>
                             ))}
                           </div>
                         )}
-                        {selectedLocation.dates.length > 0 &&
-                          selectedLocation.dates.every((d) => d.availableSpots === 0) && (
-                            <NotifyForm
-                              slug={product.slug}
-                              locationId={selectedLocation._id}
-                              locationCity={selectedLocation.city}
-                            />
-                          )}
-                      </CardContent>
-                    </Card>
-                  )}
 
-                  {selectedDate && selectedDate.availableSpots > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Users className="w-5 h-5 text-primary" />
-                          {t("practical.participantsCountTitle")}
-                        </CardTitle>
-                        <CardDescription>
-                          {t("practical.participantsCountSubtitle")}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center gap-4">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={decrementParticipants}
-                            disabled={participantCount <= 1}
-                            aria-label="-"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </Button>
-                          <span className="font-display text-2xl font-bold text-foreground w-10 text-center">
-                            {participantCount}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={incrementParticipants}
-                            disabled={participantCount >= maxTotalParticipants}
-                            aria-label="+"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        {participantCount > 1 && (
-                          <div className="flex items-start gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                            <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                            <p className="text-xs text-foreground">
-                              {t("practical.participantsCountDesc")}
-                            </p>
+                        {/* Wybór języka jak przełącznik: „Alle” jest zaznaczone na start, więc widać, że to filtr */}
+                        {availableLanguages.length > 1 && (
+                          <div className="flex gap-1.5" role="radiogroup" aria-label={t("products.courseLanguage")}>
+                            {(["all", ...availableLanguages] as const).map((code) => {
+                              const active = languageFilter === code;
+                              const name = code === "all" ? t("products.allLanguages") : t(`courseLang.${code}`);
+                              return (
+                                <button
+                                  key={code}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={active}
+                                  aria-label={name}
+                                  title={name}
+                                  onClick={() => setLanguageFilter(code)}
+                                  className={cn(
+                                    "flex h-[3.25rem] min-w-0 flex-col items-center justify-center gap-1 rounded-md border-2 transition-colors",
+                                    code === "all" ? "flex-[1.8] px-1" : "flex-1",
+                                    active ? "border-primary bg-background" : "border-transparent bg-muted/60 hover:bg-muted"
+                                  )}
+                                >
+                                  {code === "all" ? (
+                                    <span className={cn("text-xs font-semibold", active ? "text-primary" : "text-foreground")}>
+                                      {t("products.filterAll")}
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <CourseLanguageFlags languages={[code]} size="lg" />
+                                      <span
+                                        className={cn(
+                                          "text-[10px] font-semibold tracking-wide",
+                                          active ? "text-primary" : "text-muted-foreground"
+                                        )}
+                                      >
+                                        {LANGUAGE_CODE_LABEL[code]}
+                                      </span>
+                                    </>
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
-                        <p className="text-xs text-muted-foreground">
-                          {t("practical.participantsCountHint")}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </>
-              )}
-            </div>
 
-            {/* Right column — summary & purchase */}
-            <div className="lg:col-span-1">
-              <Card className="sticky top-24">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5 text-primary" />
-                    {t("practical.summary") || "Zusammenfassung"}
-                  </CardTitle>
-                  <CardDescription>{title}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    {hasPromo && (
-                      <span className="text-muted-foreground text-base line-through">
-                        €{grossOf(product.price).toFixed(2)}
-                      </span>
+                        {filteredDates.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">{t("products.noDatesFilter")}</p>
+                        ) : (
+                          <div role="radiogroup" aria-label={t("products.datesTitle")} className="space-y-2">
+                            {visibleDates.map((option) => {
+                              const { date, location } = option;
+                              const soldOut = date.availableSpots === 0;
+                              const isSelected = selected?.date.id === date.id;
+                              return (
+                                <button
+                                  key={`${location._id}-${date.id}`}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={isSelected}
+                                  disabled={soldOut}
+                                  onClick={() => handleDateSelect(option)}
+                                  className={cn(
+                                    "w-full flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors",
+                                    soldOut && "opacity-50 cursor-not-allowed",
+                                    isSelected
+                                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                      : !soldOut && "border-border hover:border-foreground/30 hover:bg-muted/40"
+                                  )}
+                                >
+                                  <span
+                                    className={cn(
+                                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                                      isSelected ? "border-primary bg-primary" : "border-muted-foreground/40"
+                                    )}
+                                  >
+                                    {isSelected && <Check className="w-3 h-3 text-[hsl(var(--on-primary))]" />}
+                                  </span>
+                                  <span className="flex-1 min-w-0">
+                                    <span className="block font-semibold text-sm text-foreground">
+                                      {formatCourseDate(date.startDate, date.endDate, language)}
+                                    </span>
+                                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+                                      {multipleLocations && (
+                                        <>
+                                          <MapPin className="w-3 h-3 shrink-0" />
+                                          <span className="mr-1">{location.city}</span>
+                                        </>
+                                      )}
+                                      <Clock className="w-3 h-3 shrink-0" />
+                                      {date.time}
+                                    </span>
+                                  </span>
+                                  <span className="flex flex-col items-end gap-1 shrink-0">
+                                    <CourseLanguageFlags languages={date.languages ?? []} size="md" />
+                                    <span
+                                      className={cn(
+                                        "text-xs",
+                                        soldOut ? "text-destructive font-semibold" : date.availableSpots < 5 ? "text-primary font-semibold" : "text-muted-foreground"
+                                      )}
+                                    >
+                                      {spotsLabel(date.availableSpots)}
+                                    </span>
+                                  </span>
+                                </button>
+                              );
+                            })}
+                            {!showAllDates && filteredDates.length > INITIAL_DATES && (
+                              <button
+                                type="button"
+                                onClick={() => setShowAllDates(true)}
+                                className="w-full inline-flex items-center justify-center gap-1 rounded-lg py-2 text-sm font-semibold text-primary hover:bg-primary/5"
+                              >
+                                {t("products.showAllDates").replace("{n}", String(filteredDates.length))}
+                                <ChevronDown className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {!selected &&
+                          (showNotify ? (
+                            <NotifyForm
+                              slug={product.slug}
+                              locationId={filterLocation?._id}
+                              locationCity={filterLocation?.city}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setShowNotify(true)}
+                              aria-expanded={false}
+                              className="flex w-full items-center gap-3 rounded-lg bg-muted/70 px-4 py-3 text-left transition-colors hover:bg-muted"
+                            >
+                              <BellRing className="w-5 h-5 shrink-0 text-primary" />
+                              <span className="flex-1 min-w-0">
+                                <span className="block text-sm font-semibold text-foreground">{t("products.notifyTitle")}</span>
+                                <span className="block text-xs text-muted-foreground">{t("products.notifyShort")}</span>
+                              </span>
+                              <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />
+                            </button>
+                          ))}
+                      </>
                     )}
-                    <span className="font-display text-3xl font-bold text-foreground">
-                      €{grossOf(netPrice).toFixed(2)}
-                    </span>
-                    <span className="text-muted-foreground text-sm">
-                      {product.priceUnit === "monthly"
-                        ? t("pricing.perMonth") || "/ Monat"
-                        : t("pricing.perPerson") || "/ Person"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {t("practical.courseNet") || "Netto"}: €{netPrice.toFixed(2)} + 19% MwSt.
-                  </p>
+                  </section>
+                )}
 
-                  {product.type === "normal" && participantCount > 1 && (
-                    <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-1">
+                {selected && (
+                  <div className="space-y-2 pt-4 border-t border-border">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{t("products.participants")}</p>
+                        <p className="text-xs text-muted-foreground">{t("practical.participantsCountDesc")}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => setParticipantCount((c) => Math.max(1, c - 1))}
+                          disabled={participantCount <= 1}
+                          aria-label="-"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </Button>
+                        <span className="font-display text-xl font-bold text-foreground w-6 text-center" aria-live="polite">
+                          {participantCount}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9"
+                          onClick={() => setParticipantCount((c) => Math.min(maxTotalParticipants, c + 1))}
+                          disabled={participantCount >= maxTotalParticipants}
+                          aria-label="+"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    {participantCount > 1 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
-                          {participantCount} × €{grossOf(netPrice).toFixed(2)}
+                          {participantCount} × {formatEuro(grossPrice)}
                         </span>
                         <span className="font-semibold text-foreground">
-                          €{(grossOf(netPrice) * participantCount).toFixed(2)}
+                          {t("products.total")}: {formatEuro(total)}
                         </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {t("practical.totalForParticipants")}
-                      </p>
-                    </div>
-                  )}
-
-                  {product.type === "online" ? (
-                    <Button className="w-full" size="lg" onClick={handleOnlineCheckout} disabled={isProcessing}>
-                      {isProcessing ? "..." : t("products.enroll") || "Jetzt anmelden"}
-                    </Button>
-                  ) : (
-                    <>
-                      {selectedLocation && (
-                        <div className="p-3 bg-muted/50 rounded-lg">
-                          <p className="font-medium text-foreground">{selectedLocation.city}</p>
-                          <p className="text-sm text-muted-foreground">{selectedLocation.address}</p>
-                        </div>
-                      )}
-                      {selectedDate && (
-                        <div className="p-3 bg-muted/50 rounded-lg">
-                          <p className="font-medium text-foreground">{formatDate(selectedDate.startDate, selectedDate.endDate)}</p>
-                          <p className="text-sm text-muted-foreground">{selectedDate.time}</p>
-                        </div>
-                      )}
-                      <Button
-                        className="w-full"
-                        size="lg"
-                        disabled={!selectedDate || isProcessing}
-                        onClick={handlePracticalCheckout}
-                      >
-                        {isProcessing ? "..." : t("practical.toPayment") || "Zur Zahlung"}
-                      </Button>
-                      {!selectedDate && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4" />
-                          {t("practical.selectDateWarn") || "Bitte Standort und Termin wählen"}
-                        </p>
-                      )}
-                    </>
-                  )}
-
-                  <div className="space-y-3 pt-4 border-t">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle className="w-4 h-4 text-success" />
-                      <span>Sichere Zahlung mit Stripe</span>
-                    </div>
-                    {product.includesOnlineAccess && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Award className="w-4 h-4 text-success" />
-                        <span>{t("products.includesOnline") || "Inkl. Zugang zum Online-Kurs"}</span>
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                )}
+
+                <div ref={ctaRef} className="hidden lg:block">
+                  {isOnline ? (
+                    <Button variant="hero" className="w-full" size="lg" onClick={handleOnlineCheckout} disabled={isProcessing}>
+                      {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : t("products.enroll")}
+                    </Button>
+                  ) : (
+                    bookableDates.length > 0 && (
+                      <Button
+                        variant="hero"
+                        className="w-full"
+                        size="lg"
+                        disabled={isProcessing}
+                        onClick={selected ? handlePracticalCheckout : scrollToDates}
+                      >
+                        {isProcessing ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : selected ? (
+                          <>
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            {t("practical.toPayment")}
+                          </>
+                        ) : (
+                          t("products.pickDateFirst")
+                        )}
+                      </Button>
+                    )
+                  )}
+                </div>
+
+                {trustBlock}
+                </div>
+              </div>
+            </aside>
+
+            {/* Szczegóły: zdjęcie, opis (zwijany) i co jest w cenie */}
+            <div id="kursinfo" className="lg:col-span-7 space-y-6 scroll-mt-20">
+              {product.thumbnailUrl && (
+                <img
+                  src={product.thumbnailUrl}
+                  alt={title}
+                  className="hidden lg:block w-full h-64 object-cover rounded-2xl border border-border"
+                />
+              )}
+
+              {benefits.length > 0 && (
+                <section>
+                  <h2 className="font-display text-xl font-bold text-foreground mb-3">
+                    {t("products.included") || "Im Preis enthalten"}
+                  </h2>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {benefits.map((benefit, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-success">
+                          <Check className="w-2.5 h-2.5 text-success-foreground" />
+                        </span>
+                        {benefit}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {description && (
+                <section>
+                  <h2 className="font-display text-xl font-bold text-foreground mb-3">{t("products.aboutCourse")}</h2>
+                  <ExpandableText
+                    text={description}
+                    expanded={descriptionOpen}
+                    onToggle={() => setDescriptionOpen((v) => !v)}
+                  />
+                </section>
+              )}
             </div>
           </div>
         </div>
       </main>
 
+      {/* Cena i przycisk: na mobile zawsze widoczne, na desktopie gdy przycisk w karcie zniknie z ekranu */}
+      {showStickyBar && (isOnline || bookableDates.length > 0) && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+          <div className="container mx-auto flex items-center justify-between gap-3 px-0 sm:px-4">
+            <div className="min-w-0">
+              <p className="font-display text-xl font-bold leading-none text-foreground">
+                {formatEuro(selected ? total : grossPrice)}
+              </p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">
+                {selected
+                  ? `${formatCourseDate(selected.date.startDate, selected.date.endDate, language)}${multipleLocations ? ` · ${selected.location.city}` : ""}`
+                  : t("products.perPersonGross")}
+              </p>
+            </div>
+            <Button
+              variant="hero"
+              size="lg"
+              className="shrink-0"
+              disabled={isProcessing}
+              onClick={isOnline ? handleOnlineCheckout : selected ? handlePracticalCheckout : scrollToDates}
+            >
+              {isOnline ? t("products.enroll") : selected ? t("practical.toPayment") : t("products.pickDateFirst")}
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Footer />
+      {/* Miejsce na dolny pasek, żeby nie zasłaniał końca stopki */}
+      {showStickyBar && <div aria-hidden className="h-20 bg-industrial" />}
     </div>
   );
 };

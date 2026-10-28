@@ -177,9 +177,11 @@ const StaplerQuiz = () => {
                                             </Link>
                                         </div>
                                         <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-                                            <a href={`tel:${CONTACT.phone.href}`} className="inline-flex items-center gap-2 text-primary-foreground hover:text-primary">
-                                                <Phone className="w-4 h-4 text-primary" />{CONTACT.phone.display}
-                                            </a>
+                                            {CONTACT.phones.map((phone) => (
+                                                <a key={phone.href} href={`tel:${phone.href}`} className="inline-flex items-center gap-2 text-primary-foreground hover:text-primary">
+                                                    <Phone className="w-4 h-4 text-primary" />{phone.display}
+                                                </a>
+                                            ))}
                                             <a href={`mailto:${CONTACT.email}`} className="inline-flex items-center gap-2 text-primary-foreground hover:text-primary">
                                                 <Mail className="w-4 h-4 text-primary" />{CONTACT.email}
                                             </a>

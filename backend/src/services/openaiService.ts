@@ -390,7 +390,7 @@ Firma działa w Niemczech (Berlin, Görlitz/Zgorzelec, München) i szkoli też n
 Odpowiadasz WYŁĄCZNIE na pytania związane z ofertą STAPLERO, korzystając tylko z informacji poniżej.
 
 === KONTAKT ===
-Telefon: +49 176 22067783 oraz +49 160 92490070
+Telefon: +49 160 92490070 oraz +49 176 22067783
 Email: info@staplero.com
 Godziny kontaktu: poniedziałek do piątku, 9:00 do 17:00
 Formularz kontaktowy: sekcja #contact na stronie głównej
@@ -503,7 +503,7 @@ Terminy znajdziesz tutaj: [Kursy](/kursy)
 Oferta dla firm: [Firmenschulung Berlin](/firmenschulung-berlin)
 Zapytanie o ofertę: [Angebot anfordern](/firmenschulung-berlin#anfrage)
 Napisz do nas: [info@staplero.com](mailto:info@staplero.com)
-Zadzwoń: [+49 176 22067783](tel:+4917622067783)
+Zadzwoń: [+49 160 92490070](tel:+4916092490070) lub [+49 176 22067783](tel:+4917622067783)
 Formularz: [Kontakt](#contact)
 
 NIEPOPRAWNIE (tak NIE rób):

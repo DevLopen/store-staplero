@@ -1,7 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
 import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Plus, Edit, Trash2, Save, Loader2, ImagePlus, X, Star, StarOff,
-  BookOpen, Forklift, RefreshCw, BellRing, Check as CheckIcon, Mail, Send,
+  BookOpen, Forklift, RefreshCw, BellRing, Check as CheckIcon, Mail, Send, GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiUpload } from "@/api/http";
 import { adminGetCourses } from "@/api/course.api";
 import {
-  adminGetProducts, adminCreateProduct, adminUpdateProduct, adminDeleteProduct,
+  adminGetProducts, adminCreateProduct, adminUpdateProduct, adminDeleteProduct, adminReorderProducts,
   adminGetNotifyRequests, adminMarkNotifyRequestDone, adminDeleteNotifyRequest, adminSendNotifyRequest, NotifyRequestItem,
 } from "@/api/product.api";
 import {
@@ -105,6 +112,31 @@ const productToForm = (p: Product): ProductForm => ({
   linkedCourseId: p.linkedCourseId || "",
 });
 
+/** Kafelek produktu, który można przeciągać za uchwyt, żeby zmienić kolejność w sklepie */
+function SortableProduct({ id, children }: { id: string; children: (handle: React.ReactNode) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const handle = (
+    <button
+      {...attributes}
+      {...listeners}
+      className="touch-none cursor-grab active:cursor-grabbing p-1 -ml-1 text-muted-foreground hover:text-foreground"
+      title="Ziehen, um die Reihenfolge zu ändern"
+      aria-label="Reihenfolge ändern"
+    >
+      <GripVertical className="w-4 h-4" />
+    </button>
+  );
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={isDragging ? "relative z-10 opacity-70" : undefined}
+    >
+      {children(handle)}
+    </div>
+  );
+}
+
 const AdminProducts = () => {
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -124,6 +156,29 @@ const AdminProducts = () => {
   const [activeLang, setActiveLang] = useState<keyof LocalizedText>("de");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = async ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const previous = products;
+    const reordered = arrayMove(
+      products,
+      products.findIndex((p) => p._id === active.id),
+      products.findIndex((p) => p._id === over.id)
+    );
+    setProducts(reordered);
+    try {
+      await adminReorderProducts(reordered.map((p) => p._id));
+      toast({ title: "Reihenfolge gespeichert", description: "So erscheinen die Kurse jetzt im Shop." });
+    } catch (err: any) {
+      setProducts(previous);
+      toast({ title: "Fehler", description: err.message || "Reihenfolge konnte nicht gespeichert werden", variant: "destructive" });
+    }
+  };
 
   const authH = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
@@ -329,7 +384,9 @@ const AdminProducts = () => {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold">Produkte (Kurse & Schulungen)</h2>
-          <p className="text-sm text-muted-foreground">{products.length} Produkte insgesamt</p>
+          <p className="text-sm text-muted-foreground">
+            {products.length} Produkte insgesamt · Reihenfolge im Shop per Ziehen am Griff ändern
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={loadProducts}>
@@ -357,10 +414,18 @@ const AdminProducts = () => {
           </CardContent>
         </Card>
       ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={products.map((p) => p._id)} strategy={rectSortingStrategy}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {products.map((product) => (
-            <Card key={product._id}>
+          {products.map((product, index) => (
+            <SortableProduct key={product._id} id={product._id}>
+            {(handle) => (
+            <Card className="h-full">
               <CardContent className="p-4 flex gap-4">
+                <div className="flex flex-col items-center gap-1 shrink-0">
+                  {handle}
+                  <span className="text-xs font-semibold text-muted-foreground" title="Position im Shop">{index + 1}</span>
+                </div>
                 <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                   {product.type === "online" ? (
                     <BookOpen className="w-7 h-7 text-primary" />
@@ -414,8 +479,12 @@ const AdminProducts = () => {
                 </div>
               </CardContent>
             </Card>
+            )}
+            </SortableProduct>
           ))}
         </div>
+        </SortableContext>
+        </DndContext>
       )}
 
       {/* ── Notify requests (powiadom mnie o nowych terminach) ─────────────────── */}

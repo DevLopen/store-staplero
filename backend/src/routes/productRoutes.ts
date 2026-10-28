@@ -7,6 +7,7 @@ import {
   adminCreateProduct,
   adminUpdateProduct,
   adminDeleteProduct,
+  adminReorderProducts,
 } from "../controllers/productController";
 import {
   createNotifyRequest,
@@ -29,6 +30,7 @@ router.delete("/admin/notify-requests/:id", protect, admin, adminDeleteNotifyReq
 // ── ADMIN: Product CRUD ────────────────────────────────────────────────────────
 router.get("/admin", protect, admin, adminGetProducts);
 router.post("/admin", protect, admin, adminCreateProduct);
+router.put("/admin/reorder", protect, admin, adminReorderProducts);
 router.get("/admin/:productId", protect, admin, adminGetProductById);
 router.put("/admin/:productId", protect, admin, adminUpdateProduct);
 router.delete("/admin/:productId", protect, admin, adminDeleteProduct);

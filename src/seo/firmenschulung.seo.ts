@@ -16,8 +16,8 @@ export const OG_IMAGE = `${SITE_URL}/og-image.jpg`;
 export const CONTACT = {
   email: "info@staplero.com",
   phones: [
-    { display: "+49 176 22067783", href: "+4917622067783" },
     { display: "+49 160 92490070", href: "+4916092490070" },
+    { display: "+49 176 22067783", href: "+4917622067783" },
   ],
   hours: "Mo bis Fr: 9:00 bis 17:00 Uhr",
   locations: ["Berlin", "Görlitz/Zgorzelec", "München"],

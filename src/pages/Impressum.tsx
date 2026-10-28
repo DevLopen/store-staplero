@@ -19,8 +19,8 @@ const content = {
       {
         heading: "Kontakt",
         lines: [
-          "Telefon: +49 176 22067783",
           "Telefon: +49 160 92490070",
+          "Telefon: +49 176 22067783",
           "E-Mail: info@staplero.com",
           "Web: www.staplero.com",
         ],
@@ -85,8 +85,8 @@ const content = {
       {
         heading: "Contact",
         lines: [
-          "Phone: +49 176 22067783",
           "Phone: +49 160 92490070",
+          "Phone: +49 176 22067783",
           "Email: info@staplero.com",
           "Web: www.staplero.com",
         ],
@@ -151,8 +151,8 @@ const content = {
       {
         heading: "Контакт",
         lines: [
-          "Телефон: +49 176 22067783",
           "Телефон: +49 160 92490070",
+          "Телефон: +49 176 22067783",
           "Електронна пошта: info@staplero.com",
           "Веб: www.staplero.com",
         ],
@@ -217,8 +217,8 @@ const content = {
       {
         heading: "Kontakt",
         lines: [
-          "Telefon: +49 176 22067783",
           "Telefon: +49 160 92490070",
+          "Telefon: +49 176 22067783",
           "E-mail: info@staplero.com",
           "Web: www.staplero.com",
         ],

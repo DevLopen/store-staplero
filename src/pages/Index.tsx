@@ -670,7 +670,7 @@ const Index = () => {
                             <p className="text-muted-foreground mb-8">{t('contact.subtitle')}</p>
                             <div className="space-y-6">
                                 {[
-                                    { icon: <Phone className="w-5 h-5 text-primary-foreground" />, label: t('contact.phone'), value: '+49 176 22067783' },
+                                    { icon: <Phone className="w-5 h-5 text-primary-foreground" />, label: t('contact.phone'), value: (<><a href="tel:+4916092490070" className="block hover:text-primary">+49 160 92490070</a><a href="tel:+4917622067783" className="block hover:text-primary">+49 176 22067783</a></>) },
                                     { icon: <Mail className="w-5 h-5 text-primary-foreground" />, label: t('contact.email'), value: 'info@staplero.com' },
                                     { icon: <IconPin className="w-5 h-5 text-primary-foreground" />, label: t('contact.locations'), value: 'Berlin, Görlitz/Zgorzelec, München' },
                                 ].map((c, i) => (

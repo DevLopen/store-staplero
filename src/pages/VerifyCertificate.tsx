@@ -282,6 +282,7 @@ const VerifyCertificate = () => {
                         <p className="text-sm text-muted-foreground">STAPLERO Ausbildungszentrum · Jakobstr. 13, 02826 Görlitz</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                        <a href="tel:+4916092490070" className="inline-flex min-h-[44px] items-center gap-2 rounded border-2 border-foreground px-4 text-sm font-bold"><Phone className="h-4 w-4" /> +49 160 92490070</a>
                         <a href="tel:+4917622067783" className="inline-flex min-h-[44px] items-center gap-2 rounded border-2 border-foreground px-4 text-sm font-bold"><Phone className="h-4 w-4" /> +49 176 22067783</a>
                         <a href="mailto:info@staplero.com" className="inline-flex min-h-[44px] items-center gap-2 rounded border-2 border-foreground px-4 text-sm font-bold"><Mail className="h-4 w-4" /> info@staplero.com</a>
                     </div>

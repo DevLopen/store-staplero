@@ -331,7 +331,7 @@ export const renderEmail = (o: LayoutOptions): string => `<!DOCTYPE html>
             <td class="px" style="padding:30px 40px;background:${C.dark};border-top:4px solid ${C.orange};font-family:${BODY_FONT};font-size:13px;line-height:1.8;color:#a1a1a1;">
               <strong style="color:${C.white};">STAPLERO Ausbildungszentrum</strong><br>
               Jakobstr. 13, 02826 G&ouml;rlitz<br>
-              <a href="mailto:info@staplero.com" style="color:#d4d4d4;text-decoration:none;">info@staplero.com</a> &middot; +49 176 22067783 &middot; +49 160 92490070<br>
+              <a href="mailto:info@staplero.com" style="color:#d4d4d4;text-decoration:none;">info@staplero.com</a> &middot; +49 160 92490070 &middot; +49 176 22067783<br>
               <a href="${o.baseUrl}/datenschutz" style="color:#d4d4d4;">Datenschutz</a> &middot; <a href="${o.baseUrl}/impressum" style="color:#d4d4d4;">Impressum</a>
             </td>
           </tr>

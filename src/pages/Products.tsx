@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { Loader2, PackageSearch, Search, FileSearch, MapPin, CalendarCheck, CreditCard, ChevronRight } from "lucide-react";
+import { Loader2, PackageSearch, ChevronRight } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
-import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getProducts } from "@/api/product.api";
 import { Product, ProductType } from "@/types/product.types";
-import { SealBadge } from "@/components/BrandIcons";
+import { cn } from "@/lib/utils";
 import { Blob } from "@/components/SectionDecor";
 
 type FilterValue = "all" | ProductType;
@@ -39,6 +38,12 @@ const Products = () => {
 
   const filtered = products.filter((p) => filter === "all" || p.type === filter);
 
+  const filterOptions = [
+    { value: "all" as FilterValue, label: t("products.filterAll"), count: products.length },
+    { value: "normal" as FilterValue, label: t("products.filterPractical"), count: products.filter((p) => p.type === "normal").length },
+    { value: "online" as FilterValue, label: t("products.filterOnline"), count: products.filter((p) => p.type === "online").length },
+  ].filter((o) => o.value === "all" || o.count > 0);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
@@ -47,60 +52,54 @@ const Products = () => {
         <Blob tone="primary" className="w-[32rem] h-[32rem] -top-40 -right-40" />
         <Blob tone="accent" className="w-80 h-80 bottom-0 -left-32" />
         <div className="container mx-auto px-4 relative">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <h1 className="font-display text-4xl md:text-5xl font-bold text-foreground mb-4">
+          <div className="text-center max-w-2xl mx-auto mb-6">
+            <h1 className="font-display text-3xl md:text-5xl font-bold text-foreground mb-2 [text-wrap:balance]">
               {t("products.title")}
             </h1>
-            <p className="text-muted-foreground text-lg">
+            <p className="text-muted-foreground md:text-lg">
               {t("products.subtitle")}
             </p>
           </div>
 
-          {/* How it works */}
-          <div className="max-w-4xl mx-auto mb-12">
-            <h2 className="text-center text-sm font-semibold uppercase tracking-wide text-primary mb-5">
-              {t("products.howItWorksTitle")}
-            </h2>
-            {/* Mobile: wszystkie 5 kroków w jednym rzędzie (siatka), od sm: rząd ze strzałkami między krokami */}
-            <div className="grid grid-cols-5 gap-1 sm:flex sm:items-stretch sm:justify-center sm:gap-0">
-              {[
-                { icon: Search, label: t("products.step1") },
-                { icon: FileSearch, label: t("products.step2") },
-                { icon: MapPin, label: t("products.step3") },
-                { icon: CalendarCheck, label: t("products.step4") },
-                { icon: CreditCard, label: t("products.step5") },
-              ].map((step, i, arr) => (
-                <div key={i} className="flex items-start sm:items-center sm:flex-1">
-                  <div className="flex flex-col items-center gap-2 flex-1 px-0.5 sm:px-2">
-                    <SealBadge size="sm" tone={i % 2 === 0 ? "primary" : "dark"} rotate={i % 2 === 0 ? -6 : 6}>
-                      <step.icon className="w-5 h-5 text-primary-foreground" />
-                    </SealBadge>
-                    <span className="text-[11px] leading-tight sm:text-sm font-medium text-foreground text-center break-words">{step.label}</span>
-                  </div>
-                  {i < arr.length - 1 && (
-                    <ChevronRight className="hidden sm:block w-5 h-5 text-muted-foreground/40 shrink-0" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-center gap-2 mb-10 flex-wrap">
-            {(["all", "normal", "online"] as FilterValue[]).map((value) => (
-              <Button
-                key={value}
-                variant={filter === value ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilter(value)}
-              >
-                {value === "all"
-                  ? t("products.filterAll") || "Alle"
-                  : value === "normal"
-                  ? t("products.filterPractical") || "Präsenzkurse"
-                  : t("products.filterOnline") || "Online-Kurse"}
-              </Button>
+          {/* Jak to działa: jedna linia, żeby kursy było widać od razu po wejściu */}
+          <ol
+            aria-label={t("products.howItWorksTitle")}
+            className="mb-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground"
+          >
+            {[t("products.step1"), t("products.step4"), t("products.step5")].map((label, i, arr) => (
+              <li key={i} className="flex items-center gap-2">
+                <span className="font-medium text-foreground">{label}</span>
+                {i < arr.length - 1 && <ChevronRight className="w-3.5 h-3.5" aria-hidden />}
+              </li>
             ))}
-          </div>
+          </ol>
+
+          {/* Przełącznik typów tylko wtedy, gdy w ofercie są oba typy kursów */}
+          {filterOptions.length > 2 && (
+            <div className="mb-6 flex justify-center">
+              <div role="tablist" className="inline-flex rounded-lg bg-muted p-1">
+                {filterOptions.map(({ value, label, count }) => {
+                  const active = filter === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setFilter(value)}
+                      className={cn(
+                        "rounded-md px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap",
+                        active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {label}
+                      <span className={cn("ml-1.5 text-xs", active ? "text-primary" : "text-muted-foreground")}>{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {isLoading && (
             <div className="flex justify-center py-24">
@@ -120,7 +119,8 @@ const Products = () => {
           )}
 
           {!isLoading && !error && filtered.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto items-stretch">
+            // Kolumny o stałej szerokości, wyśrodkowane: przy 2 kursach nie zostaje pusta trzecia kolumna
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),25rem))] justify-center gap-4 lg:gap-5 max-w-6xl mx-auto items-stretch">
               {filtered.map((product) => (
                 <ProductCard key={product._id} product={product} />
               ))}
