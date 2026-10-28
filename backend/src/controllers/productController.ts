@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import Product from "../models/Product";
 import Location from "../models/Location";
+import { effectiveLanguages, placeName } from "../utils/courseLocation";
+
+const LANGUAGE_ORDER = ["de", "en", "pl", "uk", "ru", "ro"];
+const sortLanguages = (codes: string[]) =>
+  [...new Set(codes)].sort((a, b) => LANGUAGE_ORDER.indexOf(a) - LANGUAGE_ORDER.indexOf(b));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,13 +66,17 @@ export const getPublicProducts = async (req: Request, res: Response) => {
         .flatMap((l) =>
           l.dates
             .filter((d) => d.availableSpots > 0 && d.startDate >= today)
-            .map((d) => ({ startDate: d.startDate, city: l.city, languages: d.languages || [] }))
+            .map((d) => ({
+              startDate: d.startDate,
+              city: placeName(l.address, l.city),
+              languages: sortLanguages(effectiveLanguages(d.languages, l.city)),
+            }))
         )
         .sort((a, b) => a.startDate.localeCompare(b.startDate));
       return {
         ...p,
         nextDate: dates[0] || null,
-        languages: [...new Set(dates.flatMap((d) => d.languages))],
+        languages: sortLanguages(dates.flatMap((d) => d.languages)),
       };
     });
 
@@ -84,10 +93,16 @@ export const getPublicProductBySlug = async (req: Request, res: Response) => {
 
     let locations: any[] = [];
     if (product.type === "normal" && product.locationIds?.length) {
-      locations = await Location.find({
+      const raw = await Location.find({
         _id: { $in: product.locationIds },
         isActive: true,
       }).lean();
+      // Klient widzi miejsce (miasto z adresu) i języki terminów, a nie wewnętrzną nazwę wariantu
+      locations = raw.map((l) => ({
+        ...l,
+        place: placeName(l.address, l.city),
+        dates: l.dates.map((d) => ({ ...d, languages: sortLanguages(effectiveLanguages(d.languages, l.city)) })),
+      }));
     }
 
     res.json({ product, locations });

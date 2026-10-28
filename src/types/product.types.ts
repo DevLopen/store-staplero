@@ -69,6 +69,8 @@ export interface ProductLocation {
   _id: string;
   city: string;
   address: string;
+  /** Krótka nazwa miejsca (miasto z adresu), liczona w API */
+  place?: string;
   isActive: boolean;
   price: number;
   dates: ProductLocationDate[];

@@ -33,6 +33,13 @@ interface DateOption {
   location: ProductLocation;
 }
 
+/**
+ * Lokalizacja w panelu to wariant kursu (np. „Berlin (auf Polnisch) Stufe 1 …”), a kilka wariantów
+ * dzieli ten sam adres. Klientowi pokazujemy miejsce: krótką nazwę z API i adres, pogrupowane po adresie.
+ */
+const placeOf = (l: ProductLocation) => l.place || l.city;
+const placeKey = (l: ProductLocation) => (l.address || placeOf(l)).trim().toLowerCase();
+
 const localToday = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -229,7 +236,12 @@ const ProductDetail = () => {
           .filter((date) => (date.endDate || date.startDate) >= today)
           .map((date) => ({ date, location }))
       )
-      .sort((a, b) => a.date.startDate.localeCompare(b.date.startDate));
+      // Najpierw terminy z wolnymi miejscami, wyprzedane na końcu, w obu grupach od najbliższego
+      .sort(
+        (a, b) =>
+          Number(a.date.availableSpots === 0) - Number(b.date.availableSpots === 0) ||
+          a.date.startDate.localeCompare(b.date.startDate)
+      );
   }, [locations]);
 
   const availableLanguages = useMemo(
@@ -239,7 +251,7 @@ const ProductDetail = () => {
 
   const filteredDates = allDates.filter(
     ({ date, location }) =>
-      (locationFilter === "all" || location._id === locationFilter) &&
+      (locationFilter === "all" || placeKey(location) === locationFilter) &&
       (languageFilter === "all" || date.languages?.includes(languageFilter))
   );
 
@@ -291,8 +303,11 @@ const ProductDetail = () => {
   const bookableDates = allDates.filter(({ date }) => date.availableSpots > 0);
   const visibleDates = showAllDates ? filteredDates : filteredDates.slice(0, INITIAL_DATES);
   // Przy jednej lokalizacji miasto nic nie mówi klientowi, więc go nie pokazujemy
-  const multipleLocations = locations.length > 1;
-  const filterLocation = locations.find((l) => l._id === locationFilter);
+  const places = locations
+    .map((l) => ({ key: placeKey(l), name: placeOf(l), address: l.address }))
+    .filter((p, i, all) => all.findIndex((q) => q.key === p.key) === i);
+  const multiplePlaces = places.length > 1;
+  const filterPlace = places.find((p) => p.key === locationFilter);
 
   // Maksymalna liczba uczestników łącznie: mniejsza z (1 + limit 5) i (dostępnych miejsc)
   const maxTotalParticipants = selected
@@ -396,13 +411,10 @@ const ProductDetail = () => {
       {!isOnline && locations.length > 0 && (
         <p className="mt-3 flex items-start gap-1.5 text-sm">
           <MapPin className="mt-0.5 w-4 h-4 shrink-0 text-primary" aria-label={t("products.courseLocation")} />
-          {multipleLocations ? (
-            <span className="font-semibold text-foreground">{locations.map((l) => l.city).join(", ")}</span>
+          {multiplePlaces ? (
+            <span className="font-semibold text-foreground">{places.map((p) => p.name).join(", ")}</span>
           ) : (
-            <span>
-              <span className="font-semibold text-foreground">{locations[0].city}</span>
-              {locations[0].address && <span className="text-muted-foreground"> · {locations[0].address}</span>}
-            </span>
+            <span className="font-semibold text-foreground">{places[0].address || places[0].name}</span>
           )}
         </p>
       )}
@@ -455,10 +467,10 @@ const ProductDetail = () => {
               {shortDescription && (
                 <p className="mt-3 text-muted-foreground md:text-lg">{shortDescription}</p>
               )}
-              {!isOnline && multipleLocations && (
+              {!isOnline && multiplePlaces && (
                 <p className="mt-4 flex items-center gap-1.5 text-sm text-foreground">
                   <MapPin className="w-4 h-4 text-primary" />
-                  {locations.map((l) => l.city).join(", ")}
+                  {places.map((p) => p.name).join(", ")}
                 </p>
               )}
 
@@ -506,14 +518,14 @@ const ProductDetail = () => {
                       </>
                     ) : (
                       <>
-                        {multipleLocations && (
+                        {multiplePlaces && (
                           <div className="flex flex-wrap gap-x-4 border-b border-border">
                             <LocationTab active={locationFilter === "all"} onClick={() => setLocationFilter("all")}>
                               {t("products.allLocations")}
                             </LocationTab>
-                            {locations.map((l) => (
-                              <LocationTab key={l._id} active={locationFilter === l._id} onClick={() => setLocationFilter(l._id)}>
-                                {l.city}
+                            {places.map((p) => (
+                              <LocationTab key={p.key} active={locationFilter === p.key} onClick={() => setLocationFilter(p.key)}>
+                                {p.name}
                               </LocationTab>
                             ))}
                           </div>
@@ -600,10 +612,10 @@ const ProductDetail = () => {
                                       {formatCourseDate(date.startDate, date.endDate, language)}
                                     </span>
                                     <span className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
-                                      {multipleLocations && (
+                                      {multiplePlaces && (
                                         <>
                                           <MapPin className="w-3 h-3 shrink-0" />
-                                          <span className="mr-1">{location.city}</span>
+                                          <span className="mr-1">{placeOf(location)}</span>
                                         </>
                                       )}
                                       <Clock className="w-3 h-3 shrink-0" />
@@ -641,8 +653,7 @@ const ProductDetail = () => {
                           (showNotify ? (
                             <NotifyForm
                               slug={product.slug}
-                              locationId={filterLocation?._id}
-                              locationCity={filterLocation?.city}
+                              locationCity={filterPlace?.name}
                             />
                           ) : (
                             <button
@@ -799,7 +810,7 @@ const ProductDetail = () => {
               </p>
               <p className="mt-1 truncate text-xs text-muted-foreground">
                 {selected
-                  ? `${formatCourseDate(selected.date.startDate, selected.date.endDate, language)}${multipleLocations ? ` · ${selected.location.city}` : ""}`
+                  ? `${formatCourseDate(selected.date.startDate, selected.date.endDate, language)}${multiplePlaces ? ` · ${placeOf(selected.location)}` : ""}`
                   : t("products.perPersonGross")}
               </p>
             </div>
