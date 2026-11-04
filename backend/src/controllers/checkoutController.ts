@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import User from "../models/User";
 import Course from "../models/Course";
+import LearningCourse from "../models/LearningCourse";
+import QuestionBank from "../models/QuestionBank";
 import stripeService from "../services/stripe.service";
 import orderService from "../services/order.service";
 import emailService from "../services/email.service";
@@ -11,6 +13,18 @@ import Location from "../models/Location";
 import Product from "../models/Product";
 import { findDateIndex } from "../services/practicalCourse.service";
 import { resolveName } from "../utils/name";
+
+/** Kurs, do którego zakup daje dostęp (UserCourse.courseId): stary kurs, nowy kurs v2 (tylko opublikowany) albo katalog pytań. */
+async function findSellableCourse(id: string): Promise<{ _id: string; title: string } | null> {
+    if (!/^[a-f0-9]{24}$/i.test(id)) return null;
+    const old = await Course.findById(id).select("title").lean();
+    if (old) return { _id: String(old._id), title: (old as any).title };
+    const v2 = await LearningCourse.findOne({ _id: id, published: { $exists: true } }).select("published.title").lean();
+    if (v2) return { _id: String(v2._id), title: (v2 as any).published?.title?.de || "Online-Kurs" };
+    const bank = await QuestionBank.findById(id).select("title").lean();
+    if (bank) return { _id: String(bank._id), title: (bank as any).title?.de || "Fragenkatalog" };
+    return null;
+}
 
 interface CheckoutRequest {
     // User details — imię i nazwisko jako osobne pola (`name` tylko dla wstecznej zgodności)
@@ -193,7 +207,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 return res.status(400).json({ message: "Course ID required for online course" });
             }
 
-            const course = await Course.findById(data.courseId);
+            const course = await findSellableCourse(String(data.courseId));
             if (!course) {
                 return res.status(404).json({ message: "Course not found" });
             }
@@ -321,7 +335,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             // Pakiet: cena już zawiera dostęp online, więc dodatkowa pozycja ma cenę 0 —
             // służy wyłącznie do nadania dostępu do kursu (courseId) po opłaceniu.
             if (linkedCourseId) {
-                const linkedCourse = await Course.findById(linkedCourseId);
+                const linkedCourse = await findSellableCourse(linkedCourseId);
                 if (linkedCourse) {
                     items.push({
                         courseId: linkedCourse._id.toString(),

@@ -77,6 +77,8 @@ export const resetBank = (bankId: string) => req<{ ok: boolean }>(`/banks/${bank
 
 export interface AdminBankSummary { id: string; slug: string; title: LText; count: number; active: number; updatedAt: string }
 export interface AdminBank { id: string; slug: string; title: LText; topics: BankTopic[]; questions: BankQuestion[]; updatedAt: string }
+/** Kursy v2 do wyboru w produktach (tytuł z wersji roboczej, DE). */
+export const adminLearningCourses = () => req<{ id: string; title: Record<string, string>; status: string }[]>("/admin/courses");
 export const adminBanks = () => req<AdminBankSummary[]>("/admin/banks");
 export const adminBank = (bankId: string) => req<AdminBank>(`/admin/banks/${bankId}`);
 export type BankQuestionInput = Omit<BankQuestion, "id"> & { kind: "single" | "multi" | "num" };

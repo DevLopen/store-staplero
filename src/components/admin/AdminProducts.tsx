@@ -1,5 +1,5 @@
 import { Avatar, Tile } from "@/pages/admin/adminUi";
-import { adminBanks } from "@/learning/api";
+import { adminBanks, adminLearningCourses } from "@/learning/api";
 import { applyDateSelection, dateKey } from "@/pages/admin/productDates";
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -211,11 +211,12 @@ const AdminProducts = () => {
       .then((data) => setLocations(Array.isArray(data) ? data : []))
       .catch(() => setLocations([]));
 
-    // Online-Kurse (alt) und Fragenkataloge: beide geben nach Zahlung Zugang über UserCourse (courseId)
+    // Online-Kurse (alt und neu) und Fragenkataloge: alle geben nach Zahlung Zugang über UserCourse (courseId)
     Promise.all([
       adminGetCourses().then((data) => data.courses.map((c: any) => ({ _id: c._id, title: c.title }))).catch(() => []),
       adminBanks().then((list) => list.map((b) => ({ _id: b.id, title: `Fragenkatalog: ${b.title.de ?? b.slug}` }))).catch(() => []),
-    ]).then(([a, b]) => setCourses([...a, ...b]));
+      adminLearningCourses().then((list) => list.map((c) => ({ _id: c.id, title: `Online-Kurs (neu): ${c.title?.de ?? c.id}${c.status === "draft" ? " (nicht veröffentlicht)" : ""}` }))).catch(() => []),
+    ]).then(([a, b, c]) => setCourses([...c, ...a, ...b]));
   }, []);
 
   const loadNotifyRequests = useCallback(async () => {
