@@ -167,7 +167,7 @@ const StaplerQuiz = () => {
                                             {t.ctaText}
                                         </p>
                                         <div className="grid gap-3 sm:grid-cols-2 mb-6">
-                                            <Link to="/kursy">
+                                            <Link to="/schulungen">
                                                 <Button variant="hero" size="lg" className="w-full"><CalendarCheck className="w-5 h-5" />{t.ctaCourses}</Button>
                                             </Link>
                                             <Link to="/firmenschulung-berlin">

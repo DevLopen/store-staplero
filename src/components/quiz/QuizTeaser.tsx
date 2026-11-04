@@ -118,7 +118,7 @@ const QuizTeaser = () => {
                             <Link to={PAGE_PATH}>
                                 <Button variant="hero" size="lg" className="w-full">{ui.fullQuiz}<ArrowRight className="w-5 h-5" /></Button>
                             </Link>
-                            <Link to="/kursy">
+                            <Link to="/schulungen">
                                 <Button size="lg" variant="outline" className="w-full border-primary-foreground/40 bg-transparent text-primary-foreground hover:border-primary-foreground hover:bg-transparent">
                                     <CalendarCheck className="w-5 h-5" />{ui.book}
                                 </Button>

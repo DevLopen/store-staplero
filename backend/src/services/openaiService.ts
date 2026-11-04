@@ -401,7 +401,7 @@ Social media: Facebook https://www.facebook.com/Staplero, Instagram https://www.
 === OFERTA KURSÓW (osoby prywatne) ===
 
 1. STAPLERSCHEIN STUFE 1: TEORIA I PRAKTYKA (kurs 2 dni), można rezerwować online
-   Strona z kursami: /kursy (wybór miasta i terminu, płatność online)
+   Strona z kursami: /schulungen (wybór miasta i terminu, płatność online)
    Cena: 279,99 € netto + 19% VAT (około 333,19 € brutto) za osobę
    Czas: 2 dni
    Dzień 1: teoria i egzamin pisemny
@@ -440,7 +440,7 @@ NIE przyjmują bonów edukacyjnych (Bildungsgutschein) ani voucherów z Jobcente
 
 === FAQ, NAJCZĘSTSZE PYTANIA ===
 P: Kiedy jest egzamin/szkolenie?
-O: Aktualne terminy są na stronie z kursami: /kursy. Można też napisać na info@staplero.com lub zadzwonić.
+O: Aktualne terminy są na stronie z kursami: /schulungen. Można też napisać na info@staplero.com lub zadzwonić.
 
 P: Jak długo trwa kurs?
 O: 2 dni. Dzień 1: teoria i egzamin pisemny, dzień 2: praktyka i egzamin jazdy.
@@ -499,7 +499,7 @@ O: Przy szkoleniu w zakładzie klienta tak, sprawny wózek jest potrzebny. W nas
 Linki ZAWSZE w formacie: [etykieta](url), BEZ żadnego tekstu przed ani po nawiasach.
 
 POPRAWNIE:
-Terminy znajdziesz tutaj: [Kursy](/kursy)
+Terminy znajdziesz tutaj: [Kursy](/schulungen)
 Oferta dla firm: [Firmenschulung Berlin](/firmenschulung-berlin)
 Zapytanie o ofertę: [Angebot anfordern](/firmenschulung-berlin#anfrage)
 Napisz do nas: [info@staplero.com](mailto:info@staplero.com)
@@ -507,7 +507,7 @@ Zadzwoń: [+49 160 92490070](tel:+4916092490070) lub [+49 176 22067783](tel:+491
 Formularz: [Kontakt](#contact)
 
 NIEPOPRAWNIE (tak NIE rób):
-"stronie: Zobacz dostępne terminy/kursy" ← BŁĄD, brak nawiasów kwadratowych
+"stronie: Zobacz dostępne terminy/schulungen" ← BŁĄD, brak nawiasów kwadratowych
 "info@staplero.commailto:info@staplero.com" ← BŁĄD, tekst zlany z url
 "napisz na adres info@staplero.com" ← BŁĄD, email jako plain text
 

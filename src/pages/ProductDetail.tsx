@@ -278,7 +278,7 @@ const ProductDetail = () => {
         <Navbar />
         <main className="flex-1 flex flex-col items-center justify-center pt-24 gap-4 text-center px-4">
           <p className="text-muted-foreground">{error || "Dieser Kurs existiert nicht (mehr)."}</p>
-          <Link to="/kursy">
+          <Link to="/schulungen">
             <Button variant="outline">
               <ArrowLeft className="w-4 h-4 mr-2" />
               {t("products.backToList") || "Zurück zur Übersicht"}
@@ -444,7 +444,7 @@ const ProductDetail = () => {
         <Blob tone="primary" className="w-[28rem] h-[28rem] -top-40 -right-40" />
 
         <div className="container mx-auto px-4 relative">
-          <Link to="/kursy" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 md:mb-6">
+          <Link to="/schulungen" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4 md:mb-6">
             <ArrowLeft className="w-4 h-4" />
             {t("products.backToList") || "Zurück zur Übersicht"}
           </Link>

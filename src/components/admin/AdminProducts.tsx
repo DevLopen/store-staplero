@@ -451,7 +451,7 @@ const AdminProducts = () => {
                       <h3 className="font-semibold text-foreground truncate">
                         {product.title.de || product.title.en || "(ohne Titel)"}
                       </h3>
-                      <p className="text-xs text-muted-foreground">/kursy/{product.slug}</p>
+                      <p className="text-xs text-muted-foreground">/schulungen/{product.slug}</p>
                     </div>
                     <button onClick={() => toggleFeatured(product)} title="Auf Startseite anzeigen">
                       {product.featured ? (

@@ -21,7 +21,7 @@ export default function Denied({ error, lang }: { error: unknown; lang: Lang }) 
             <h2 className="q">{T.expired[lang].replace("{d}", d)}</h2>
             <p className="txt">{T.expiredText[lang]}</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <Link to="/kursy" className="btn btn-p" style={{ textDecoration: "none", width: "auto", padding: "0 20px" }}>{T.toShop[lang]}</Link>
+                <Link to="/schulungen" className="btn btn-p" style={{ textDecoration: "none", width: "auto", padding: "0 20px" }}>{T.toShop[lang]}</Link>
                 <Link to="/dashboard#kurse" className="btn btn-o" style={{ textDecoration: "none", width: "auto", padding: "0 20px" }}>{T.toPanel[lang]}</Link>
             </div>
         </div>;

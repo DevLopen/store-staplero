@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -43,6 +43,11 @@ import CookieBanner from "./components/CookieBanner";
 import VerifyCertificate from "./pages/VerifyCertificate";
 import { ConfirmProvider } from "./components/ConfirmDialog";
 
+function LegacyCourseRedirect() {
+    const { slug } = useParams();
+    return <Navigate to={`/schulungen/${slug}`} replace />;
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, staleTime: 2 * 60 * 1000 },
@@ -75,10 +80,13 @@ const AppContent = () => {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/practical-course" element={<PracticalCourse />} />
-          <Route path="/kursy" element={<Products />} />
+          <Route path="/schulungen" element={<Products />} />
           <Route path="/firmenschulung-berlin" element={<FirmenschulungBerlin />} />
           <Route path="/staplerschein-test" element={<StaplerQuiz />} />
-          <Route path="/kursy/:slug" element={<ProductDetail />} />
+          <Route path="/schulungen/:slug" element={<ProductDetail />} />
+          {/* stary adres /kursy, przekierowanie dla linków z Google i maili */}
+          <Route path="/kursy" element={<Navigate to="/schulungen" replace />} />
+          <Route path="/kursy/:slug" element={<LegacyCourseRedirect />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/checkout/success" element={<CheckoutSuccess />} />
           <Route path="/checkout/cancel" element={<CheckoutCancel />} />

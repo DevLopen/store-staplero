@@ -28,7 +28,7 @@ type LocationDates = { location: LocationDoc; dates: CourseDate[] };
 /** Wysyła mail do jednego oczekującego i oznacza go jako powiadomionego */
 const notifyOne = async (request: NotifyRequestDoc, groups: LocationDates[]): Promise<boolean> => {
   const product = await Product.findById(request.productId).select("slug").lean();
-  const productUrl = product?.slug ? `${FRONTEND_URL}/kursy/${product.slug}` : `${FRONTEND_URL}/kursy`;
+  const productUrl = product?.slug ? `${FRONTEND_URL}/schulungen/${product.slug}` : `${FRONTEND_URL}/schulungen`;
 
   const flat = groups.flatMap(({ location, dates }) =>
     dates.map((d) => ({ location, d }))

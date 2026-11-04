@@ -62,9 +62,9 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
                 {t('nav.pricing')}
               </a>
               <Link
-                  to="/kursy"
+                  to="/schulungen"
                   className={`text-sm font-medium transition-colors hover:text-primary ${
-                      location.pathname.startsWith("/kursy") ? "text-primary" : "text-muted-foreground"
+                      location.pathname.startsWith("/schulungen") ? "text-primary" : "text-muted-foreground"
                   }`}
               >
                 {t('nav.courses')}
@@ -138,7 +138,7 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
                   <a href="/#pricing" className="text-sm font-medium text-muted-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>
                     {t('nav.pricing')}
                   </a>
-                  <Link to="/kursy" className="text-sm font-medium text-muted-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>
+                  <Link to="/schulungen" className="text-sm font-medium text-muted-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>
                     {t('nav.courses')}
                   </Link>
                   <Link to="/firmenschulung-berlin" className="text-sm font-medium text-muted-foreground hover:text-primary py-2" onClick={() => setIsOpen(false)}>

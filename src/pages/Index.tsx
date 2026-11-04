@@ -92,7 +92,7 @@ const getB2cFaqs = (lang: string): { id: string; question: string; answer: JSX.E
             { id: 'b2c-12', question: 'Ist der Staplerschein bundesweit gültig?', answer: (<>Ja. Der Staplerschein gilt bundesweit gemäß DGUV-Vorschriften.</>) },
             { id: 'b2c-13', question: 'Arbeiten Sie mit dem Jobcenter zusammen?', answer: (<>Nein. Wir nehmen keine Bildungsgutscheine an.</>) },
             { id: 'b2c-14', question: 'Kann ich die Prüfungsfragen vorher bekommen?', answer: (<>Nein. Die Fragen sind offiziell. Zur Vorbereitung empfehlen wir unseren Online-Theoriekurs.</>) },
-            { id: 'b2c-15', question: 'Bieten Sie den Staplerschein auch in Berlin und Görlitz an?', answer: (<>Ja. Praxistermine finden regelmäßig in Berlin und in Görlitz / Zgorzelec statt, ideal für die deutsch-polnische Grenzregion. Weitere Standorte, z. B. München, finden Sie auf unserer <a href="/kursy" className="text-primary underline">Kursübersicht</a>.</>) },
+            { id: 'b2c-15', question: 'Bieten Sie den Staplerschein auch in Berlin und Görlitz an?', answer: (<>Ja. Praxistermine finden regelmäßig in Berlin und in Görlitz / Zgorzelec statt, ideal für die deutsch-polnische Grenzregion. Weitere Standorte, z. B. München, finden Sie auf unserer <a href="/schulungen" className="text-primary underline">Kursübersicht</a>.</>) },
         ],
         en: [
             { id: 'b2c-1', question: 'When does the training take place?', answer: (<>All training dates are published on our website. Select "Theory &amp; Practice (offline)", then choose your date and location.</>) },
@@ -109,7 +109,7 @@ const getB2cFaqs = (lang: string): { id: string; question: string; answer: JSX.E
             { id: 'b2c-12', question: 'Is the forklift license valid throughout Germany?', answer: (<>Yes. Valid nationwide per DGUV regulations.</>) },
             { id: 'b2c-13', question: 'Do you work with Jobcenter?', answer: (<>No. We do not accept education vouchers.</>) },
             { id: 'b2c-14', question: 'Can I get the exam questions in advance?', answer: (<>No. They are official. We recommend our online theory course for preparation.</>) },
-            { id: 'b2c-15', question: 'Do you offer the forklift license in Berlin and Görlitz too?', answer: (<>Yes. Practical dates take place regularly in Berlin and in Görlitz / Zgorzelec, ideal for the German-Polish border region. More locations, e.g. Munich, can be found on our <a href="/kursy" className="text-primary underline">course overview</a>.</>) },
+            { id: 'b2c-15', question: 'Do you offer the forklift license in Berlin and Görlitz too?', answer: (<>Yes. Practical dates take place regularly in Berlin and in Görlitz / Zgorzelec, ideal for the German-Polish border region. More locations, e.g. Munich, can be found on our <a href="/schulungen" className="text-primary underline">course overview</a>.</>) },
         ],
         pl: [
             { id: 'b2c-1', question: 'Kiedy odbywa się szkolenie?', answer: (<>Wszystkie terminy są publikowane na naszej stronie. Wybierz „Teoria i Praktyka (stacjonarnie)", następnie termin i lokalizację.</>) },
@@ -126,7 +126,7 @@ const getB2cFaqs = (lang: string): { id: string; question: string; answer: JSX.E
             { id: 'b2c-12', question: 'Czy uprawnienia są ważne w całych Niemczech?', answer: (<>Tak. Ważne w całych Niemczech zgodnie z przepisami DGUV.</>) },
             { id: 'b2c-13', question: 'Czy współpracujecie z Urzędem Pracy?', answer: (<>Nie. Nie przyjmujemy bonów edukacyjnych.</>) },
             { id: 'b2c-14', question: 'Czy mogę wcześniej dostać pytania egzaminacyjne?', answer: (<>Nie. Są oficjalne. Do przygotowania polecamy nasz kurs teorii online.</>) },
-            { id: 'b2c-15', question: 'Czy oferujecie uprawnienia na wózek widłowy również w Berlinie i Görlitz?', answer: (<>Tak. Terminy praktyczne odbywają się regularnie w Berlinie oraz w Görlitz / Zgorzelcu, idealnie dla pogranicza polsko-niemieckiego. Więcej lokalizacji, np. Monachium, znajdziesz w naszej <a href="/kursy" className="text-primary underline">ofercie kursów</a>.</>) },
+            { id: 'b2c-15', question: 'Czy oferujecie uprawnienia na wózek widłowy również w Berlinie i Görlitz?', answer: (<>Tak. Terminy praktyczne odbywają się regularnie w Berlinie oraz w Görlitz / Zgorzelcu, idealnie dla pogranicza polsko-niemieckiego. Więcej lokalizacji, np. Monachium, znajdziesz w naszej <a href="/schulungen" className="text-primary underline">ofercie kursów</a>.</>) },
         ],
         uk: [
             { id: 'b2c-1', question: 'Коли проводиться навчання?', answer: (<>Усі терміни публікуються на нашому сайті. Виберіть «Теорія та Практика (офлайн)», потім дату та локацію.</>) },
@@ -143,7 +143,7 @@ const getB2cFaqs = (lang: string): { id: string; question: string; answer: JSX.E
             { id: 'b2c-12', question: 'Чи дійсні права на навантажувач по всій Німеччині?', answer: (<>Так. Дійсні по всій Німеччині відповідно до DGUV.</>) },
             { id: 'b2c-13', question: 'Чи ви співпрацюєте з Jobcenter?', answer: (<>Ні. Ми не приймаємо освітні ваучери.</>) },
             { id: 'b2c-14', question: 'Чи можу я отримати питання іспиту заздалегідь?', answer: (<>Ні. Вони офіційні. Для підготовки рекомендуємо наш онлайн-курс теорії.</>) },
-            { id: 'b2c-15', question: 'Чи проводите ви навчання також у Берліні та Гьорліц?', answer: (<>Так. Практичні заняття регулярно проходять у Берліні та у Гьорліц / Згожелець, ідеально для німецько-польського прикордоння. Інші локації, напр. Мюнхен, дивіться на нашій <a href="/kursy" className="text-primary underline">сторінці курсів</a>.</>) },
+            { id: 'b2c-15', question: 'Чи проводите ви навчання також у Берліні та Гьорліц?', answer: (<>Так. Практичні заняття регулярно проходять у Берліні та у Гьорліц / Згожелець, ідеально для німецько-польського прикордоння. Інші локації, напр. Мюнхен, дивіться на нашій <a href="/schulungen" className="text-primary underline">сторінці курсів</a>.</>) },
         ],
     };
     return data[lang] ?? data['de'];
@@ -311,7 +311,7 @@ const Index = () => {
 
                             {/* Dwa przyciski tej samej wielkości: 1 kolumna na mobile, 2 równe kolumny od sm */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mb-5 animate-fade-in" style={{ animationDelay: "0.25s" }}>
-                                <Link to="/kursy" className="block">
+                                <Link to="/schulungen" className="block">
                                     <Button variant="hero" size="xl" className="w-full"><CalendarCheck className="w-5 h-5" />{t('hero.ctaCourses')}</Button>
                                 </Link>
                                 <Link to="/firmenschulung-berlin" className="block">
@@ -646,7 +646,7 @@ const Index = () => {
                         <p className="text-center text-muted-foreground">{t('pricing.comingSoon')}</p>
                     )}
                     <div className="text-center mt-8">
-                        <Link to="/kursy">
+                        <Link to="/schulungen">
                             <Button variant="outline" size="lg">
                                 {t('products.viewAll') || 'Alle Kurse ansehen'}
                             </Button>
@@ -776,7 +776,7 @@ const Index = () => {
                     <h2 className="font-display text-4xl md:text-6xl font-extrabold text-primary-foreground mb-6">{t('cta.title')}</h2>
                     <p className="text-primary-foreground/80 max-w-2xl mx-auto mb-8">{t('cta.subtitle')}</p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <Link to="/kursy">
+                        <Link to="/schulungen">
                             <Button variant="hero" size="xl">{t('nav.courses')}<ChevronRight className="w-5 h-5" /></Button>
                         </Link>
                     </div>

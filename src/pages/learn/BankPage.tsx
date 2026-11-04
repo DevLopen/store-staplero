@@ -109,7 +109,7 @@ export default function BankPage() {
         const e = error as any;
         if (e?.body?.expired) return <LearnShell courseId={bankId} homeHref={`/lernen/fragen/${bankId}`} scroll><div className="bk">
             <section className="bk-card bk-done"><h2 className="q">{T("expired", { d: fmt(e.body.expiredAt) })}</h2><p className="small">{T("expiredText")}</p>
-                <div className="bk-acts" style={{ justifyContent: "center" }}><Link className="btn btn-p" to="/kursy">{T("toShop")}</Link><Link className="btn btn-o" to="/dashboard#kurse">{T("toPanel")}</Link></div></section>
+                <div className="bk-acts" style={{ justifyContent: "center" }}><Link className="btn btn-p" to="/schulungen">{T("toShop")}</Link><Link className="btn btn-o" to="/dashboard#kurse">{T("toPanel")}</Link></div></section>
         </div></LearnShell>;
         return <LearnShell courseId={bankId} homeHref={`/lernen/fragen/${bankId}`} scroll><div className="bk"><h2 className="q">{T(e?.status === 403 ? "noAccess" : "notFound")}</h2></div></LearnShell>;
     }

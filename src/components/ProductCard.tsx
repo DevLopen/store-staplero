@@ -29,7 +29,7 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
 
   return (
     <Link
-      to={`/kursy/${product.slug}`}
+      to={`/schulungen/${product.slug}`}
       className={cn(
         "group relative flex h-full flex-col gap-4 overflow-hidden bg-card p-5 sm:p-6 border-2 border-border shadow-sm transition-all hover:border-primary hover:shadow-lg hover:-translate-y-0.5",
         "rounded-[1.25rem_0.5rem_1.25rem_0.5rem]",

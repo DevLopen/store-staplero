@@ -307,13 +307,13 @@ export default function Panel() {
                         <ol className="pn-road">
                             {roadStep(theoryDone ? "done" : "cur", p("rTheory"),
                                 main ? `${coursePct(main)} %${main.expiresAt ? ` · ${p("until", { d: fmtDate(main.expiresAt, language as Language) })}` : ""}` : p("noCourses"),
-                                main ? <Link to={`/lernen/${main.id}`}>{p("toCourse")}</Link> : <Link to="/kursy">{t("panel.browse")}</Link>)}
+                                main ? <Link to={`/lernen/${main.id}`}>{p("toCourse")}</Link> : <Link to="/schulungen">{t("panel.browse")}</Link>)}
                             {roadStep(theoryCert ? "done" : theoryDone ? "cur" : "", p("rExam"), theoryCert?.score !== undefined ? p("score", { s: theoryCert.score }) : p("rExamTxt"),
                                 main && !theoryCert ? <Link to={`/lernen/${main.id}/tests`}>{p("toTests")}</Link> : undefined)}
                             {roadStep(practicalCert ? "done" : nextBooking && theoryDone ? "cur" : "", p("rPractice"),
                                 practicalCert ? `${fmtDate(practicalCert.trainingDate, language as Language)}${practicalCert.trainingLocation ? ` · ${practicalCert.trainingLocation.split("–")[0].trim()}` : ""}`
                                     : nextBooking ? `${fmtDate(nextBooking.start, language as Language, { weekday: "short", day: "numeric", month: "long" })} · ${nextBooking.city}` : p("rNoDate"),
-                                nextBooking ? <a href={routeUrl(nextBooking.address)} target="_blank" rel="noopener noreferrer">{t("panel.route")}</a> : !practicalCert ? <Link to="/kursy">{p("bookDate")}</Link> : undefined)}
+                                nextBooking ? <a href={routeUrl(nextBooking.address)} target="_blank" rel="noopener noreferrer">{t("panel.route")}</a> : !practicalCert ? <Link to="/schulungen">{p("bookDate")}</Link> : undefined)}
                             {roadStep(practicalCert ? "done" : "", p("rLicence"), practicalCert ? p("rIssued", { d: fmtDate(practicalCert.issuedAt, language as Language) }) : p("rLicTxt"),
                                 <Link to={href("zert")}>{p("certs")}</Link>)}
                         </ol>
@@ -326,7 +326,7 @@ export default function Panel() {
                             {banks.map(c => <BankRow key={c.id} c={c} />)}
                             {legacy.map(c => <LegacyRow key={c._id} c={c} />)}
                             {bookings.slice(0, 2).map(b => <BookingRow key={b.orderNumber} b={b} />)}
-                            {!courses.length && !banks.length && !legacy.length && !bookings.length && <div className="pn-empty"><b>{t("panel.noCoursesTitle")}</b><Link className="pn-btn o s" to="/kursy">{t("panel.browse")}</Link></div>}
+                            {!courses.length && !banks.length && !legacy.length && !bookings.length && <div className="pn-empty"><b>{t("panel.noCoursesTitle")}</b><Link className="pn-btn o s" to="/schulungen">{t("panel.browse")}</Link></div>}
                         </section>
                         <section className="pn-card">
                             <div className="pn-hd"><h3>{p("orders")}</h3><Link to={href("best")}>{p("all")}</Link></div>
@@ -410,11 +410,11 @@ export default function Panel() {
                             <div className="body">
                                 <h3>{tx(c.title, lang)}</h3>
                                 {access(c)}
-                                <div className="pn-acts"><Link className="pn-btn o" to="/kursy">{p("buyAgain")}</Link></div>
+                                <div className="pn-acts"><Link className="pn-btn o" to="/schulungen">{p("buyAgain")}</Link></div>
                             </div>
                         </section>
                     ))}
-                    {!courses.length && !banks.length && !legacy.length && !bookings.length && !expired.length && <section className="pn-card pn-empty"><b>{t("panel.noCoursesTitle")}</b><p className="pn-muted">{t("panel.noCoursesText")}</p><Link className="pn-btn p" to="/kursy">{t("panel.browse")}</Link></section>}
+                    {!courses.length && !banks.length && !legacy.length && !bookings.length && !expired.length && <section className="pn-card pn-empty"><b>{t("panel.noCoursesTitle")}</b><p className="pn-muted">{t("panel.noCoursesText")}</p><Link className="pn-btn p" to="/schulungen">{t("panel.browse")}</Link></section>}
                 </>}
 
                 {tab === "zert" && <>
@@ -467,7 +467,7 @@ function PendingCert({ holder, booking, p }: { holder: string; booking?: Booking
                 <p className="pn-muted">{p("pendingTxt")}</p>
                 {booking
                     ? <p className="pn-verify">{CAL}<span>{p("practicalDay")}: <b>{fmtDate(booking.start, language as Language, { weekday: "long", day: "numeric", month: "long" })} · {booking.city}</b></span></p>
-                    : <div className="pn-acts"><Link className="pn-btn p" to="/kursy">{p("bookDate")}</Link></div>}
+                    : <div className="pn-acts"><Link className="pn-btn p" to="/schulungen">{p("bookDate")}</Link></div>}
             </div>
         </section>
     );
