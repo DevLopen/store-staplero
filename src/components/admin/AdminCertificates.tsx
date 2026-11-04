@@ -1,3 +1,4 @@
+import { Avatar, Tile } from "@/pages/admin/adminUi";
 import { useState, useEffect, useCallback } from "react";
 import {
     Award, Search, Download, ShieldOff, ShieldCheck,
@@ -155,15 +156,15 @@ const AdminCertificates = () => {
             {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     {[
-                        { label: "Gesamt", value: stats.total, icon: Award, color: "text-amber-400" },
-                        { label: "Online", value: stats.online, icon: FileCheck, color: "text-blue-400" },
-                        { label: "Praxis", value: stats.practical, icon: Users, color: "text-green-400" },
-                        { label: "Widerrufen", value: stats.revoked, icon: XCircle, color: "text-red-400" },
-                        { label: "Diesen Monat", value: stats.thisMonth, icon: CheckCircle, color: "text-purple-400" },
+                        { label: "Gesamt", value: stats.total, icon: Award, color: "amber" as const },
+                        { label: "Online", value: stats.online, icon: FileCheck, color: "blue" as const },
+                        { label: "Praxis", value: stats.practical, icon: Users, color: "green" as const },
+                        { label: "Widerrufen", value: stats.revoked, icon: XCircle, color: "red" as const },
+                        { label: "Diesen Monat", value: stats.thisMonth, icon: CheckCircle, color: "indigo" as const },
                     ].map(({ label, value, icon: Icon, color }) => (
                         <div key={label} className="bg-card border border-border rounded-xl p-4">
-                            <div className="flex items-center gap-2 mb-1">
-                                <Icon className={`w-4 h-4 ${color}`} />
+                            <div className="flex items-center gap-2 mb-2">
+                                <Tile color={color} size={26}><Icon /></Tile>
                                 <span className="text-muted-foreground text-xs">{label}</span>
                             </div>
                             <p className="text-2xl font-bold text-foreground">{value}</p>
@@ -245,10 +246,10 @@ const AdminCertificates = () => {
                         {cert.verificationCode}
                       </span>
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-4 py-3"><div className="flex items-center gap-2.5"><Avatar name={cert.userName} size={28} /><div>
                                         <p className="font-medium text-foreground text-xs">{cert.userName}</p>
                                         <p className="text-muted-foreground text-xs">{cert.userEmail}</p>
-                                    </td>
+                                    </div></div></td>
                                     <td className="px-4 py-3">
                                         <Badge
                                             variant="outline"

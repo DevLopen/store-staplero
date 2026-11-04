@@ -7,6 +7,8 @@ export interface CourseDate {
     time: string;
     availableSpots: number;
     languages: string[];   // języki prowadzenia terminu, kody: de, en, pl, uk, ru, ro
+    /** Szkolenia (id produktów), przy których termin jest w sklepie. Puste/brak = przy każdym produkcie tego miejsca (jak dotąd). */
+    productIds?: string[];
 }
 
 export interface LocationDoc extends Document {
@@ -40,7 +42,8 @@ const CourseDateSchema = new Schema<CourseDate>({
         type: [String],
         enum: ['de', 'en', 'pl', 'uk', 'ru', 'ro'],
         default: []
-    }
+    },
+    productIds: { type: [String], default: undefined }
 });
 
 const LocationSchema = new Schema<LocationDoc>({

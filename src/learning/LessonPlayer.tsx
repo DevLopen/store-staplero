@@ -25,6 +25,8 @@ interface PlayerCtx {
     openSheet: (s: SheetSpec) => void;
     closeSheet: () => void;
     actionsEl: HTMLElement | null;
+    /** Test modułu: ocena po stronie serwera (bez niej, np. w podglądzie, liczy się lokalnie). */
+    onCheck?: (answers: number[]) => Promise<CheckResult>;
     /** Stan kroku, który przetrwa przejście dalej i powrót (np. udzielone odpowiedzi).
      *  `shared` = klucz wspólny dla kilku kroków (np. samoocena czytana później przez profil). */
     useStepState: <T>(init: T, shared?: string) => [T, (v: T | ((p: T) => T)) => void];
@@ -69,7 +71,9 @@ export function Nav({ label, disabled, hint, onNext }: { label?: string; disable
     );
 }
 
+export interface CheckResult { score: number; total: number; need: number; passed: boolean }
 interface Props {
+    onCheck?: (answers: number[]) => Promise<CheckResult>;
     lesson: Lesson;
     lang: Lang;
     title?: string;                     // nagłówek nad paskiem kroków, domyślnie tytuł tematu
@@ -79,7 +83,7 @@ interface Props {
     finishLabel?: string;
 }
 
-export default function LessonPlayer({ lesson, lang, title, startStep = 0, onStep, onFinish, finishLabel }: Props) {
+export default function LessonPlayer({ lesson, lang, title, startStep = 0, onStep, onFinish, finishLabel, onCheck }: Props) {
     const steps = lesson.steps;
     const [step, setStep] = useState(() => Math.min(Math.max(0, startStep), Math.max(0, steps.length - 1)));
     const [dir, setDir] = useState(1);
@@ -122,6 +126,7 @@ export default function LessonPlayer({ lesson, lang, title, startStep = 0, onSte
         openSheet: s => { setSheet(s); setSheetOpen(true); },
         closeSheet,
         actionsEl,
+        onCheck,
         useStepState: <T,>(init: T, shared?: string) => {
             const key = shared ? `shared:${shared}` : current?.id ?? "-";
             if (!store.current.has(key)) store.current.set(key, init);

@@ -25,8 +25,12 @@ import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
 import NotFound from "./pages/NotFound";
 import LessonPage from "./pages/learn/LessonPage";
+import TestsPage from "./pages/learn/TestsPage";
 import CoursePage from "./pages/learn/CoursePage";
 import Panel from "./pages/learn/Panel";
+import BankPage from "./pages/learn/BankPage";
+import AdminBank from "./pages/admin/AdminBank";
+import AdminCourses from "./pages/admin/AdminCourses";
 import Checkout from "./pages/Checkout";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import CheckoutCancel from "./pages/CheckoutCancel";
@@ -88,11 +92,17 @@ const AppContent = () => {
 
           <Route path="/verify/:code" element={<VerifyCertificate />} />
           {/* kursy v2 (odtwarzacz kroków), działa obok starego /course */}
+          <Route path="/lernen/fragen/:bankId" element={<BankPage />} />
+          <Route path="/lernen/:courseId/tests" element={<TestsPage />} />
           <Route path="/lernen/:courseId" element={<CoursePage />} />
           <Route path="/lernen/:courseId/:lessonId" element={<LessonPage />} />
 
           {/* --- ADMIN --- */}
           <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/kurse" element={<AdminCourses />} />
+          <Route path="/admin/kurse/:courseId" element={<AdminCourses />} />
+          <Route path="/admin/fragen" element={<AdminBank />} />
+          <Route path="/admin/fragen/:qid" element={<AdminBank />} />
           <Route path="/admin/topic-editor/:courseId/:chapterId" element={<TopicEditor />} />
           <Route path="/admin/topic-editor/:courseId/:chapterId/:topicId" element={<TopicEditor />} />
 

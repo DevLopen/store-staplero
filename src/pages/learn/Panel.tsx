@@ -22,6 +22,7 @@ const tabOf = (h: string): Tab => (Object.entries(HASH).find(([, v]) => v && v =
 const COVER = "/img/kurs/cover-linie.webp";
 
 const P = {
+    questionsOf: { de: "{a} von {b} Fragen beantwortet", en: "{a} of {b} questions answered", pl: "Odpowiedziano na {a} z {b} pytań", uk: "Відповіли на {a} з {b} питань" },
     resume:     { de: "Weiterlernen", en: "Continue learning", pl: "Kontynuuj naukę", uk: "Продовжити навчання" },
     start:      { de: "Kurs starten", en: "Start course", pl: "Rozpocznij kurs", uk: "Почати курс" },
     resumeLt:   { de: "Weiterlernen · {c}", en: "Continue · {c}", pl: "Kontynuuj · {c}", uk: "Продовжити · {c}" },
@@ -40,7 +41,20 @@ const P = {
     rIssued:    { de: "ausgestellt am {d}", en: "issued on {d}", pl: "wydany {d}", uk: "видано {d}" },
     toCourse:   { de: "Zum Kurs", en: "Go to course", pl: "Do kursu", uk: "До курсу" },
     bookDate:   { de: "Termin buchen", en: "Book a date", pl: "Zarezerwuj termin", uk: "Забронювати дату" },
-    myCourses:  { de: "Meine Kurse", en: "My courses", pl: "Moje kursy", uk: "Мої курси" },
+    myCourses:  { de: "Meine Produkte", en: "My products", pl: "Moje produkty", uk: "Мої продукти" },
+    secCourses: { de: "Online-Kurse", en: "Online courses", pl: "Kursy online", uk: "Онлайн-курси" },
+    secTests:   { de: "Prüfungsfragen und Tests", en: "Exam questions and tests", pl: "Pytania egzaminacyjne i testy", uk: "Екзаменаційні питання та тести" },
+    secDates:   { de: "Praxistermine", en: "Practical dates", pl: "Terminy praktyki", uk: "Практичні дати" },
+    secExpired: { de: "Abgelaufen", en: "Expired", pl: "Wygasłe", uk: "Завершено" },
+    activeUntil:{ de: "Aktiv bis {d} · noch {n} Tage", en: "Active until {d} · {n} days left", pl: "Aktywny do {d} · zostało {n} dni", uk: "Активний до {d} · залишилось {n} дн." },
+    activeOpen: { de: "Aktiv, unbegrenzt", en: "Active, no end date", pl: "Aktywny bez limitu", uk: "Активний без обмежень" },
+    expiredOn:  { de: "Abgelaufen am {d}", en: "Expired on {d}", pl: "Wygasł {d}", uk: "Завершився {d}" },
+    buyAgain:   { de: "Erneut kaufen", en: "Buy again", pl: "Kup ponownie", uk: "Купити знову" },
+    startTest:  { de: "Test machen", en: "Take a test", pl: "Zrób test", uk: "Пройти тест" },
+    lastTest:   { de: "Letzter Test: {p} % · {v}", en: "Last test: {p} % · {v}", pl: "Ostatni test: {p} % · {v}", uk: "Останній тест: {p} % · {v}" },
+    noTest:     { de: "Noch kein Test gemacht", en: "No test taken yet", pl: "Jeszcze bez testu", uk: "Тестів ще немає" },
+    tPassed:    { de: "bestanden", en: "passed", pl: "zaliczony", uk: "складено" },
+    tFailed:    { de: "nicht bestanden", en: "not passed", pl: "niezaliczony", uk: "не складено" },
     orders:     { de: "Bestellungen", en: "Orders", pl: "Zamówienia", uk: "Замовлення" },
     certs:      { de: "Zertifikate", en: "Certificates", pl: "Certyfikaty", uk: "Сертифікати" },
     profile:    { de: "Profil", en: "Profile", pl: "Profil", uk: "Профіль" },
@@ -53,6 +67,8 @@ const P = {
     practicalDay: { de: "Praxistag Gabelstapler", en: "Forklift practical day", pl: "Dzień praktyczny na wózku", uk: "Практичний день на навантажувачі" },
     invoice:    { de: "Rechnung", en: "Invoice", pl: "Faktura", uk: "Рахунок" },
     invoicesHint: { de: "Rechnungen als PDF unter Bestellungen", en: "Invoices as PDF under Orders", pl: "Faktury PDF w zakładce Zamówienia", uk: "Рахунки PDF у розділі Замовлення" },
+    tests:      { de: "Tests und Prüfung", en: "Tests and exam", pl: "Testy i egzamin", uk: "Тести та іспит" },
+    toTests:    { de: "Zu den Tests", en: "Go to tests", pl: "Do testów", uk: "До тестів" },
     overviewC:  { de: "Kursübersicht", en: "Course overview", pl: "Przegląd kursu", uk: "Огляд курсу" },
     noCourses:  { de: "Noch kein Kurs", en: "No course yet", pl: "Brak kursów", uk: "Курсів ще немає" },
     certTheory: { de: "Theorienachweis Gabelstapler", en: "Forklift theory certificate", pl: "Zaświadczenie z teorii", uk: "Сертифікат з теорії" },
@@ -88,6 +104,7 @@ const ICONS = {
     best: "M3 4h2l2.5 11h11L21 8H7M9 19.5a1 1 0 1 0 0-.01M18 19.5a1 1 0 1 0 0-.01",
     profil: "M12 4a4 4 0 1 1 0 8 4 4 0 0 1 0-8zM4 21c1-4 4-6 8-6s7 2 8 6",
     next: "M9 6l6 6-6 6",
+    test: "M8 4H6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2M9 3h6v3H9zM8.5 13l2.5 2.5 4.5-5",
 };
 const APPLE = <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" /></svg>;
 const GOOGLE = <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" /></svg>;
@@ -110,7 +127,7 @@ export default function Panel() {
     const [loading, setLoading] = useState(true);
     const [menu, setMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
-    const my = useMyCourses();
+    const my = useMyCourses(true);
     const tab = tabOf(loc.hash);
 
     useEffect(() => {
@@ -139,7 +156,14 @@ export default function Panel() {
     if (!data) return <div className="pn" style={{ display: "grid", placeItems: "center" }}><p className="pn-muted">{t("panel.loadError")}</p></div>;
 
     const { user, orders } = data;
-    const courses = my.data ?? [];
+    const everything = my.data ?? [];
+    // wygasłe zakupy tylko w „Meine Produkte” → Abgelaufen; reszta panelu widzi wyłącznie aktywne
+    const expired = everything.filter(c => c.expired);
+    const all = everything.filter(c => !c.expired);
+    const courses = all.filter(c => c.kind !== "bank");
+    // katalogi pytań (osobny produkt): pokazywane w „Meine Kurse”, ale nie w drodze do Staplerschein
+    const banks = all.filter(c => c.kind === "bank");
+    const bankHref = (c: MyCourse) => `/lernen/fragen/${c.id}`;
     // kursy ze starego systemu (/course/...), żeby po przełączeniu panelu nikomu nic nie zniknęło
     const legacy = (data.courses ?? []) as DashboardCourse[];
     const main = courses[0] as MyCourse | undefined;
@@ -157,6 +181,10 @@ export default function Panel() {
     const statusPill = (s: string) => (s === "paid" ? "ok" : s === "pending" ? "warn" : "draft");
     const orderTitle = (o: any) => (o.items || []).filter((it: any) => it.type !== "practical-addon").map((it: any) => it.courseName).join(", ") || "—";
 
+    // stan dostępu do zakupionego produktu: do kiedy aktywny albo kiedy wygasł
+    const access = (c: MyCourse) => c.expired
+        ? <p className="pn-acc off">{CAL}{p("expiredOn", { d: fmtDate(c.expiresAt!, language as Language) })}</p>
+        : <p className="pn-acc">{CAL}{c.expiresAt ? p("activeUntil", { d: fmtDate(c.expiresAt, language as Language), n: daysTo(c.expiresAt) }) : p("activeOpen")}</p>;
     const tabs: { id: Tab; label: string }[] = [
         { id: "home", label: p("overview") }, { id: "kurse", label: p("myCourses") }, { id: "zert", label: p("certs") },
         { id: "best", label: p("orders") }, { id: "profil", label: p("profile") },
@@ -184,6 +212,19 @@ export default function Panel() {
                     <div className="pn-bar" style={{ marginTop: 8, maxWidth: 220 }}><i style={{ width: `${Math.max(2, pct)}%` }} /></div>
                 </div>
                 <span className={`pn-pill ${pct === 100 ? "ok" : c.lessonsDone || c.lastStep ? "warn" : "draft"}`}>{p(pct === 100 ? "finished" : c.lessonsDone || c.lastStep ? "running" : "notStarted")}</span>
+            </Link>
+        );
+    };
+    const BankRow = ({ c }: { c: MyCourse }) => {
+        const pct = coursePct(c);
+        return (
+            <Link className="pn-row" to={bankHref(c)}>
+                <div className="pn-thumb"><img src={COVER} alt="" /></div>
+                <div className="t"><b>{tx(c.title, lang)}</b>
+                    <span className="s">{c.expiresAt ? p("daysLeft", { n: daysTo(c.expiresAt) }) : p("questionsOf", { a: c.lessonsDone, b: c.lessonCount })}</span>
+                    <div className="pn-bar" style={{ marginTop: 8, maxWidth: 220 }}><i style={{ width: `${Math.max(2, pct)}%` }} /></div>
+                </div>
+                <span className={`pn-pill ${pct === 100 ? "ok" : c.lessonsDone ? "warn" : "draft"}`}>{p(pct === 100 ? "finished" : c.lessonsDone ? "running" : "notStarted")}</span>
             </Link>
         );
     };
@@ -267,7 +308,8 @@ export default function Panel() {
                             {roadStep(theoryDone ? "done" : "cur", p("rTheory"),
                                 main ? `${coursePct(main)} %${main.expiresAt ? ` · ${p("until", { d: fmtDate(main.expiresAt, language as Language) })}` : ""}` : p("noCourses"),
                                 main ? <Link to={`/lernen/${main.id}`}>{p("toCourse")}</Link> : <Link to="/kursy">{t("panel.browse")}</Link>)}
-                            {roadStep(theoryCert ? "done" : theoryDone ? "cur" : "", p("rExam"), theoryCert?.score !== undefined ? p("score", { s: theoryCert.score }) : p("rExamTxt"))}
+                            {roadStep(theoryCert ? "done" : theoryDone ? "cur" : "", p("rExam"), theoryCert?.score !== undefined ? p("score", { s: theoryCert.score }) : p("rExamTxt"),
+                                main && !theoryCert ? <Link to={`/lernen/${main.id}/tests`}>{p("toTests")}</Link> : undefined)}
                             {roadStep(practicalCert ? "done" : nextBooking && theoryDone ? "cur" : "", p("rPractice"),
                                 practicalCert ? `${fmtDate(practicalCert.trainingDate, language as Language)}${practicalCert.trainingLocation ? ` · ${practicalCert.trainingLocation.split("–")[0].trim()}` : ""}`
                                     : nextBooking ? `${fmtDate(nextBooking.start, language as Language, { weekday: "short", day: "numeric", month: "long" })} · ${nextBooking.city}` : p("rNoDate"),
@@ -281,9 +323,10 @@ export default function Panel() {
                         <section className="pn-card">
                             <div className="pn-hd"><h3>{p("myCourses")}</h3><Link to={href("kurse")}>{p("all")}</Link></div>
                             {courses.map(c => <CourseRow key={c.id} c={c} />)}
+                            {banks.map(c => <BankRow key={c.id} c={c} />)}
                             {legacy.map(c => <LegacyRow key={c._id} c={c} />)}
                             {bookings.slice(0, 2).map(b => <BookingRow key={b.orderNumber} b={b} />)}
-                            {!courses.length && !legacy.length && !bookings.length && <div className="pn-empty"><b>{t("panel.noCoursesTitle")}</b><Link className="pn-btn o s" to="/kursy">{t("panel.browse")}</Link></div>}
+                            {!courses.length && !banks.length && !legacy.length && !bookings.length && <div className="pn-empty"><b>{t("panel.noCoursesTitle")}</b><Link className="pn-btn o s" to="/kursy">{t("panel.browse")}</Link></div>}
                         </section>
                         <section className="pn-card">
                             <div className="pn-hd"><h3>{p("orders")}</h3><Link to={href("best")}>{p("all")}</Link></div>
@@ -301,12 +344,14 @@ export default function Panel() {
 
                 {tab === "kurse" && <>
                     <div className="pn-hello"><h1>{p("myCourses")}</h1></div>
+                    {(courses.length > 0 || legacy.length > 0) && <h2 className="pn-sec">{p("secCourses")}</h2>}
                     {courses.map(c => (
                         <section key={c.id} className="pn-card pn-course">
                             <div className="vis"><img src={c.coverUrl || COVER} alt="" /></div>
                             <div className="body">
                                 <h3>{tx(c.title, lang)}</h3>
-                                <p className="pn-muted">{p("topicsOf", { a: c.lessonsDone, b: c.lessonCount })}{c.expiresAt ? ` · ${p("until", { d: fmtDate(c.expiresAt, language as Language) })}` : ""}</p>
+                                {access(c)}
+                                <p className="pn-muted">{p("topicsOf", { a: c.lessonsDone, b: c.lessonCount })}</p>
                                 <div className="pn-bar" style={{ maxWidth: 360 }}><i style={{ width: `${Math.max(2, coursePct(c))}%` }} /></div>
                                 <div className="pn-acts">
                                     <Link className="pn-btn p" to={lessonHref(c)}>{p(c.lessonsDone || c.lastStep ? "resume" : "start")}</Link>
@@ -326,6 +371,21 @@ export default function Panel() {
                             </div>
                         </section>
                     ))}
+                    {banks.length > 0 && <h2 className="pn-sec">{p("secTests")}</h2>}
+                    {banks.map(c => (
+                        <section key={c.id} className="pn-card pn-course">
+                            <div className="vis pn-vis-test"><Icon d={ICONS.test} /></div>
+                            <div className="body">
+                                <h3>{tx(c.title, lang)}</h3>
+                                {access(c)}
+                                <p className="pn-muted">{c.lastTest ? p("lastTest", { p: Math.round(c.lastTest.right / c.lastTest.n * 100), v: p(c.lastTest.passed ? "tPassed" : "tFailed") }) : p("noTest")} · {p("questionsOf", { a: c.lessonsDone, b: c.lessonCount })}</p>
+                                <div className="pn-acts">
+                                    <Link className="pn-btn p" to={bankHref(c)}>{p("startTest")}</Link>
+                                </div>
+                            </div>
+                        </section>
+                    ))}
+                    {bookings.length > 0 && <h2 className="pn-sec">{p("secDates")}</h2>}
                     {bookings.map(b => (
                         <section key={b.orderNumber} className="pn-card pn-ticket">
                             <div className="when">
@@ -343,7 +403,18 @@ export default function Panel() {
                             </div>}
                         </section>
                     ))}
-                    {!courses.length && !legacy.length && !bookings.length && <section className="pn-card pn-empty"><b>{t("panel.noCoursesTitle")}</b><p className="pn-muted">{t("panel.noCoursesText")}</p><Link className="pn-btn p" to="/kursy">{t("panel.browse")}</Link></section>}
+                    {expired.length > 0 && <h2 className="pn-sec">{p("secExpired")}</h2>}
+                    {expired.map(c => (
+                        <section key={c.id} className="pn-card pn-course pn-expired">
+                            <div className="vis">{c.kind === "bank" ? <Icon d={ICONS.test} /> : <img src={c.coverUrl || COVER} alt="" />}</div>
+                            <div className="body">
+                                <h3>{tx(c.title, lang)}</h3>
+                                {access(c)}
+                                <div className="pn-acts"><Link className="pn-btn o" to="/kursy">{p("buyAgain")}</Link></div>
+                            </div>
+                        </section>
+                    ))}
+                    {!courses.length && !banks.length && !legacy.length && !bookings.length && !expired.length && <section className="pn-card pn-empty"><b>{t("panel.noCoursesTitle")}</b><p className="pn-muted">{t("panel.noCoursesText")}</p><Link className="pn-btn p" to="/kursy">{t("panel.browse")}</Link></section>}
                 </>}
 
                 {tab === "zert" && <>

@@ -46,8 +46,8 @@ export function RampSim({ data, last, finishLabel }: StepProps<SimData>) {
         setSt(s => ({ ...s, checked: true, ok }));
         const li = (good: boolean, w: string, txt: string) => <li><b>{T(w)}: {T(good ? "richtig gewählt." : "falsch gewählt.")}</b> {T(txt)}</li>;
         openSheet({
-            kind: ok ? "ok" : "no", title: T(ok ? "Last immer oben" : "So noch nicht"), sub: T("DGUV Vorschrift 68 §12 Abs. 7"),
-            body: <><ul>{li(okUp, "Hinauf", "Richtig ist vorwärts, die Last ist vorne oben.")}{li(okDown, "Hinunter", "Richtig ist rückwärts, so bleibt die Last oben.")}</ul>
+            kind: ok ? "ok" : "no", title: T(ok ? "Last immer auf der Bergseite" : "So noch nicht"), sub: T("DGUV Vorschrift 68 §12 Abs. 7"),
+            body: <><ul>{li(okUp, "Hinauf", "Richtig ist vorwärts: Die Last ist vorne und damit auf der Bergseite.")}{li(okDown, "Hinunter", "Richtig ist rückwärts: So bleibt die Last auf der Bergseite.")}</ul>
                 <p>{T("Liegt die Last talseitig, kann sie von der Gabel rutschen und der Stapler kippt leichter nach vorne. Auf der Schräge wird nie gewendet.")}</p>
                 <p className="src">{T("DGUV V68 §12 Abs. 7, §8 mit DA")}</p></>,
             button: ok ? t("next") : t("tryAgain"),

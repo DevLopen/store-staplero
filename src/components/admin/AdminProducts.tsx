@@ -1,3 +1,6 @@
+import { Avatar, Tile } from "@/pages/admin/adminUi";
+import { adminBanks } from "@/learning/api";
+import { applyDateSelection, dateKey } from "@/pages/admin/productDates";
 import { useEffect, useState, useCallback } from "react";
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, DragEndEvent,
@@ -45,6 +48,7 @@ interface LocationOption {
   _id: string;
   city: string;
   address: string;
+  dates?: { id: string; startDate: string; endDate: string; time: string; availableSpots: number; languages?: string[]; productIds?: string[] }[];
 }
 
 interface CourseOption {
@@ -70,6 +74,7 @@ type ProductForm = {
   locationIds: string[];
   includesOnlineAccess: boolean;
   linkedCourseId: string;
+  durationDays: string;
 };
 
 const emptyForm = (): ProductForm => ({
@@ -90,6 +95,7 @@ const emptyForm = (): ProductForm => ({
   locationIds: [],
   includesOnlineAccess: false,
   linkedCourseId: "",
+  durationDays: "",
 });
 
 const productToForm = (p: Product): ProductForm => ({
@@ -110,6 +116,7 @@ const productToForm = (p: Product): ProductForm => ({
   locationIds: p.locationIds || [],
   includesOnlineAccess: p.includesOnlineAccess,
   linkedCourseId: p.linkedCourseId || "",
+  durationDays: p.durationDays ? String(p.durationDays) : "",
 });
 
 /** Kafelek produktu, który można przeciągać za uchwyt, żeby zmienić kolejność w sklepie */
@@ -142,6 +149,8 @@ const AdminProducts = () => {
   const confirm = useConfirm();
 
   const [products, setProducts] = useState<Product[]>([]);
+  // wybór terminów w produkcie: tylko zmiany użytkownika (klucz miejsce|termin → w produkcie tak/nie)
+  const [dateSel, setDateSel] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
@@ -202,9 +211,11 @@ const AdminProducts = () => {
       .then((data) => setLocations(Array.isArray(data) ? data : []))
       .catch(() => setLocations([]));
 
-    adminGetCourses()
-      .then((data) => setCourses(data.courses.map((c: any) => ({ _id: c._id, title: c.title }))))
-      .catch(() => setCourses([]));
+    // Online-Kurse (alt) und Fragenkataloge: beide geben nach Zahlung Zugang über UserCourse (courseId)
+    Promise.all([
+      adminGetCourses().then((data) => data.courses.map((c: any) => ({ _id: c._id, title: c.title }))).catch(() => []),
+      adminBanks().then((list) => list.map((b) => ({ _id: b.id, title: `Fragenkatalog: ${b.title.de ?? b.slug}` }))).catch(() => []),
+    ]).then(([a, b]) => setCourses([...a, ...b]));
   }, []);
 
   const loadNotifyRequests = useCallback(async () => {
@@ -255,6 +266,7 @@ const AdminProducts = () => {
   };
 
   const openCreateDialog = () => {
+    setDateSel({});
     setEditingId(null);
     setForm(emptyForm());
     setActiveLang("de");
@@ -262,6 +274,7 @@ const AdminProducts = () => {
   };
 
   const openEditDialog = (product: Product) => {
+    setDateSel({});
     setEditingId(product._id);
     setForm(productToForm(product));
     setActiveLang("de");
@@ -340,13 +353,16 @@ const AdminProducts = () => {
         locationIds: form.type === "normal" ? form.locationIds : [],
         includesOnlineAccess: form.type === "normal" ? form.includesOnlineAccess : false,
         linkedCourseId: form.type === "normal" && form.includesOnlineAccess ? form.linkedCourseId : undefined,
+        durationDays: form.type === "normal" && Number(form.durationDays) > 0 ? Number(form.durationDays) : null,
       } as any;
 
       if (editingId) {
         await adminUpdateProduct(editingId, payload);
+        if (form.type === "normal") await applyDateSelection(editingId, dateSel, products);
         toast({ title: "Gespeichert", description: "Produkt wurde aktualisiert" });
       } else {
-        await adminCreateProduct(payload);
+        const created = await adminCreateProduct(payload);
+        if (form.type === "normal" && created?._id) await applyDateSelection(created._id, dateSel, products);
         toast({ title: "Erstellt", description: "Produkt wurde erstellt" });
       }
 
@@ -426,13 +442,9 @@ const AdminProducts = () => {
                   {handle}
                   <span className="text-xs font-semibold text-muted-foreground" title="Position im Shop">{index + 1}</span>
                 </div>
-                <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  {product.type === "online" ? (
-                    <BookOpen className="w-7 h-7 text-primary" />
-                  ) : (
-                    <Forklift className="w-7 h-7 text-primary" />
-                  )}
-                </div>
+                <Tile color={product.type === "online" ? "indigo" : "orange"} size={56}>
+                  {product.type === "online" ? <BookOpen /> : <Forklift />}
+                </Tile>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -587,7 +599,7 @@ const AdminProducts = () => {
 
       {/* ── Create / Edit Dialog ─────────────────────────────────────────────── */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="adm-sheet max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? "Produkt bearbeiten" : "Neues Produkt"}</DialogTitle>
           </DialogHeader>
@@ -782,6 +794,13 @@ const AdminProducts = () => {
             ) : (
               <>
                 <div className="space-y-2">
+                  <Label>Dauer der Schulung (Tage)</Label>
+                  <Input type="number" min={1} max={30} className="max-w-[160px]" value={form.durationDays} placeholder="z. B. 2"
+                    onChange={(e) => setForm((p) => ({ ...p, durationDays: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground">Optional. Beim Anlegen eines Termins wird das Enddatum daraus berechnet.</p>
+                </div>
+
+                <div className="space-y-2">
                   <Label>Verfügbare Standorte</Label>
                   {locations.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
@@ -807,6 +826,47 @@ const AdminProducts = () => {
                     </div>
                   )}
                 </div>
+
+                {form.locationIds.length > 0 && (() => {
+                  // Terminy wybranych miejsc. Zaznaczony = klient widzi go w tym produkcie.
+                  // Termin bez przypisania („alle Schulungen”) jest dziś widoczny w każdym produkcie miejsca.
+                  const today = new Date().toISOString().slice(0, 10);
+                  const pid = editingId ?? "__new__";
+                  const nameOf = (id: string) => products.find((p) => p._id === id)?.title.de ?? "";
+                  const rows = locations.filter((l) => form.locationIds.includes(l._id)).flatMap((l) =>
+                    (l.dates ?? []).filter((d) => (d.endDate || d.startDate) >= today).map((d) => ({ ...d, loc: l })))
+                    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+                  const isOn = (r: (typeof rows)[number]) => {
+                    const k = dateKey(r.loc._id, r.id);
+                    if (k in dateSel) return dateSel[k];
+                    return !r.productIds?.length || r.productIds.includes(pid);
+                  };
+                  const fmtD = (x: string) => new Date(x + "T12:00").toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" });
+                  const on = rows.filter(isOn).length;
+                  return (
+                    <div className="space-y-2">
+                      <Label>Termine in diesem Produkt ({on} von {rows.length})</Label>
+                      <p className="text-xs text-muted-foreground">Haken = der Termin erscheint bei diesem Produkt im Shop. Andere Produkte am selben Ort behalten ihre Termine.</p>
+                      {rows.length === 0 ? <p className="text-sm text-muted-foreground">Noch keine kommenden Termine an diesem Ort. Termine legen Sie unter „Standorte &amp; Termine“ an.</p> : (
+                        <div className="pd-list">
+                          {rows.map((r) => {
+                            const k = dateKey(r.loc._id, r.id), checked = isOn(r);
+                            const others = (r.productIds ?? []).filter((x) => x !== pid && x !== "-").map(nameOf).filter(Boolean);
+                            return (
+                              <label key={k} className={`pd-row ${checked ? "on" : ""}`}>
+                                <input type="checkbox" checked={checked} onChange={(e) => setDateSel((m) => ({ ...m, [k]: e.target.checked }))} />
+                                <span className="pd-when"><b>{fmtD(r.startDate)}{r.endDate && r.endDate !== r.startDate ? ` – ${fmtD(r.endDate)}` : ""}</b><small>{r.loc.city} · {r.time}</small></span>
+                                <span className="pd-lang">{(r.languages ?? []).map((x) => <span key={x}>{x.toUpperCase()}</span>)}</span>
+                                <span className="pd-info">{!r.productIds?.length ? "bisher bei allen Produkten" : others.length ? `auch bei: ${others.join(", ")}` : ""}</span>
+                                <span className={`pd-free ${r.availableSpots === 0 ? "bad" : r.availableSpots <= 3 ? "warn" : ""}`}>{r.availableSpots === 0 ? "ausgebucht" : `${r.availableSpots} frei`}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="flex items-center justify-between p-3 border border-border rounded-xl">
                   <div>

@@ -1,16 +1,19 @@
+import { permOf } from "../shuffle";
 import { ChoiceData, LText, QuestionData, SortData } from "../types";
-import { Actions, Nav, usePlayer } from "../LessonPlayer";
+import { Actions, CheckResult, Nav, usePlayer } from "../LessonPlayer";
+import { useState } from "react";
 import type { StepProps } from ".";
 import { CAR_SVG, CHEF, DRIVER, FORKLIFT_SVG, personSVG } from "../sims/people";
+import { AnswerInput, isAnswered, isRight } from "./answer";
 
 const IL = {
     car: { de: "Auto", en: "Car", pl: "Samochód", uk: "Автомобіль" },
-    carOk: { de: "Führerschein vorhanden", en: "Driving licence held", pl: "Prawo jazdy jest", uk: "Водійське посвідчення є" },
+    carOk: { de: "Führerschein vorhanden", en: "Driving licence held", pl: "Ma prawo jazdy", uk: "Водійське посвідчення є" },
     fork: { de: "Gabelstapler", en: "Forklift", pl: "Wózek widłowy", uk: "Вилковий навантажувач" },
-    forkQ: { de: "Darfst du ihn damit fahren?", en: "May you drive it with that?", pl: "Czy możesz nim z tym jeździć?", uk: "Чи можна з ним керувати навантажувачем?" },
+    forkQ: { de: "Darfst du ihn damit fahren?", en: "Can you drive it with that?", pl: "Czy z tym dokumentem możesz jeździć wózkiem widłowym?", uk: "Чи можна з цим документом керувати навантажувачем?" },
     emp: { de: "Unternehmer", en: "Employer", pl: "Pracodawca", uk: "Роботодавець" },
     empS: { de: "Chef, Lager- oder Schichtleiter", en: "Boss, warehouse or shift manager", pl: "Szef, kierownik magazynu lub zmiany", uk: "Шеф, керівник складу чи зміни" },
-    drv: { de: "Fahrer", en: "Driver", pl: "Kierowca", uk: "Водій" },
+    drv: { de: "Fahrer", en: "Driver", pl: "Operator", uk: "Водій" },
     drvS: { de: "du, mit Staplerschein", en: "you, with a forklift licence", pl: "ty, ze Staplerschein", uk: "ти, зі Staplerschein" },
 };
 function Illustration({ kind }: { kind: QuestionData["illustration"] }) {
@@ -55,10 +58,10 @@ export function QuestionStep({ data, last, finishLabel }: StepProps<QuestionData
         <h2 className="q">{x(data.title)}</h2>
         {data.illustration && <Illustration kind={data.illustration} />}
         {x(data.text) && <p className={data.layout === "list" ? "say" : "txt"}>{x(data.text)}</p>}
-        {data.layout === "list" ? <>
-            <div className="opts">{data.options.map((o, k) => (
+        {data.layout === "list" || data.options.length > 2 ? <>
+            <div className="opts">{permOf(data.options.length, `${data.title.de ?? ""}`).map(k => (
                 <button key={k} type="button" disabled={picked !== null} onClick={() => answer(k)}
-                    className={`opt ${picked === null ? "" : k === data.correct ? "right" : k === picked ? "wrong" : ""}`}>{x(o)}</button>
+                    className={`opt ${picked === null ? "" : k === data.correct ? "right" : k === picked ? "wrong" : ""}`}>{x(data.options[k])}</button>
             ))}</div>
             {picked === null ? <Nav disabled hint={t("chooseOne")} /> : <Nav label={last ? finishLabel : undefined} />}
         </> : (
@@ -122,19 +125,76 @@ export function SortStep({ data, last, finishLabel }: StepProps<SortData>) {
     </>;
 }
 
-export function ChoiceStep({ data, last, finishLabel }: StepProps<ChoiceData>) {
+/** Test modułu: losowy zestaw z puli przy każdym podejściu, bez podpowiedzi w trakcie, ocena na serwerze,
+ *  na końcu tylko wynik (bez listy błędnych pytań, żeby nie uczyć się zestawu na pamięć). */
+type GateSt = { attempt: number; seed: string; pick: number[]; i: number; ans: Record<number, number>; res: (CheckResult & { everPassed?: boolean }) | null };
+const randomSeed = () => Math.random().toString(36).slice(2);
+function drawGate(n: number, count: number, seed: string) { return permOf(n, `gate|${seed}`).slice(0, Math.min(n, count)); }
+function GateCheck({ data, last, finishLabel }: StepProps<ChoiceData>) {
+    const { x, t, useStepState, onCheck } = usePlayer();
+    const items = data.items, pass = data.passPercent ?? 80, count = Math.min(items.length, data.count ?? items.length);
+    const [seed0] = useState(randomSeed);
+    const [st, setSt] = useStepState<GateSt>({ attempt: 0, seed: seed0, pick: drawGate(items.length, count, seed0), i: 0, ans: {}, res: null });
+    const [sending, setSending] = useState(false);
+    // stan zapisany przed wprowadzeniem losowania nie ma `pick`
+    const pick = st.pick?.length === count && st.pick.every(k => k < items.length) ? st.pick : drawGate(items.length, count, st.seed ?? "0");
+    const n = pick.length;
+    const submit = async () => {
+        const answers = items.map((_, k) => pick.includes(k) ? (st.ans[k] ?? -1) : -1);
+        setSending(true);
+        try {
+            const res = onCheck ? await onCheck(answers) : (() => { const score = pick.filter(k => isRight(items[k], answers[k])).length, need = Math.ceil(n * pass / 100); return { score, total: n, need, passed: score >= need }; })();
+            setSt(s => ({ ...s, res }));
+        } finally { setSending(false); }
+    };
+    const retry = () => setSt(s => { const seed = randomSeed(); return { attempt: s.attempt + 1, seed, pick: drawGate(items.length, count, seed), i: 0, ans: {}, res: null }; });
+    if (st.res) {
+        const r = st.res, ok = r.passed || !!r.everPassed;
+        return <>
+            <h2 className="q">{x(data.title)}</h2>
+            <div className={`ex-res ${r.passed ? "ok" : "no"}`} aria-live="polite">
+                <b>{r.score} / {r.total}</b>
+                <span>{r.passed ? t("gatePassed") : t("gateFailed", { n: r.need, m: r.total })}</span>
+            </div>
+            {!r.passed && <p className="small">{t("gateNew")}</p>}
+            {!r.passed && <button type="button" className="btn btn-o pk-go" onClick={retry}>{t("gateRetry")}</button>}
+            {ok ? <Nav label={last ? finishLabel : undefined} /> : <Nav disabled hint={t("gateHint")} />}
+        </>;
+    }
+    const k = pick[st.i], it = items[k];
+    return <>
+        <h2 className="q">{x(data.title)}</h2>
+        {st.i === 0 && <p className="small">{t("gateLead", { p: pass })}</p>}
+        <div className="ex-top"><span>{t("qOf", { a: st.i + 1, b: n })}</span></div>
+        <div className="say" style={{ fontSize: 17, fontWeight: 600 }}>{x(it.q)}</div>
+        <AnswerInput key={k} it={it} value={st.ans[k]} seed={st.seed} onChange={a => setSt(s => { const ans = { ...s.ans }; if (a === undefined) delete ans[k]; else ans[k] = a; return { ...s, ans }; })} />
+        <Actions><div className="nav2">
+            <button type="button" className="btn btn-o" disabled={st.i === 0} onClick={() => setSt(s => ({ ...s, i: s.i - 1 }))}>{t("back")}</button>
+            {st.i < n - 1
+                ? <button type="button" className="btn btn-p" disabled={!isAnswered(it, st.ans[k])} onClick={() => setSt(s => ({ ...s, i: s.i + 1 }))}>{t("next")}</button>
+                : <button type="button" className="btn btn-p" disabled={!isAnswered(it, st.ans[k]) || sending} onClick={submit}>{t(sending ? "gateSending" : "submit")}</button>}
+        </div></Actions>
+    </>;
+}
+
+export function ChoiceStep(props: StepProps<ChoiceData>) {
+    if (props.data.gate) return <GateCheck {...props} />;
+    return <PlainChoice {...props} />;
+}
+function PlainChoice({ data, last, finishLabel }: StepProps<ChoiceData>) {
     const { x, t } = usePlayer();
+    // ćwiczenia w lekcjach mają zawsze jedną poprawną odpowiedź (pytania wielokrotnego wyboru są tylko w testach)
     const { st, answer, advance, finished } = useSeq(data.items.length);
     if (finished) return <Result title={data.title} n={st.res.filter(Boolean).length} total={data.items.length} allRight={data.allRight} someWrong={data.someWrong} last={last} finishLabel={finishLabel} st={st} />;
-    const it = data.items[st.i], a = st.answered;
+    const it = { ...data.items[st.i], correct: data.items[st.i].correct as number }, a = st.answered;
     return <>
         <h2 className="q">{x(data.title)}</h2>
         {x(data.lead) && a === null && <p className="small">{x(data.lead)}</p>}
         <div className="say" style={{ fontSize: 17, fontWeight: 600 }}>{x(it.q)}</div>
-        <div className="opts">{it.options.map((o, k) => (
+        <div className="opts">{permOf(it.options.length, `${it.q.de ?? ""}|${st.i}`).map(k => { const o = it.options[k]; return (
             <button key={k} type="button" disabled={a !== null} onClick={() => answer(k)}
                 className={`opt ${a === null ? "" : k === it.correct ? "right" : k === a ? "wrong" : ""}`}>{x(o)}</button>
-        ))}</div>
+        ); })}</div>
         {a !== null && <div className={`fb ${a === it.correct ? "ok" : "no"}`} aria-live="polite"><b>{t(a === it.correct ? "right" : "notQuite")}</b><span>{x(it.why)}</span></div>}
         <Dots count={data.items.length} st={st} />
         {a === null

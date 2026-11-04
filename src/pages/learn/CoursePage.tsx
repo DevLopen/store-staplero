@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
+import Denied from "@/learning/Denied";
 import LearnShell, { useLearnLang } from "@/learning/LearnShell";
 import { useCourseOutline } from "@/learning/api";
 import { Lang, tx } from "@/learning/types";
@@ -27,7 +28,7 @@ export default function CoursePage() {
     const [open, setOpen] = useState<string | null>(null);
 
     if (isLoading) return <LearnShell courseId={courseId} scroll><p className="small" style={{ padding: 24 }}>…</p></LearnShell>;
-    if (error || !data) return <LearnShell courseId={courseId} scroll><div className="co-page"><h2 className="q">{(error as any)?.status === 403 ? "Kein Zugriff auf diesen Kurs" : "Kurs nicht gefunden"}</h2></div></LearnShell>;
+    if (error || !data) return <LearnShell courseId={courseId} scroll><Denied error={error} lang={lang} /></LearnShell>;
 
     const lessons = data.chapters.flatMap(c => c.lessons);
     const done = lessons.filter(l => data.progress[l.id]?.completed).length;
@@ -51,6 +52,7 @@ export default function CoursePage() {
                         <div className="co-bar"><i style={{ width: `${Math.max(2, pct)}%` }} /></div>
                         <span className="small">{f("topicsOf", lang, { a: done, b: lessons.length })}{data.expiresAt ? ` · ${f("until", lang, { d: new Date(data.expiresAt).toLocaleDateString(LOC[lang]) })}` : ""}</span>
                         {current && <Link className="btn btn-p" to={`/lernen/${courseId}/${current.id}${q}`} style={{ textDecoration: "none" }}>{f(done || data.progress[current.id] ? "resume" : "start", lang)}</Link>}
+                        {!draft && <Link className="btn btn-o" to={`/lernen/${courseId}/tests`} style={{ textDecoration: "none" }}>{ui("testsLink", lang)}</Link>}
                     </div>
                 </div>
                 <div className="co-chapters">
@@ -58,13 +60,13 @@ export default function CoursePage() {
                         const isOpen = openId === c.id;
                         const chDone = c.lessons.length > 0 && c.lessons.every(l => data.progress[l.id]?.completed);
                         return (
-                            <div key={c.id} className={`co-card co-chap ${isOpen ? "open" : ""} ${chDone ? "done" : c.id === curChapter ? "cur" : ""}`}>
-                                <button type="button" className="co-chap-hd" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? "" : c.id)}>
+                            <div key={c.id} className={`co-card co-chap ${isOpen ? "open" : ""} ${c.locked ? "locked" : chDone ? "done" : c.id === curChapter ? "cur" : ""}`}>
+                                <button type="button" className="co-chap-hd" aria-expanded={isOpen} disabled={c.locked} onClick={() => setOpen(isOpen ? "" : c.id)}>
                                     <span className="n">{i + 1}</span>
                                     <span className="t"><b>{tx(c.title, lang).replace(/&amp;/g, "&")}</b><span>{f("topics", lang, { n: c.lessons.length })}</span></span>
-                                    <svg className="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                                    {c.locked ? <span className="co-lock" title={ui("locked", lang)}><svg className="ic lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg></span> : <svg className="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>}
                                 </button>
-                                {isOpen && <div className="co-lessons">{c.lessons.map(l => {
+                                {isOpen && !c.locked && <div className="co-lessons">{c.lessons.map(l => {
                                     const p = data.progress[l.id];
                                     const st = p?.completed ? "done" : l.id === current?.id ? "cur" : "";
                                     return (

@@ -49,6 +49,8 @@ interface ParticipantsListDialogProps {
     dateInfo: string;
     /** Wywoływane po zmianie listy (dodanie/edycja/usunięcie), żeby odświeżyć liczbę wolnych miejsc w panelu */
     onChanged?: () => void;
+    /** Lista wbudowana w panel boczny (Orte & Termine) zamiast osobnego okna */
+    embedded?: boolean;
 }
 
 export const ParticipantsListDialog = ({
@@ -58,7 +60,8 @@ export const ParticipantsListDialog = ({
                                            dateId,
                                            locationName,
                                            dateInfo,
-                                           onChanged
+                                           onChanged,
+                                           embedded
                                        }: ParticipantsListDialogProps) => {
     const { toast } = useToast();
     const [participants, setParticipants] = useState<Participant[]>([]);
@@ -236,28 +239,7 @@ export const ParticipantsListDialog = ({
 
     const completedCount = participants.filter(p => p.status === "completed").length;
 
-    return (
-        <>
-        <Dialog open={open && !addOpen && !editing} onOpenChange={onClose}>
-            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <div className="flex items-center justify-between pr-6">
-                        <div>
-                            <DialogTitle className="text-xl">Teilnehmerliste</DialogTitle>
-                            <p className="text-sm text-muted-foreground mt-1">{locationName}</p>
-                            <p className="text-sm text-muted-foreground">{dateInfo}</p>
-                        </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onClose}
-                            className="absolute right-4 top-4"
-                        >
-                            <X className="w-4 h-4" />
-                        </Button>
-                    </div>
-                </DialogHeader>
-
+    const body = (<>
                 {loading ? (
                     <div className="py-12 text-center">
                         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent"></div>
@@ -490,9 +472,8 @@ export const ParticipantsListDialog = ({
                         )}
                     </div>
                 )}
-            </DialogContent>
-        </Dialog>
-
+    </>);
+    const modals = <>
         {addOpen && (
             <AddParticipantModal
                 presetLocationId={locationId}
@@ -508,6 +489,36 @@ export const ParticipantsListDialog = ({
                 onSaved={refresh}
             />
         )}
+    </>;
+    if (embedded) return <>{open && body}{modals}</>;
+
+    return (
+        <>
+        <Dialog open={open && !addOpen && !editing} onOpenChange={onClose}>
+            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <div className="flex items-center justify-between pr-6">
+                        <div>
+                            <DialogTitle className="text-xl">Teilnehmerliste</DialogTitle>
+                            <p className="text-sm text-muted-foreground mt-1">{locationName}</p>
+                            <p className="text-sm text-muted-foreground">{dateInfo}</p>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={onClose}
+                            className="absolute right-4 top-4"
+                        >
+                            <X className="w-4 h-4" />
+                        </Button>
+                    </div>
+                </DialogHeader>
+
+                {body}
+            </DialogContent>
+        </Dialog>
+
+        {modals}
         </>
     );
 };

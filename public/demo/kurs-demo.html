@@ -1035,10 +1035,10 @@ body { margin: 0; }
     'Vor jedem Lenkmanöver fragen: Wo ist gleich mein Heck, und steht dort jemand?',
     'DGUV G 308-001, Vorbemerkung und Anhang 1 Nr. 3');
   const L3 = learn('Die Wippe: warum Stapler kippen',
-    'Ein Gabelstapler funktioniert wie eine Wippe. Der Drehpunkt ist die Vorderachse, die Kippkante.',
+    'Ein Gabelstapler funktioniert wie eine Wippe. Der Drehpunkt ist die Vorderachse: Über sie kippt der Stapler.',
     ['<b>Hebelgesetz:</b> Vorne zieht die Last, hinten hält das Gegengewicht dagegen. Je weiter die Last von der Vorderachse entfernt ist, desto stärker zieht sie.',
      '<b>Kippen:</b> Ist das Lastmoment größer als das Standmoment des Staplers, hebt das Heck ab und der Stapler kippt nach vorne.',
-     '<b>Nennlast</b> gilt nur bei einem bestimmten Lastschwerpunkt, oft 500 mm. Liegt er weiter vorne, darfst du weniger heben: siehe Lastschwerpunktdiagramm am Stapler.'],
+     '<b>Nennlast</b> gilt nur bei einem bestimmten Lastschwerpunktabstand, meist 500 mm. Liegt der Schwerpunkt der Last weiter vorne, darfst du weniger heben: siehe Lastschwerpunktdiagramm am Stapler.'],
     'Nicht nur das Gewicht zählt, sondern auch, wo der Schwerpunkt der Last liegt.',
     'DGUV G 308-001, Anhang 1 Nr. 5 Standsicherheit',
     () => `<div class="formula">${t('Lastmoment')} = <span>${t('Gewicht der Last')}</span> × <span>${t('Abstand zur Vorderachse')}</span></div>`);
@@ -1069,7 +1069,7 @@ body { margin: 0; }
     ['<b>Fahrersitz oder Fahrerstand</b> (z. B. Gabelstapler, Schubmaststapler): Ausbildung, Prüfung und schriftlicher Auftrag.',
      '<b>Geräte ohne Hubmast</b> (z. B. Schlepper, Plattformwagen): Ausbildung ebenfalls nötig, Inhalt und Dauer werden aber an das Gerät angepasst.',
      '<b>Mitgänger-Geräte,</b> bei denen du nebenher gehst: Eine Unterweisung genügt, der Auftrag muss nicht schriftlich sein.'],
-    'Sitzen oder stehen heißt Ausbildung. Nebenhergehen heißt Unterweisung.',
+    'Sitzt oder stehst du auf dem Gerät, brauchst du eine Ausbildung. Gehst du nebenher, genügt eine Unterweisung.',
     'DGUV V68 §7 Abs. 2, G 308-001 Abschn. 1.1 und 1.2');
 
   const t11Steps = [
@@ -1294,7 +1294,7 @@ body { margin: 0; }
           <div><em>1</em><p>${t('<b>Hinterradlenkung:</b> Das Heck schwenkt aus. Achte vor dem Lenken auf Personen neben und hinter dir.')}</p></div>
           <div><em>2</em><p>${t('<b>Wippe:</b> Gewicht und Lastschwerpunkt entscheiden zusammen, ob der Stapler stehen bleibt. Das Lastschwerpunktdiagramm zeigt die Grenze.')}</p></div>
           <div><em>3</em><p>${t('<b>Fahrstellung:</b> Last bodenfrei, Hubmast zurückgeneigt.')}</p></div>
-          <div><em>4</em><p>${t('<b>Darum Pflicht:</b> Fahren darf nur, wer mindestens 18, geeignet, ausgebildet und schriftlich beauftragt ist. Auf der Straße kommt der Führerschein dazu.')}</p></div>
+          <div><em>4</em><p>${t('<b>Darum ist die Ausbildung Pflicht:</b> Fahren darf nur, wer mindestens 18, geeignet, ausgebildet und schriftlich beauftragt ist. Auf der Straße kommt der Führerschein dazu.')}</p></div>
         </div>`,
       a: () => { setActions(nextBtn('Weiter zu 1.2')); $('nx').onclick = () => { done.t11 = true; openTopic('t12'); }; } },
   ];
@@ -1472,7 +1472,7 @@ body { margin: 0; }
      '<b>Bodenfrei:</b> Mit angehobener Last fährst du nur zum Aufnehmen und Absetzen, außer der Unternehmer hat ein Gerät ausdrücklich dafür bestimmt.',
      '<b>Hubmast zurückgeneigt,</b> damit sich die Last nicht ungewollt bewegt.',
      '<b>Steigungen und Gefälle:</b> Die Last immer bergseitig führen und niemals auf der Schräge wenden.'],
-    'Mit Last bergauf vorwärts, bergab rückwärts. So bleibt die Last immer oben.',
+    'Mit Last bergauf vorwärts, bergab rückwärts. So bleibt die Last immer auf der Bergseite.',
     'DGUV V68 §12 mit DA, §8 mit DA, G 308-001 Anhang 2 Übung 9');
   const L12g = learn('Den Stapler richtig verlassen',
     'Stell den Stapler so ab, dass er kein Hindernis ist: nicht auf Verkehrs- und Fluchtwegen, nicht vor Notausgängen oder Feuerlöschern und nicht auf einer Schräge. Dann gilt:',
@@ -1531,7 +1531,7 @@ body { margin: 0; }
   const V12a = vid('Einsatzprüfung am echten Stapler',
     'Ein Fahrer geht vor Schichtbeginn einmal um den Stapler: Gabelzinken, Hubketten, Hydraulik, Reifen, Bremsen, Hupe und Licht. Nahaufnahmen zeigen, worauf er achtet, zum Beispiel einen Riss an der Gabel.', '60 bis 90 Sekunden');
   const V12b = vid('Rampe im echten Leben',
-    'Ein Stapler mit Palette fährt eine Rampe vorwärts hinauf und rückwärts wieder hinunter, seitlich gefilmt. Die Last bleibt sichtbar immer oben.', '20 bis 30 Sekunden');
+    'Ein Stapler mit Palette fährt eine Rampe vorwärts hinauf und rückwärts wieder hinunter, seitlich gefilmt. Man sieht: Die Last bleibt immer auf der Bergseite.', '20 bis 30 Sekunden');
   const V12c = vid('Richtig abstellen',
     'Der Fahrer stellt den Stapler auf der Abstellfläche ab: Feststellbremse, Gabel absenken und neigen, Motor aus, Schlüssel abziehen. Jeder Handgriff in Nahaufnahme.', '20 bis 30 Sekunden');
 
@@ -1609,8 +1609,8 @@ body { margin: 0; }
           if (okUp && okDown) s12.rampOk = true;
           rerender();
           const li = (ok, w, x) => `<li><b>${t(w)}: ${t(ok ? 'richtig gewählt.' : 'falsch gewählt.')}</b> ${t(x)}</li>`;
-          openSheet(okUp && okDown ? 'ok' : 'no', okUp && okDown ? 'Last immer oben' : 'So noch nicht', 'DGUV Vorschrift 68 §12 Abs. 7',
-            `<ul>${li(okUp, 'Hinauf', 'Richtig ist vorwärts, die Last ist vorne oben.')}${li(okDown, 'Hinunter', 'Richtig ist rückwärts, so bleibt die Last oben.')}</ul><p>${t('Liegt die Last talseitig, kann sie von der Gabel rutschen und der Stapler kippt leichter nach vorne. Auf der Schräge wird nie gewendet.')}</p><p class="src">${t('DGUV V68 §12 Abs. 7, §8 mit DA')}</p>`,
+          openSheet(okUp && okDown ? 'ok' : 'no', okUp && okDown ? 'Last immer auf der Bergseite' : 'So noch nicht', 'DGUV Vorschrift 68 §12 Abs. 7',
+            `<ul>${li(okUp, 'Hinauf', 'Richtig ist vorwärts: Die Last ist vorne und damit auf der Bergseite.')}${li(okDown, 'Hinunter', 'Richtig ist rückwärts: So bleibt die Last auf der Bergseite.')}</ul><p>${t('Liegt die Last talseitig, kann sie von der Gabel rutschen und der Stapler kippt leichter nach vorne. Auf der Schräge wird nie gewendet.')}</p><p class="src">${t('DGUV V68 §12 Abs. 7, §8 mit DA')}</p>`,
             okUp && okDown ? 'Weiter' : 'Nochmal versuchen', okUp && okDown ? () => go(step + 1) : () => { closeSheet(); if (!okUp) r.up = null; if (!okDown) r.down = null; r.case = !okUp ? 'up' : 'down'; r.checked = false; rerender(); });
         };
       } },

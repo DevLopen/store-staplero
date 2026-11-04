@@ -1,3 +1,4 @@
+import { Avatar, Tile } from "@/pages/admin/adminUi";
 import { useState, useEffect, useCallback } from "react";
 import { Search, Users, ChevronLeft, ChevronRight, RefreshCw, Filter, Mail, Phone, ShieldCheck, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -96,16 +97,20 @@ const AdminUsers = () => {
                             <table className="w-full">
                                 <thead>
                                 <tr className="border-b border-border bg-muted/30">
-                                    {["Name", "E-Mail", "Telefon", "Adresse", "Kurse", "Registriert", "Rolle"].map(h => (
+                                    {["Nr.", "Name", "E-Mail", "Telefon", "Adresse", "Kurse", "Registriert", "Rolle"].map(h => (
                                         <th key={h} className="text-left text-xs font-bold text-muted-foreground uppercase tracking-wide px-4 py-3">{h}</th>
                                     ))}
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {users.map(u => (
+                                {users.map((u, i) => (
                                     <tr key={u._id || u.id} className="border-b border-border last:border-0 hover:bg-muted/20">
+                                        <td className="px-4 py-3 adm-num">{(page - 1) * 20 + i + 1}</td>
                                         <td className="px-4 py-3">
-                                            <p className="font-semibold text-sm">{u.name || u.firstName + " " + u.lastName}</p>
+                                            <div className="flex items-center gap-2.5">
+                                                <Avatar name={u.name || `${u.firstName ?? ""} ${u.lastName ?? ""}`} />
+                                                <p className="font-semibold text-sm">{u.name || u.firstName + " " + u.lastName}</p>
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3">
                                             <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -128,7 +133,7 @@ const AdminUsers = () => {
                                                 : "–"}
                                         </td>
                                         <td className="px-4 py-3">
-                                                <span className="text-sm">
+                                                <span className="text-sm whitespace-nowrap">
                                                     {u.activeCourses ?? 0} aktiv / {u.purchasedCoursesCount ?? u.totalCourses ?? 0} gesamt
                                                 </span>
                                         </td>
@@ -137,13 +142,9 @@ const AdminUsers = () => {
                                         </td>
                                         <td className="px-4 py-3">
                                             {u.isAdmin ? (
-                                                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
-                                                        <ShieldCheck className="w-3 h-3" /> Admin
-                                                    </span>
+                                                <span className="adm-role admin"><ShieldCheck /> Admin</span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground font-medium">
-                                                        <User className="w-3 h-3" /> Benutzer
-                                                    </span>
+                                                <span className="adm-role"><User /> Benutzer</span>
                                             )}
                                         </td>
                                     </tr>

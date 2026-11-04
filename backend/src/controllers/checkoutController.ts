@@ -286,6 +286,11 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                     return res.status(400).json({ message: "Standort gehört nicht zu diesem Produkt" });
                 }
                 courseNet = productNetPrice(product);
+                // termin przypisany do innych szkoleń nie może być kupiony w tym produkcie (terminy bez przypisania działają jak dotąd)
+                const pids = location.dates[dateIdx]?.productIds;
+                if (pids?.length && !pids.includes(String(product._id))) {
+                    return res.status(400).json({ message: "Termin gehört nicht zu diesem Produkt" });
+                }
                 // Pakiet z dostępem online — kurs bierzemy z produktu, nie z żądania
                 if (product.includesOnlineAccess && product.linkedCourseId) {
                     linkedCourseId = product.linkedCourseId;

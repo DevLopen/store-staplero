@@ -3,10 +3,18 @@ import { IntroData, KeyPoint, LearnData, SummaryData, VideoData } from "../types
 import { Nav, usePlayer } from "../LessonPlayer";
 import type { StepProps } from ".";
 import { BLUEPRINT } from "../sims/people";
+import { forkliftSVG } from "../sims/forklift";
+import { CoverScene, S3 } from "../sims/lazy3d";
+import "../sims/tech.css";
+import { HairlineFigure } from "../hairline";
+import { StopChart } from "./stopchart";
+
+const cap = (s: string) => s.charAt(0).toLocaleUpperCase() + s.slice(1);
 
 /** Kernpunkte: numery tylko, gdy kolejność ma znaczenie (`ordered`), inaczej neutralny znacznik. */
-export function Points({ points, ordered }: { points: KeyPoint[]; ordered?: boolean }) {
+export function Points({ points, ordered, rows }: { points: KeyPoint[]; ordered?: boolean; rows?: boolean }) {
     const { x } = usePlayer();
+    if (rows) return <ul className="kp-rows">{points.map((p, i) => <li key={i}>{x(p.k) && <b>{x(p.k).replace(/:$/, "")}</b>}<span>{cap(x(p.v))}</span></li>)}</ul>;
     return (
         <ul className="kp">
             {points.map((p, i) => (
@@ -23,6 +31,7 @@ export function IntroStep({ data, last, finishLabel }: StepProps<IntroData>) {
     const { x, t } = usePlayer();
     return <>
         {data.image === "blueprint" ? <div className="hero-img" dangerouslySetInnerHTML={{ __html: BLUEPRINT }} />
+            : data.image === "forklift" ? <S3 cls="s3d-cover" fallback={<div className="cover" dangerouslySetInnerHTML={{ __html: forkliftSVG({ load: "pallet", draw: true }, "", "", 100).html }} />}><CoverScene label={x(data.title)} /></S3>
             : data.image && <img className="hero-img" src={data.image} alt="" />}
         <div style={{ display: "grid", gap: 10 }}>
             <h1 className="h1">{x(data.title)}</h1>
@@ -45,7 +54,10 @@ export function LearnStep({ data, last, finishLabel }: StepProps<LearnData>) {
             {data.compare?.length ? (
                 <div className="cmp">{data.compare.map((c, i) => <div key={i}><span className="k">{x(c.label)}</span><b>{x(c.title)}</b><p>{x(c.text)}</p></div>)}</div>
             ) : null}
-            <Points points={data.points} ordered={data.ordered} />
+            {data.figure && <HairlineFigure data={data.figure} />}
+            {data.chart && <StopChart data={data.chart} />}
+            {data.facts?.length ? <div className="hl-facts">{data.facts.map((f, i) => <div key={i}><b>{x(f.v)}</b><span>{x(f.k)}</span></div>)}</div> : null}
+            <Points points={data.points} ordered={data.ordered} rows={data.layout === "rows"} />
             {x(data.merke) && <div className="merke"><b>{t("merke")}</b>{x(data.merke)}</div>}
             {x(data.src) && <p className="src">{t("source")}: {x(data.src)}</p>}
         </div>

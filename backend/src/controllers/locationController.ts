@@ -21,6 +21,15 @@ export const getAllLocations = async (req: Request, res: Response) => {
     }
 };
 
+/** Panel admina: wszystkie miejsca, także nieaktywne (sklep dalej dostaje tylko aktywne z getAllLocations). */
+export const adminGetAllLocations = async (_req: Request, res: Response) => {
+    try {
+        res.json(await Location.find().sort({ createdAt: 1 }));
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 export const createLocation = async (req: Request, res: Response) => {
     try {
         // ✅ Validate and sanitize dates

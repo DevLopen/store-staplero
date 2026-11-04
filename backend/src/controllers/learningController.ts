@@ -4,6 +4,7 @@ import LearningCourse, { CourseContent, LANGS, Lang } from "../models/LearningCo
 import LessonProgress from "../models/LessonProgress";
 import { UserCourse } from "../models/UserCourse";
 import { AuthRequest } from "../types";
+import { myBanks } from "./questionBankController";
 import { emptyContent, findLesson, newId, outline, translationStatus, validateContent } from "../utils/learningContent";
 
 const ADMIN_EMAILS = ["info@staplero.com", "k.lopuch@satisfly.co"];
@@ -14,15 +15,47 @@ const validId = (id: string) => mongoose.Types.ObjectId.isValid(id);
 /** Active, not expired purchase of this course. Admins always have access. */
 async function accessOf(req: AuthRequest, courseId: string) {
     if (isAdmin(req)) return { ok: true as const, expiresAt: null };
-    const uc = await UserCourse.findOne({ userId: String(req.user!._id), courseId, status: "active" }).lean();
-    if (!uc || new Date(uc.expiresAt) < new Date()) return { ok: false as const };
+    const uc = await UserCourse.findOne({ userId: String(req.user!._id), courseId, status: { $in: ["active", "expired"] } }).sort({ expiresAt: -1 }).lean();
+    if (!uc) return { ok: false as const };
+    if (uc.status !== "active" && uc.status !== "expired") return { ok: false as const };
+    if (uc.status === "expired" || new Date(uc.expiresAt) < new Date()) return { ok: false as const, expiredAt: uc.expiresAt };
     return { ok: true as const, expiresAt: uc.expiresAt };
 }
+/** 403 z datą wygaśnięcia, żeby kursant zobaczył „Zugang abgelaufen am …” zamiast samego braku dostępu. */
+const denied = (res: Response, acc: { expiredAt?: Date }) =>
+    res.status(403).json({ message: acc.expiredAt ? "Zugang abgelaufen" : "Kein Zugriff auf diesen Kurs", ...(acc.expiredAt ? { expired: true, expiredAt: acc.expiredAt } : {}) });
 
 const progressMap = async (userId: string, courseId: string) => {
     const rows = await LessonProgress.find({ userId, courseId }).lean();
-    return Object.fromEntries(rows.map(r => [r.lessonId, { step: r.step, completed: r.completed }]));
+    return Object.fromEntries(rows.map(r => [r.lessonId, { step: r.step, completed: r.completed, ...(r.total ? { score: r.score, total: r.total, passed: !!r.passed } : {}) }]));
 };
+
+/** Test modułu = krok wyboru oznaczony `gate`. Rozdział jest zablokowany, dopóki któryś wcześniejszy test nie jest zaliczony. */
+const gateStep = (lesson: any) => lesson.steps.find((st: any) => st.type === "choice" && st.data?.gate);
+/** Dla widoku „Tests” kursanta: test modułu albo egzamin końcowy rozdziału (liczba pytań, próg), bez treści pytań. */
+function testInfo(ch: any) {
+    for (const l of ch?.lessons ?? []) {
+        const steps: any[] = l.steps ?? [];
+        const g = steps.findIndex(st => st.type === "choice" && st.data?.gate);
+        const e = steps.findIndex(st => st.type === "sim" && st.data?.sim === "final");
+        const k = g >= 0 ? g : e;
+        if (k < 0) continue;
+        const d = steps[k].data ?? {};
+        const pool = (d.items ?? []).length;
+        return { lessonId: l.id, kind: g >= 0 ? "gate" : "exam", step: k, count: Math.min(pool, Number(d.count) || (g >= 0 ? pool : 50)), passPercent: Number(d.passPercent ?? 80), ...(g < 0 ? { minutes: Number(d.minutes ?? 45) } : {}) };
+    }
+    return null;
+}
+function lockedChapters(content: CourseContent, progress: Record<string, { passed?: boolean }>) {
+    const locked = new Set<string>();
+    let open = true;
+    for (const ch of content.chapters) {
+        if (!open) locked.add(ch.id);
+        const gates = ch.lessons.filter(l => gateStep(l));
+        if (gates.some(l => !progress[l.id]?.passed)) open = false;
+    }
+    return locked;
+}
 
 /* ════════════════ learner ════════════════ */
 
@@ -31,11 +64,18 @@ export const getMyCourses = async (req: AuthRequest, res: Response) => {
     try {
         const userId = String(req.user!._id);
         const admin = isAdmin(req);
-        const access = admin ? [] : await UserCourse.find({ userId, status: "active" }).lean();
-        const ids = access.filter(a => new Date(a.expiresAt) >= new Date()).map(a => a.courseId).filter(validId);
+        // ?all=1 (panel „Meine Produkte”): także wygasłe zakupy, oznaczone `expired`, żeby kursant widział datę wygaśnięcia
+        const withExpired = req.query.all === "1";
+        const access = admin ? [] : await UserCourse.find({ userId, status: withExpired ? { $in: ["active", "expired"] } : "active" }).lean();
+        const now = new Date();
+        const latest = new Map<string, Date>();
+        // status "expired" ustawia nocne zadanie: taki zakup liczymy jako wygasły niezależnie od daty
+        for (const a of access) if (validId(a.courseId)) { const d = a.status === "expired" ? new Date(Math.min(+new Date(a.expiresAt), +now - 1)) : new Date(a.expiresAt); if (!latest.has(a.courseId) || d > latest.get(a.courseId)!) latest.set(a.courseId, d); }
+        const ids = [...latest].filter(([, d]) => withExpired || d >= now).map(([id]) => id);
         const courses = await LearningCourse.find(admin ? { published: { $exists: true } } : { _id: { $in: ids }, published: { $exists: true } }).lean();
         const progress = await LessonProgress.find({ userId, courseId: { $in: courses.map(c => String(c._id)) } }).lean();
-        res.json(courses.map(c => {
+        const banks = await myBanks(userId, admin, withExpired);
+        res.json([...courses.map(c => {
             const lessons = c.published!.chapters.flatMap(ch => ch.lessons);
             const done = progress.filter(p => p.courseId === String(c._id) && p.completed).length;
             const last = progress.filter(p => p.courseId === String(c._id)).sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt))[0];
@@ -43,9 +83,10 @@ export const getMyCourses = async (req: AuthRequest, res: Response) => {
                 id: String(c._id), slug: c.slug, coverUrl: c.coverUrl, title: c.published!.title,
                 lessonCount: lessons.length, lessonsDone: done,
                 lastLessonId: last?.lessonId ?? lessons[0]?.id ?? null, lastStep: last?.step ?? 0,
-                expiresAt: access.find(a => a.courseId === String(c._id))?.expiresAt ?? null,
+                expiresAt: latest.get(String(c._id)) ?? null,
+                ...((latest.get(String(c._id)) ?? now) < now ? { expired: true } : {}),
             };
-        }));
+        }), ...banks]);
     } catch (e) {
         console.error("[learning] getMyCourses", e);
         res.status(500).json({ message: "Kurse konnten nicht geladen werden" });
@@ -57,14 +98,17 @@ export const getCourse = async (req: AuthRequest, res: Response) => {
     const { courseId } = req.params;
     if (!validId(courseId)) return res.status(404).json({ message: "Kurs nicht gefunden" });
     const acc = await accessOf(req, courseId);
-    if (!acc.ok) return res.status(403).json({ message: "Kein Zugriff auf diesen Kurs" });
+    if (!acc.ok) return denied(res, acc);
     const c = await LearningCourse.findById(courseId).lean();
     const content = req.query.draft === "1" && isAdmin(req) ? c?.draft : c?.published;
     if (!c || !content) return res.status(404).json({ message: "Kurs nicht gefunden" });
+    const progress = await progressMap(String(req.user!._id), courseId);
+    const locked = isAdmin(req) ? new Set<string>() : lockedChapters(content, progress);
+    const o = outline(content);
     res.json({
         id: String(c._id), slug: c.slug, coverUrl: c.coverUrl, languages: c.languages,
-        ...outline(content), expiresAt: acc.expiresAt,
-        progress: await progressMap(String(req.user!._id), courseId),
+        ...o, chapters: o.chapters.map(ch => ({ ...ch, locked: locked.has(ch.id), gateLessonId: content.chapters.find(x => x.id === ch.id)?.lessons.find(l => gateStep(l))?.id ?? null, test: testInfo(content.chapters.find(x => x.id === ch.id)) })),
+        expiresAt: acc.expiresAt, progress,
     });
 };
 
@@ -73,19 +117,56 @@ export const getLesson = async (req: AuthRequest, res: Response) => {
     const { courseId, lessonId } = req.params;
     if (!validId(courseId)) return res.status(404).json({ message: "Thema nicht gefunden" });
     const acc = await accessOf(req, courseId);
-    if (!acc.ok) return res.status(403).json({ message: "Kein Zugriff auf diesen Kurs" });
+    if (!acc.ok) return denied(res, acc);
     const c = await LearningCourse.findById(courseId).lean();
     const content = req.query.draft === "1" && isAdmin(req) ? c?.draft : c?.published;
     const hit = content && findLesson(content, lessonId);
     if (!c || !content || !hit) return res.status(404).json({ message: "Thema nicht gefunden" });
     const order = content.chapters.flatMap(ch => ch.lessons.map(l => l.id));
     const i = order.indexOf(lessonId);
+    if (!isAdmin(req)) {
+        const locked = lockedChapters(content, await progressMap(String(req.user!._id), courseId));
+        if (locked.has(hit.chapter.id)) return res.status(423).json({ message: "Modul gesperrt", locked: true, chapterId: hit.chapter.id });
+    }
     const p = await LessonProgress.findOne({ userId: String(req.user!._id), courseId, lessonId }).lean();
     res.json({
         courseId, courseTitle: content.title, chapter: { id: hit.chapter.id, title: hit.chapter.title },
         lesson: hit.lesson, prevLessonId: order[i - 1] ?? null, nextLessonId: order[i + 1] ?? null,
-        progress: p ? { step: p.step, completed: p.completed } : { step: 0, completed: false },
+        progress: p ? { step: p.step, completed: p.completed, passed: !!p.passed, score: p.score, total: p.total } : { step: 0, completed: false },
     });
+};
+
+// PUT /api/learning/courses/:courseId/lessons/:lessonId/check { answers: number[] } — serwer sam ocenia test modułu
+export const submitCheck = async (req: AuthRequest, res: Response) => {
+    const { courseId, lessonId } = req.params;
+    if (!validId(courseId)) return res.status(404).json({ message: "Kurs nicht gefunden" });
+    const acc = await accessOf(req, courseId);
+    if (!acc.ok) return denied(res, acc);
+    const c = await LearningCourse.findById(courseId).lean();
+    const hit = c?.published && findLesson(c.published, lessonId);
+    const gate = hit && gateStep(hit.lesson);
+    if (!gate) return res.status(404).json({ message: "Test nicht gefunden" });
+    const items = (gate.data as any).items as { correct: number | number[] }[];
+    const answers: unknown[] = Array.isArray(req.body?.answers) ? req.body.answers : [];
+    // test losuje `count` pytań z puli: pytania niewylosowane mają odpowiedź -1 i nie są oceniane
+    const total = Math.min(items.length, Number((gate.data as any).count) || items.length);
+    const asked = items.map((_, k) => k).filter(k => Number.isInteger(answers[k]) && (answers[k] as number) >= 0);
+    if (asked.length !== total) return res.status(400).json({ message: "Ungültige Antworten" });
+    // jeden wybór = indeks, wielokrotny wybór = maska bitowa zaznaczonych odpowiedzi, odpowiedź liczbowa = wpisana wartość
+    const right = (c: number | number[], a: number) => a === (Array.isArray(c) ? c.reduce((m, j) => m | (1 << j), 0) : c);
+    const score = asked.reduce((n, k) => n + (right(items[k].correct, answers[k] as number) ? 1 : 0), 0);
+    const need = Math.ceil(total * Number((gate.data as any).passPercent ?? 80) / 100);
+    const passed = score >= need;
+    const userId = String(req.user!._id);
+    const prev = await LessonProgress.findOne({ userId, courseId, lessonId });
+    const doc = prev ?? new LessonProgress({ userId, courseId, lessonId, step: 0 });
+    doc.attempts = (doc.attempts ?? 0) + 1;
+    doc.total = total;
+    doc.score = Math.max(doc.score ?? 0, score);
+    if (passed && !doc.passed) doc.passed = true;
+    if (passed && !doc.completed) { doc.completed = true; doc.completedAt = new Date(); }
+    await doc.save();
+    res.json({ score, total, need, passed, everPassed: !!doc.passed });
 };
 
 // PUT /api/learning/courses/:courseId/lessons/:lessonId/progress { step, completed }
@@ -93,7 +174,7 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
     const { courseId, lessonId } = req.params;
     if (!validId(courseId)) return res.status(404).json({ message: "Kurs nicht gefunden" });
     const acc = await accessOf(req, courseId);
-    if (!acc.ok) return res.status(403).json({ message: "Kein Zugriff auf diesen Kurs" });
+    if (!acc.ok) return denied(res, acc);
     const step = Math.max(0, Math.floor(Number(req.body?.step) || 0));
     const completed = req.body?.completed === true;
     const userId = String(req.user!._id);
@@ -201,7 +282,15 @@ export const adminPublish = async (req: AuthRequest, res: Response) => {
     const errs = validateContent(c.draft);
     if (errs.length) return res.status(400).json({ message: "Inhalt ungültig", errors: errs.slice(0, 20) });
     const version = (c.published?.version ?? 0) + 1;
-    c.published = { ...JSON.parse(JSON.stringify(c.draft)), version, publishedAt: new Date() };
+    const pub = JSON.parse(JSON.stringify(c.draft));
+    // pytania wyłączone w teście modułu (panel „Modul-Test”) zostają w szkicu, ale nie trafiają do wersji dla kursantów
+    for (const ch of pub.chapters ?? []) for (const l of ch.lessons ?? []) for (const st of l.steps ?? []) {
+        if (st.type === "choice" && st.data?.gate && Array.isArray(st.data.items)) {
+            st.data.items = st.data.items.filter((it: any) => !it.disabled);
+            if (st.data.count) st.data.count = Math.min(st.data.count, st.data.items.length);
+        }
+    }
+    c.published = { ...pub, version, publishedAt: new Date() };
     c.markModified("published");
     await c.save();
     res.json(await adminRow(c.toObject()));

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import AdminShell, { AdminSection } from "@/pages/admin/AdminShell";
+import AdminPlaces from "@/pages/admin/AdminPlaces";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm, confirmDelete } from "@/components/ConfirmDialog";
-import Navbar from "@/components/Navbar";
 import { mockCourse, Chapter, Topic, Course, Quiz, QuizQuestion } from "@/data/courseData";
 import { mockLocations, Location, CourseDate } from "@/data/practicalCourseData";
 import { mockOrders, Order, getOrderStatusLabel, getOrderStatusColor } from "@/data/orderData";
@@ -66,6 +67,13 @@ const Admin = () => {
   const confirm = useConfirm();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  // sekcja panelu z adresu (#orders, #products, …), żeby odświeżenie i link z innej strony trafiały w to samo miejsce
+  const routerLocation = useLocation();
+  const SECTIONS: AdminSection[] = ["products", "courses", "content", "tests", "locations", "orders", "users", "certificates", "participants", "stats"];
+  const sectionOf = (h: string): AdminSection => (SECTIONS.includes(h.slice(1) as AdminSection) ? (h.slice(1) as AdminSection) : "orders");
+  const [section, setSection] = useState<AdminSection>(() => sectionOf(routerLocation.hash));
+  useEffect(() => { setSection(sectionOf(routerLocation.hash)); }, [routerLocation.hash]); // eslint-disable-line react-hooks/exhaustive-deps
+  const selectSection = (s: AdminSection) => { setSection(s); navigate(`/admin#${s}`, { replace: true }); };
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -768,22 +776,9 @@ const Admin = () => {
   if (!isLoggedIn || !isAdmin) return null;
 
   return (
-      <div className="min-h-screen bg-background">
-        <Navbar isLoggedIn={isLoggedIn} isAdmin={isAdmin} onLogout={handleLogout} />
-
-        <main className="pt-24 pb-12">
-          <div className="container mx-auto px-4">
-            <div className="mb-8">
-              <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-                Admin-Bereich
-              </h1>
-              <p className="text-muted-foreground">
-                Verwalten Sie Kurse, Kapitel und Themen.
-              </p>
-            </div>
-
-            <Tabs defaultValue="courses" className="space-y-6">
-              <TabsList className="grid w-full max-w-5xl grid-cols-10">
+      <AdminShell active={section} onSelect={selectSection} onLogout={handleLogout}>
+            <Tabs value={section} onValueChange={v => selectSection(v as AdminSection)} className="space-y-6">
+              <TabsList className="hidden">
                 <TabsTrigger value="products" className="flex items-center gap-2">
                   <Package className="w-4 h-4" />
                   <span className="hidden sm:inline">Produkte</span>
@@ -1303,227 +1298,8 @@ const Admin = () => {
               </TabsContent>
 
               {/* Locations Tab */}
-              <TabsContent value="locations" className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="font-display text-xl font-semibold text-foreground">
-                      Standorte & Termine
-                    </h2>
-                    <p className="text-sm text-muted-foreground">Verwalten Sie Standorte für praktische Kurse</p>
-                  </div>
-                  <Button onClick={() => {
-                    setEditingLocation(null);
-                    setLocationForm({ city: "", address: "", price: "299", isActive: true });
-                    setIsLocationDialogOpen(true);
-                  }}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Neuer Standort
-                  </Button>
-                </div>
-
-                <div className="space-y-4">
-                  {locations.map((location) => (
-                      <Card key={location.id}>
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${location.isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                                <MapPin className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <CardTitle className="text-lg">{location.city}</CardTitle>
-                                  {!location.isActive && (
-                                      <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded">Inaktiv</span>
-                                  )}
-                                </div>
-                                <CardDescription>{location.address}</CardDescription>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <span className="font-bold text-primary">{location.price} €</span>
-                              <Button variant="ghost" size="icon" onClick={() => {
-                                setEditingLocation(location);
-                                setLocationForm({
-                                  city: location.city,
-                                  address: location.address,
-                                  price: location.price.toString(),
-                                  isActive: location.isActive
-                                });
-                                setIsLocationDialogOpen(true);
-                              }}>
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={async () => {
-                                    if (!(await confirmDelete(confirm, "Standort", `Der Standort „${location.city}“ wird mit allen Terminen gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`))) return;
-                                    try {
-                                      const token = localStorage.getItem("token");
-                                      await fetch(`${API_URL}/locations/${location.id}`, {
-                                        method: 'DELETE',
-                                        headers: { 'Authorization': `Bearer ${token}` }
-                                      });
-
-                                      setLocations(prev => prev.filter(l => l.id !== location.id));
-                                      toast({ title: "Erfolg", description: "Standort wurde gelöscht." });
-                                    } catch (err) {
-                                      toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
-                                    }
-                                  }}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-                              <span>{location.dates.length} Termine</span>
-                            </div>
-                            {location.dates.map((date) => (
-                                <div
-                                    key={date.id}
-                                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                                    <div>
-                                      <p className="font-medium text-foreground">
-                                        {date.startDate === date.endDate
-                                            ? new Date(date.startDate).toLocaleDateString('de-DE', {
-                                              weekday: 'long',
-                                              year: 'numeric',
-                                              month: 'long',
-                                              day: 'numeric'
-                                            })
-                                            : `${new Date(date.startDate).toLocaleDateString('de-DE', {
-                                              day: 'numeric',
-                                              month: 'numeric',
-                                              year: 'numeric'
-                                            })} - ${new Date(date.endDate).toLocaleDateString('de-DE', {
-                                              day: 'numeric',
-                                              month: 'numeric',
-                                              year: 'numeric'
-                                            })}`
-                                        }
-                                      </p>
-                                      <p className="text-sm text-muted-foreground">
-                                        {date.time} • {date.availableSpots} Plätze verfügbar
-                                        {date.languages?.length ? ` • ${date.languages.map(l => l.toUpperCase()).join(", ")}` : " • Sprache fehlt"}
-                                        {date.availableSpots === 0 && (
-                                            <span className="ml-2 text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded">
-              VOLL
-            </span>
-                                        )}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {/* ✅ NOWY PRZYCISK DO WYŚWIETLANIA LISTY */}
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => openParticipantsList(location.id, location.city, date)}
-                                        title="Teilnehmerliste anzeigen"
-                                    >
-                                      <List className="w-4 h-4" />
-                                    </Button>
-
-                                    <Button variant="ghost" size="icon" onClick={() => {
-                                      setSelectedLocationId(location.id);
-                                      setEditingDate(date);
-                                      setDateForm({
-                                        startDate: date.startDate,
-                                        endDate: date.endDate,
-                                        time: date.time,
-                                        availableSpots: date.availableSpots.toString(),
-                                        languages: date.languages || []
-                                      });
-                                      setIsDateDialogOpen(true);
-                                    }}>
-                                      <Edit className="w-4 h-4" />
-                                    </Button>
-
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="text-destructive hover:text-destructive"
-                                        onClick={async () => {
-                                          if (!(await confirmDelete(confirm, "Termin", `Termin ${new Date(date.startDate).toLocaleDateString("de-DE")} in ${location.city} wirklich löschen?`))) return;
-                                          try {
-                                            const token = localStorage.getItem("token");
-                                            const updatedDates = location.dates.filter(d => d.id !== date.id);
-
-                                            await fetch(`${API_URL}/locations/${location.id}`, {
-                                              method: 'PUT',
-                                              headers: {
-                                                'Content-Type': 'application/json',
-                                                'Authorization': `Bearer ${token}`
-                                              },
-                                              body: JSON.stringify({ ...location, dates: updatedDates })
-                                            });
-
-                                            setLocations(prev => prev.map(l =>
-                                                l.id === location.id
-                                                    ? { ...l, dates: updatedDates }
-                                                    : l
-                                            ));
-                                            toast({ title: "Erfolg", description: "Termin wurde gelöscht." });
-                                          } catch (err) {
-                                            toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
-                                          }
-                                        }}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                            ))}
-                            <Button
-                                variant="outline"
-                                className="w-full mt-2"
-                                onClick={() => {
-                                  setSelectedLocationId(location.id);
-                                  setEditingDate(null);
-                                  setDateForm({
-                                    startDate: "",
-                                    endDate: "",
-                                    time: "08:00 - 16:00",
-                                    availableSpots: "10",
-                                    languages: ["de"]
-                                  });
-                                  setIsDateDialogOpen(true);
-                                }}
-                            >
-                              <Plus className="w-4 h-4 mr-2" />
-                              Termin hinzufügen
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                  ))}
-
-                  {locations.length === 0 && (
-                      <Card>
-                        <CardContent className="py-12 text-center">
-                          <MapPin className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                          <p className="text-muted-foreground">Noch keine Standorte vorhanden.</p>
-                          <Button className="mt-4" onClick={() => {
-                            setEditingLocation(null);
-                            setLocationForm({ city: "", address: "", price: "299", isActive: true });
-                            setIsLocationDialogOpen(true);
-                          }}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Ersten Standort erstellen
-                          </Button>
-                        </CardContent>
-                      </Card>
-                  )}
-                </div>
+              <TabsContent value="locations">
+                <AdminPlaces onChanged={loadLocations} />
               </TabsContent>
 
               {/* Orders Tab */}
@@ -1561,8 +1337,6 @@ const Admin = () => {
                 </Card>
               </TabsContent>
             </Tabs>
-          </div>
-        </main>
 
         {/* Quiz Dialog */}
         <Dialog open={isQuizDialogOpen} onOpenChange={setIsQuizDialogOpen}>
@@ -2050,7 +1824,7 @@ const Admin = () => {
             dateInfo={participantsDialog.dateInfo}
             onChanged={loadLocations}
         />
-      </div>
+      </AdminShell>
   );
 };
 

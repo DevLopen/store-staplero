@@ -3,6 +3,10 @@ import Product from "../models/Product";
 import Location from "../models/Location";
 import { effectiveLanguages, placeName } from "../utils/courseLocation";
 
+/** Termin przypisany do szkoleń widać tylko przy nich; termin bez przypisania (stare dane) — przy każdym produkcie miejsca. */
+const dateForProduct = (d: { productIds?: string[] }, productId: unknown) =>
+  !d.productIds?.length || d.productIds.includes(String(productId));
+
 const LANGUAGE_ORDER = ["de", "en", "pl", "uk", "ru", "ro"];
 const sortLanguages = (codes: string[]) =>
   [...new Set(codes)].sort((a, b) => LANGUAGE_ORDER.indexOf(a) - LANGUAGE_ORDER.indexOf(b));
@@ -65,7 +69,7 @@ export const getPublicProducts = async (req: Request, res: Response) => {
       const dates = productLocations
         .flatMap((l) =>
           l.dates
-            .filter((d) => d.availableSpots > 0 && d.startDate >= today)
+            .filter((d) => d.availableSpots > 0 && d.startDate >= today && dateForProduct(d, p._id))
             .map((d) => ({
               startDate: d.startDate,
               city: placeName(l.address, l.city),
@@ -101,7 +105,7 @@ export const getPublicProductBySlug = async (req: Request, res: Response) => {
       locations = raw.map((l) => ({
         ...l,
         place: placeName(l.address, l.city),
-        dates: l.dates.map((d) => ({ ...d, languages: sortLanguages(effectiveLanguages(d.languages, l.city)) })),
+        dates: l.dates.filter((d) => dateForProduct(d, product._id)).map((d) => ({ ...d, languages: sortLanguages(effectiveLanguages(d.languages, l.city)) })),
       }));
     }
 
@@ -170,6 +174,7 @@ export const adminCreateProduct = async (req: Request, res: Response) => {
       locationIds: body.locationIds ?? [],
       includesOnlineAccess: !!body.includesOnlineAccess,
       linkedCourseId: body.linkedCourseId,
+      durationDays: body.durationDays || undefined,
     });
 
     res.status(201).json(product);
@@ -194,7 +199,7 @@ export const adminUpdateProduct = async (req: Request, res: Response) => {
       "type", "title", "shortDescription", "description", "benefits",
       "thumbnailUrl", "gallery", "price", "promoPrice", "isPromoActive",
       "priceUnit", "status", "featured", "order", "courseId",
-      "locationIds", "includesOnlineAccess", "linkedCourseId",
+      "locationIds", "includesOnlineAccess", "linkedCourseId", "durationDays",
     ] as const;
 
     fields.forEach((field) => {

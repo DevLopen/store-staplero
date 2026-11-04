@@ -47,6 +47,8 @@ export interface ProductDoc extends Document {
   locationIds: string[];
   includesOnlineAccess: boolean;
   linkedCourseId?: string;
+  /** Długość szkolenia w dniach (opcjonalnie): panel podpowiada z niej datę końca terminu. */
+  durationDays?: number;
 
   createdAt: Date;
   updatedAt: Date;
@@ -101,6 +103,7 @@ const ProductSchema = new Schema<ProductDoc>(
     locationIds: { type: [String], default: [] },
     includesOnlineAccess: { type: Boolean, default: false },
     linkedCourseId: String,
+    durationDays: { type: Number, min: 1, max: 30 },
   },
   { timestamps: true }
 );

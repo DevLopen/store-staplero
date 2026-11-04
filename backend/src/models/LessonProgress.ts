@@ -8,6 +8,11 @@ export interface LessonProgressDoc extends Document {
     step: number;
     completed: boolean;
     completedAt?: Date;
+    /** Test modułu: najlepszy wynik, liczba pytań, zaliczony (odblokowuje kolejny moduł), liczba podejść. */
+    score?: number;
+    total?: number;
+    passed?: boolean;
+    attempts?: number;
     updatedAt: Date;
 }
 
@@ -19,6 +24,10 @@ const LessonProgressSchema = new Schema<LessonProgressDoc>(
         step: { type: Number, default: 0, min: 0 },
         completed: { type: Boolean, default: false },
         completedAt: Date,
+        score: Number,
+        total: Number,
+        passed: { type: Boolean, default: false },
+        attempts: { type: Number, default: 0 },
     },
     { timestamps: true }
 );

@@ -1,0 +1,34 @@
+/* Karta z rysunkiem Hairline: jasna, cienkie linie, jedyny akcent = kreska w kolorze marki */
+.lp .hl-card { margin: 0; position: relative; border: 1px solid var(--g200, #e5e7eb); border-radius: 12px; background: #fff; overflow: hidden; }
+.lp .hl-stage { --hairline-hi: #d97706; --hairline-stroke: 1; width: 100%; cursor: crosshair; margin: -7% 0 -5%; }
+.lp .hl-read { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--g200, #e5e7eb); border-top: 1px solid var(--g200, #e5e7eb); min-height: 62px; }
+.lp .hl-read > div { background: #fff; padding: 8px 14px; display: grid; gap: 2px; }
+.lp .hl-read span { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--g400); }
+.lp .hl-read b { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; font-size: 26px; line-height: 1.05; color: var(--g900); font-variant-numeric: tabular-nums; }
+.lp .hl-read b.w { font-family: inherit; font-size: 15px; line-height: 1.3; padding-top: 3px; }
+.lp .hl-read p { grid-column: 1 / -1; background: #fff; margin: 0; padding: 10px 14px; font-size: 14px; color: var(--g600); display: flex; align-items: center; }
+.lp .hl-ctl { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--g200, #e5e7eb); }
+.lp .hl-seg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.lp .hl-seg span { font-size: 12.5px; color: var(--g600); margin-right: 2px; }
+.lp .hl-seg button, .lp .hl-play { min-height: 36px; padding: 0 12px; border: 1px solid var(--g200, #e5e7eb); border-radius: 8px; background: #fff; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--g700); cursor: pointer; font-variant-numeric: tabular-nums; }
+.lp .hl-seg button.on { border-color: var(--amber500); background: var(--amber50); color: var(--amber700); }
+.lp .hl-play { color: var(--g900); }
+.lp .hl-legend { list-style: none; margin: 0; padding: 10px 14px; border-top: 1px solid var(--g200, #e5e7eb); display: grid; gap: 6px; font-size: 13px; color: var(--g600); }
+.lp .hl-legend li { display: flex; align-items: center; gap: 10px; line-height: 1.3; }
+.lp .hl-mk { flex: none; }
+.lp .hl-mk path { fill: #fff; stroke: #a4a4ac; stroke-width: 1; stroke-linejoin: round; }
+.lp .hl-mk .h { stroke: #d97706; stroke-width: 1.4; }
+.lp .hl-mk .d { fill: #a4a4ac; } .lp .hl-mk .dl { fill: #d4d4da; }
+.lp .hl-note { padding: 0 14px 12px; font-size: 12px; color: var(--g400); }
+
+/* fakty liczbowe nad listą */
+.lp .hl-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.lp .hl-facts > div { background: var(--g50); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: 1fr; gap: 4px; align-content: start; }
+.lp .hl-facts b { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 600; font-size: 32px; line-height: 1; color: var(--g900); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lp .hl-facts span { font-size: 13px; line-height: 1.35; color: var(--g600); }
+
+/* punkty jako wiersze: pojęcie, pod nim wyjaśnienie, cienkie linie zamiast szarych pudełek */
+.lp .kp-rows { list-style: none; margin: 0; padding: 0; display: grid; }
+.lp .kp-rows li { padding: 10px 0; border-top: 1px solid var(--g200, #e5e7eb); display: grid; gap: 2px; font-size: 14.5px; line-height: 1.45; color: var(--g700); }
+.lp .kp-rows li:last-child { border-bottom: 1px solid var(--g200, #e5e7eb); }
+.lp .kp-rows b { color: var(--g900); font-size: 15px; }

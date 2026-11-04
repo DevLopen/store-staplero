@@ -1,3 +1,4 @@
+import { Avatar, Tile } from "@/pages/admin/adminUi";
 import { useState, useEffect, useCallback } from "react";
 import { Search, Eye, ShoppingBag, ChevronLeft, ChevronRight, RefreshCw, Filter, Users, CheckCircle, AlertTriangle, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -201,13 +202,15 @@ const AdminOrders = () => {
                                             #{o.orderNumber || o.id}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <p className="text-sm font-medium">{o.userName || o.user?.name}</p>
+                                            <div className="flex items-start gap-2.5"><Avatar name={o.userName || o.user?.name || "?"} />
+                                            <div><p className="text-sm font-medium">{o.userName || o.user?.name}</p>
                                             <p className="text-xs text-muted-foreground">{o.userEmail || o.user?.email}</p>
                                             {o.customerInfo?.address && (
                                                 <p className="text-xs text-muted-foreground">
                                                     {o.customerInfo.address}, {o.customerInfo.postalCode} {o.customerInfo.city}
                                                 </p>
                                             )}
+                                        </div></div>
                                         </td>
                                         <td className="px-4 py-3 text-sm text-muted-foreground">
                                             {fmtDate(o.createdAt)}

@@ -14,6 +14,10 @@ export interface LearnData {
     merke?: LText; src?: LText;
     formula?: LText[];                                      // np. Lastmoment = Gewicht × Abstand
     compare?: { label: LText; title: LText; text: LText }[];
+    figure?: import("./hairline").FigureData;              // interaktywny rysunek Hairline nad punktami
+    chart?: import("./steps/stopchart").StopChartData;    // wykres drogi zatrzymania (reakcja + hamowanie)
+    facts?: { v: LText; k: LText }[];                       // duże liczby: wartość + krótki opis
+    layout?: "rows";                                        // punkty jako wiersze pojęcie / wyjaśnienie
 }
 export interface VideoData { title: LText; url?: string; poster?: string; brief?: LText; length?: LText }
 export interface QuestionData {
@@ -22,8 +26,9 @@ export interface QuestionData {
     options: LText[]; correct: number;
     resultTitle?: { right: LText; wrong: LText }; quote?: LText; body: LText; src?: LText; button?: LText;
 }
-export interface ChoiceItem { q: LText; options: LText[]; correct: number; why: LText }
-export interface ChoiceData { title: LText; lead?: LText; items: ChoiceItem[]; allRight: LText; someWrong: LText }
+/** `correct`: indeks odpowiedzi, tablica indeksów (wielokrotny wybór) albo wartość liczbowa, gdy jest `unit` (odpowiedź do wpisania). */
+export interface ChoiceItem { q: LText; options: LText[]; correct: number | number[]; why: LText; img?: string; unit?: string; src?: string }
+export interface ChoiceData { title: LText; lead?: LText; items: ChoiceItem[]; allRight: LText; someWrong: LText; gate?: boolean; passPercent?: number; count?: number }
 export interface SortItem { t: LText; a: number; why: LText }
 export interface SortData { title: LText; lead?: LText; labels: LText[]; items: SortItem[]; allRight: LText; someWrong: LText }
 export interface GapData {
@@ -40,7 +45,8 @@ export interface CaseCard {
 }
 export interface PersonLook { skin: string; hair: string; top: string; vest?: boolean; beard?: boolean; long?: boolean }
 export interface CasesData { title: LText; text: LText; note?: LText; cases: CaseCard[] }
-export type SimKind = "turn" | "turn-peds" | "lever" | "capacity" | "position" | "road" | "ramp" | "park" | "check" | "plan" | "exam" | "profile" | "licence";
+export type SimKind = "turn" | "turn-peds" | "lever" | "capacity" | "position" | "road" | "ramp" | "park" | "check" | "plan" | "exam" | "profile" | "licence"
+    | "anatomy" | "mast" | "types" | "identify" | "attach" | "battery" | "sequence" | "scene" | "diagram" | "cog" | "triangle" | "curve" | "abstellen" | "people" | "daily" | "plakette" | "pickup" | "rack" | "tow" | "row" | "stats" | "final";
 export interface SimData { sim: SimKind; title: LText; [key: string]: unknown }
 export interface HotspotData { title: LText; image: string; points: { x: number; y: number; label: LText; finding: LText; bad?: boolean }[] }
 export interface SelfData { title: LText; lead: LText; goals: { code: string; text: LText; short: LText }[] }

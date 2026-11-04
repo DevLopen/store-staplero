@@ -1,9 +1,10 @@
+import { Avatar, Tile } from "@/pages/admin/adminUi";
 import { useState, useEffect, useCallback } from "react";
 import {
     Users, Search, Plus, CheckCircle, Mail, Loader2, Award,
     ChevronLeft, ChevronRight, RefreshCw, UserPlus, X,
     MapPin, Calendar, Filter, Download, AlertCircle, Pencil, Camera
-} from "lucide-react";
+, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import AddParticipantModal from "@/components/admin/AddParticipantModal";
@@ -286,14 +287,14 @@ const AdminParticipants = () => {
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                    { label: "Gesamt", value: total, color: "text-foreground" },
-                    { label: "Bestätigt", value: stats.confirmed, color: "text-blue-500" },
-                    { label: "Abgeschlossen", value: stats.completed, color: "text-green-500" },
-                    { label: "Storniert", value: stats.cancelled, color: "text-red-500" },
+                    { label: "Gesamt", value: total, color: "teal" as const, icon: <Users /> },
+                    { label: "Bestätigt", value: stats.confirmed, color: "blue" as const, icon: <CheckCircle2 /> },
+                    { label: "Abgeschlossen", value: stats.completed, color: "green" as const, icon: <Award /> },
+                    { label: "Storniert", value: stats.cancelled, color: "red" as const, icon: <XCircle /> },
                 ].map(s => (
                     <div key={s.label} className="bg-card border border-border rounded-xl p-4">
-                        <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
-                        <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                        <div className="flex items-center gap-2 mb-2"><Tile color={s.color} size={26}>{s.icon}</Tile><p className="text-xs text-muted-foreground">{s.label}</p></div>
+                        <p className="text-2xl font-bold text-foreground">{s.value}</p>
                     </div>
                 ))}
             </div>
@@ -350,11 +351,7 @@ const AdminParticipants = () => {
                                     {/* Teilnehmer */}
                                     <td className="px-4 py-3">
                                         <div className="flex items-start gap-2.5">
-                                        <div className="w-9 h-11 shrink-0 rounded overflow-hidden bg-muted border border-border flex items-center justify-center" title={p.photoUrl ? "Foto vorhanden" : "Kein Foto"}>
-                                            {p.photoUrl
-                                                ? <img src={p.photoUrl} alt="" className="w-full h-full object-cover" />
-                                                : <Camera className="w-4 h-4 text-muted-foreground/40" />}
-                                        </div>
+                                        <span title={p.photoUrl ? "Foto vorhanden" : "Kein Foto"}><Avatar name={p.userName} src={p.photoUrl} size={36} /></span>
                                         <div>
                                             <p className="font-semibold text-sm">{p.userName}</p>
                                             <p className="text-xs text-muted-foreground">{p.userEmail}</p>

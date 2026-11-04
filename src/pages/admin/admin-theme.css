@@ -1,0 +1,247 @@
+/* Nowy wygląd panelu admina (zaakceptowany styl: Apple/macOS, makieta public/demo/admin-makieta.html).
+   Funkcje i komponenty zostają te same; tu zmienia się tylko wygląd. Zakres: body.adm-theme (także okna dialogowe w portalach). */
+body.adm-theme {
+  /* tokeny shadcn w nowym stylu */
+  --background: 240 9% 95.5%;
+  --foreground: 240 3% 11.5%;
+  --card: 0 0% 100%;
+  --popover: 0 0% 100%;
+  --primary: 25 95% 53%;
+  --primary-foreground: 0 0% 100%;
+  --on-primary: 0 0% 100%;
+  --secondary: 240 6% 94%;
+  --muted: 240 6% 95%;
+  --muted-foreground: 240 2% 44%;
+  --border: 240 6% 90%;
+  --input: 240 5% 86%;
+  --ring: 25 95% 53%;
+  --radius: 12px;
+  --adm-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
+  --adm-e1: 0 0 0 .5px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04), 0 4px 12px -2px rgba(0,0,0,.05);
+  --adm-e2: 0 0 0 .5px rgba(0,0,0,.06), 0 2px 4px rgba(0,0,0,.04), 0 12px 32px -6px rgba(0,0,0,.12);
+  --adm-e3: 0 0 0 .5px rgba(0,0,0,.08), 0 8px 16px rgba(0,0,0,.06), 0 32px 80px -12px rgba(0,0,0,.25);
+  --adm-spring: cubic-bezier(.32,.72,0,1);
+  font-family: var(--adm-font);
+  letter-spacing: -.15px;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(900px 520px at 12% -8%, rgba(249,115,22,.14), transparent 60%),
+    radial-gradient(800px 600px at 92% 4%, rgba(10,132,255,.09), transparent 60%),
+    radial-gradient(1000px 700px at 50% 110%, rgba(94,92,230,.06), transparent 60%),
+    #f2f2f5;
+  background-attachment: fixed;
+}
+body.adm-theme .font-display { font-family: var(--adm-font) !important; text-transform: none !important; letter-spacing: -.4px !important; font-weight: 600 !important; }
+
+/* ── otoczka ── */
+.adm { display: grid; grid-template-columns: 262px minmax(0, 1fr); min-height: 100vh; color: hsl(var(--foreground)); }
+.adm .ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.adm-glass {
+  background: rgba(255,255,255,.62); backdrop-filter: saturate(190%) blur(28px); -webkit-backdrop-filter: saturate(190%) blur(28px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 0 0 .5px rgba(255,255,255,.5), 0 0 0 .5px rgba(0,0,0,.08), 0 10px 40px -10px rgba(0,0,0,.18);
+}
+.adm-side { position: sticky; top: 12px; height: calc(100vh - 24px); margin: 12px 0 12px 12px; border-radius: 22px; padding: 14px 10px 10px; display: flex; flex-direction: column; overflow-y: auto; z-index: 40; }
+.adm-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 12px; text-decoration: none; color: inherit; }
+.adm-brand-ic { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 19px; line-height: 1; text-shadow: 0 1px 1px rgba(0,0,0,.25);
+  background: linear-gradient(160deg, #ffb066 0%, #f97316 45%, #c2410c 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 4px rgba(0,0,0,.15), 0 2px 6px rgba(194,65,12,.35); }
+.adm-brand b { display: block; font-size: 15px; letter-spacing: -.3px; }
+.adm-brand div span { font-size: 11.5px; color: #6e6e73; }
+.adm-grp { display: grid; gap: 1px; }
+.adm-grp-t { font-size: 11px; font-weight: 600; color: #8e8e93; padding: 14px 10px 5px; }
+.adm-grp:last-of-type { margin-top: 10px; }
+.adm-nav { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 8px; border: 0; background: none; border-radius: 10px; color: #3a3a3c; font-size: 13.5px; text-align: left; width: 100%; text-decoration: none; cursor: pointer; transition: background .15s; }
+.adm-nav:hover { background: rgba(255,255,255,.6); }
+.adm-nav[aria-current="page"] { background: #fff; color: #1d1d1f; font-weight: 600; box-shadow: 0 0 0 .5px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.08); }
+.adm-tile { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; flex: none; color: #fff;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 72%, #fff) 0%, var(--c) 55%, color-mix(in srgb, var(--c) 82%, #000) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), inset 0 -1px 2px rgba(0,0,0,.12), 0 1px 2px color-mix(in srgb, var(--c) 45%, transparent); }
+.adm-tile .ic { width: 14px; height: 14px; stroke-width: 2.1; filter: drop-shadow(0 1px 0 rgba(0,0,0,.18)); }
+.t-orange { --c: #f97316; } .t-blue { --c: #0a84ff; } .t-green { --c: #30b158; } .t-amber { --c: #ff9f0a; } .t-red { --c: #ff453a; } .t-indigo { --c: #5e5ce6; } .t-teal { --c: #30b0c7; } .t-graphite { --c: #8e8e93; } .t-brown { --c: #a2845e; }
+.adm-sp { flex: 1; min-height: 16px; }
+.adm-main { min-width: 0; padding: 12px 12px 0 16px; }
+.adm-top { position: sticky; top: 12px; z-index: 30; height: 52px; border-radius: 16px; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 18px; }
+.adm-title { font-size: 17px; font-weight: 600; letter-spacing: -.35px; margin: 0; }
+.adm-top-sp { flex: 1; }
+.adm-tb { width: 34px; height: 34px; border: 0; border-radius: 10px; background: transparent; display: grid; place-items: center; color: #3a3a3c; cursor: pointer; }
+.adm-tb:hover { background: rgba(118,118,128,.12); }
+.adm-burger { display: none; margin-left: -8px; }
+.adm-page { max-width: 1240px; margin: 0 auto; padding: 24px 8px 80px; }
+.adm-scrim { position: fixed; inset: 0; background: rgba(0,0,0,.12); z-index: 70; }
+
+/* ── elementy shadcn w nowym stylu ── */
+/* karty: bez ramki, warstwowy cień, blik u góry */
+body.adm-theme .rounded-lg.border.bg-card { border: 0 !important; border-radius: 18px !important; box-shadow: var(--adm-e1), inset 0 1px 0 rgba(255,255,255,.9) !important; }
+body.adm-theme .adm-page .grid > .rounded-lg.border.bg-card { transition: box-shadow .25s var(--adm-spring), transform .25s var(--adm-spring); }
+body.adm-theme .adm-page .grid > .rounded-lg.border.bg-card:hover { box-shadow: var(--adm-e2), inset 0 1px 0 #fff !important; }
+body.adm-theme h3.text-2xl, body.adm-theme .text-2xl.font-semibold { font-size: 19px !important; letter-spacing: -.35px; }
+
+/* przyciski: pigułki; główny = gradient Staplero */
+body.adm-theme button.rounded-lg, body.adm-theme a.rounded-lg.inline-flex { border-radius: 980px; }
+body.adm-theme .bg-primary:is(button, a) { background: linear-gradient(180deg, #ff8a3d 0%, #f97316 48%, #e2620b 100%) !important; color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(0,0,0,.08), 0 1px 2px rgba(194,65,12,.35), 0 4px 12px -2px rgba(249,115,22,.4); }
+body.adm-theme .bg-primary:is(button, a):hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 2px 4px rgba(194,65,12,.35), 0 8px 20px -4px rgba(249,115,22,.5); }
+body.adm-theme button.border.bg-background, body.adm-theme a.border.bg-background { border: 0 !important; background: linear-gradient(180deg, #fff, #f7f7f8) !important; box-shadow: inset 0 1px 0 #fff, 0 0 0 .5px rgba(0,0,0,.14), 0 1px 2px rgba(0,0,0,.06); }
+body.adm-theme button.border.bg-background:hover { box-shadow: inset 0 1px 0 #fff, 0 0 0 .5px rgba(0,0,0,.2), 0 3px 8px rgba(0,0,0,.08); }
+body.adm-theme button.bg-destructive { background: linear-gradient(180deg, #ff6b5f, #ff3b30) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 1px 2px rgba(255,59,48,.35); }
+body.adm-theme button { transition: transform .15s var(--adm-spring), box-shadow .2s, background .2s; }
+body.adm-theme button:active:not(:disabled) { transform: scale(.97); }
+
+/* pola formularzy: wypełnione, bez twardej ramki */
+body.adm-theme :is(input, textarea).border-input, body.adm-theme button[role="combobox"] {
+  border-color: transparent !important; background: rgba(118,118,128,.1) !important; border-radius: 10px !important; box-shadow: none;
+}
+body.adm-theme :is(input, textarea).border-input:focus, body.adm-theme button[role="combobox"]:focus { background: #fff !important; box-shadow: 0 0 0 3px rgba(249,115,22,.25), 0 0 0 1px rgba(249,115,22,.6) !important; outline: none; }
+body.adm-theme .adm-page :is(input, textarea).border-input, body.adm-theme [role="dialog"] :is(input, textarea).border-input { color: #1d1d1f; }
+
+/* zakładki wewnątrz sekcji: przełącznik segmentowy */
+body.adm-theme [role="tablist"]:not(.ab-tabs) { background: rgba(118,118,128,.12) !important; border-radius: 10px !important; padding: 2px !important; height: auto; }
+body.adm-theme [role="tab"] { border-radius: 8px !important; }
+body.adm-theme [role="tab"][data-state="active"] { background: #fff !important; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 3px 1px rgba(0,0,0,.04) !important; color: #1d1d1f !important; }
+
+/* tabele */
+body.adm-theme table { border-collapse: separate; border-spacing: 0; }
+body.adm-theme thead tr, body.adm-theme thead th { background: transparent !important; }
+body.adm-theme th { font-size: 12px !important; font-weight: 600 !important; color: #6e6e73 !important; text-transform: none !important; letter-spacing: 0 !important; }
+body.adm-theme tbody tr { transition: background .15s; }
+body.adm-theme tbody tr:hover { background: rgba(249,115,22,.045) !important; }
+body.adm-theme :is(tr, th, td).border-b, body.adm-theme tr { border-color: rgba(0,0,0,.07) !important; }
+
+/* znaczniki (Badge): pigułki z tintem */
+body.adm-theme .inline-flex.items-center.rounded-full.border { border-color: transparent !important; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.6); font-weight: 600; }
+
+/* okna dialogowe: szklany arkusz */
+body.adm-theme [role="dialog"], body.adm-theme [role="alertdialog"] {
+  border: 0 !important; border-radius: 22px !important; background: rgba(248,248,250,.86) !important;
+  backdrop-filter: saturate(190%) blur(40px); -webkit-backdrop-filter: saturate(190%) blur(40px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.85), var(--adm-e3) !important;
+}
+body.adm-theme [data-state="open"].fixed.inset-0 { background: rgba(0,0,0,.18) !important; backdrop-filter: blur(2px); }
+body.adm-theme [role="dialog"] h2 { letter-spacing: -.4px; }
+/* listy rozwijane i menu */
+body.adm-theme [role="listbox"], body.adm-theme [role="menu"] {
+  border: 0 !important; border-radius: 12px !important; background: rgba(250,250,252,.9) !important; backdrop-filter: saturate(190%) blur(30px); -webkit-backdrop-filter: saturate(190%) blur(30px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.85), var(--adm-e2) !important; padding: 4px;
+}
+body.adm-theme [role="option"], body.adm-theme [role="menuitem"] { border-radius: 7px !important; }
+body.adm-theme [role="option"][data-highlighted], body.adm-theme [role="menuitem"][data-highlighted] { background: linear-gradient(180deg, #ff8a3d, #f97316) !important; color: #fff !important; }
+
+/* przełączniki jak w iOS */
+body.adm-theme button[role="switch"][data-state="checked"] { background: #30b158 !important; }
+body.adm-theme button[role="switch"] { box-shadow: inset 0 0 0 .5px rgba(0,0,0,.08); }
+
+/* powiadomienia (toast) */
+body.adm-theme li[role="status"], body.adm-theme ol > li.group { border: 0 !important; border-radius: 16px !important; background: rgba(255,255,255,.82) !important; backdrop-filter: saturate(190%) blur(30px); box-shadow: inset 0 1px 0 #fff, var(--adm-e2) !important; }
+
+@media (max-width: 1080px) {
+  .adm { grid-template-columns: 1fr; }
+  .adm-side { position: fixed; left: 0; top: 0; z-index: 80; width: 280px; transform: translateX(calc(-100% - 24px)); transition: transform .35s var(--adm-spring); }
+  .adm-side.on { transform: none; }
+  .adm-burger { display: grid; }
+  .adm-main { padding: 10px 10px 0; }
+}
+@media (prefers-reduced-motion: reduce) { body.adm-theme *, body.adm-theme *::before { transition: none !important; animation: none !important; } }
+@media (prefers-reduced-transparency: reduce) { .adm-glass, body.adm-theme [role="dialog"] { background: #f6f6f8 !important; backdrop-filter: none !important; } }
+
+/* nagłówki strony (globalnie Barlow wersalikami) w panelu: font systemowy, normalna wielkość liter */
+body.adm-theme :is(h1, h2, h3, h4, h5, h6), body.adm-theme .adm-title {
+  font-family: var(--adm-font) !important; text-transform: none !important; letter-spacing: -.35px !important; font-weight: 600 !important;
+}
+body.adm-theme .adm-page h2.text-2xl, body.adm-theme .adm-page h1 { font-size: 26px !important; letter-spacing: -.55px !important; }
+
+/* edytor produktu: szeroki panel z boku zamiast wąskiego okna na środku */
+body.adm-theme [role="dialog"].adm-sheet {
+  left: auto !important; right: 12px !important; top: 12px !important; bottom: 12px !important; transform: none !important;
+  width: min(980px, calc(100vw - 24px)) !important; max-width: none !important; max-height: none !important; height: auto !important;
+  padding: 24px 28px !important; overflow-y: auto;
+}
+
+/* edytor produktu: lista terminów z wyborem */
+body.adm-theme .pd-list { display: grid; border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 0 0 .5px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.04); }
+body.adm-theme .pd-row { display: grid; grid-template-columns: 20px minmax(150px, 1.2fr) auto minmax(0, 1fr) 90px; gap: 12px; align-items: center; padding: 10px 14px; font-size: 13.5px; cursor: pointer; border-top: .5px solid rgba(0,0,0,.07); transition: background .15s; }
+body.adm-theme .pd-row:first-child { border-top: 0; }
+body.adm-theme .pd-row:hover { background: rgba(249,115,22,.04); }
+body.adm-theme .pd-row.on { background: rgba(249,115,22,.07); }
+body.adm-theme .pd-row input { width: 17px; height: 17px; accent-color: #f97316; }
+body.adm-theme .pd-when b { display: block; font-weight: 600; }
+body.adm-theme .pd-when small { color: #6e6e73; font-size: 12px; }
+body.adm-theme .pd-lang { display: flex; gap: 4px; }
+body.adm-theme .pd-lang span { font-size: 10.5px; font-weight: 700; padding: 1px 5px; border-radius: 5px; color: #3a3a3c; box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
+body.adm-theme .pd-info { font-size: 12px; color: #6e6e73; }
+body.adm-theme .pd-free { justify-self: end; font-size: 12.5px; color: #1a7f3c; font-weight: 600; }
+body.adm-theme .pd-free.warn { color: #a35200; } body.adm-theme .pd-free.bad { color: #c4161c; }
+@media (max-width: 760px) { body.adm-theme .pd-row { grid-template-columns: 20px 1fr auto; } body.adm-theme .pd-info, body.adm-theme .pd-lang { display: none; } }
+
+/* zwinięta grupa „Alter Kurs (Archiv)” */
+.adm-grp-btn { display: flex; justify-content: space-between; align-items: center; width: 100%; border: 0; background: none; cursor: pointer; text-align: left; font: inherit; font-size: 11px; font-weight: 600; color: #8e8e93; }
+.adm-grp-btn span { font-size: 14px; }
+.adm-grp.arch .adm-nav { color: #6e6e73; }
+
+/* powiadomienia w panelu u góry, żeby nie zasłaniały przycisków „Speichern” w stopkach paneli */
+body.adm-theme ol.fixed.z-\[100\] { top: 70px !important; bottom: auto !important; flex-direction: column !important; }
+
+/* ── etykiety statusu bez „pigułek”: symbol + tekst, bez tła i kropki (jak w macOS) ── */
+body.adm-theme {
+  --sym-ok: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7.5' fill='%2330b158'/%3E%3Cpath d='m4.8 8.3 2.1 2.1 4.3-4.6' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --sym-ok-l: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7.5' fill='%234cd471'/%3E%3Cpath d='m4.8 8.3 2.1 2.1 4.3-4.6' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --sym-warn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7.5' fill='%23ff9f0a'/%3E%3Cpath d='M8 4.4V8l2.3 1.5' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --sym-bad: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7.5' fill='%23ff3b30'/%3E%3Cpath d='m5.5 5.5 5 5m0-5-5 5' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+  --sym-none: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6.6' fill='none' stroke='%238e8e93' stroke-width='1.5' stroke-dasharray='2.6 2.2'/%3E%3C/svg%3E");
+}
+body.adm-theme :is(.ac-st, .ap-st, .ap-free, .ac-tst, .pd-free, .adm-tw) {
+  display: inline-flex !important; align-items: center; gap: 6px; height: auto !important; padding: 0 !important; border-radius: 0 !important; border: 0 !important;
+  background: none !important; box-shadow: none !important; font-size: 13px !important; font-weight: 500 !important; color: #3a3a3c !important; white-space: nowrap;
+}
+body.adm-theme :is(.ac-st, .ap-st, .ap-free, .ac-tst, .pd-free)::before {
+  content: "" !important; flex: none; width: 15px !important; height: 15px !important; border-radius: 0 !important; background: var(--sym-ok) center / contain no-repeat !important;
+}
+body.adm-theme :is(.ac-st.warn, .ap-st.warn, .ap-free.warn, .pd-free.warn)::before { background-image: var(--sym-warn) !important; }
+body.adm-theme :is(.ac-st.bad, .ap-st.bad, .ap-free.bad, .pd-free.bad)::before { background-image: var(--sym-bad) !important; }
+body.adm-theme :is(.ac-st.none, .ap-st.none, .ac-tst.none)::before { background-image: var(--sym-none) !important; }
+body.adm-theme :is(.ap-free.warn, .pd-free.warn) { color: #a35200 !important; font-weight: 600 !important; }
+body.adm-theme :is(.ap-free.bad, .pd-free.bad) { color: #c4161c !important; font-weight: 600 !important; }
+body.adm-theme .ap-free b { color: #1d1d1f !important; font-weight: 600; }
+body.adm-theme .ac-tst { color: #6e6e73 !important; font-weight: 400 !important; }
+body.adm-theme .ac-kc .cov .ac-st { color: #fff !important; }
+body.adm-theme .ac-kc .cov .ac-st.ok::before { background-image: var(--sym-ok-l) !important; }
+/* źródło pytania i podobne znaczniki: zwykły drobny tekst */
+body.adm-theme :is(.ac-src, .ab .pill) { padding: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important; font-size: 12px !important; font-weight: 500 !important; color: #6e6e73 !important; }
+body.adm-theme .ab .pill.w { color: #a35200 !important; font-weight: 600 !important; }
+body.adm-theme .ab .pills { gap: 4px 14px !important; }
+/* etykiety szkoleń przy terminach: tekst z małym kwadratem w kolorze szkolenia zamiast tła */
+body.adm-theme .ap-trc[class*="tone-"] { padding: 0 !important; height: auto !important; background: none !important; box-shadow: none !important; gap: 6px; color: #1d1d1f !important; font-size: 12.5px !important; }
+body.adm-theme .ap-trc[class*="tone-"]::before { content: ""; width: 9px; height: 9px; border-radius: 2.5px; background: var(--tc); flex: none; }
+body.adm-theme .ap-trc.tone-all { color: #6e6e73 !important; font-weight: 500 !important; }
+/* stare komponenty: Badge (shadcn) i kolorowe „pigułki” z Tailwind → sam tekst, symbol wg koloru */
+body.adm-theme .inline-flex.items-center.rounded-full.border,
+body.adm-theme span.rounded-full[class*="px-"][class*="bg-"] {
+  background: none !important; box-shadow: none !important; border: 0 !important; padding: 0 !important; border-radius: 0 !important; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;
+}
+body.adm-theme span.rounded-full[class*="px-"]:is([class*="bg-yellow"], [class*="bg-amber"], [class*="bg-orange"])::before { content: ""; width: 14px; height: 14px; flex: none; background: var(--sym-warn) center / contain no-repeat; }
+body.adm-theme span.rounded-full[class*="px-"][class*="bg-green"]::before { content: ""; width: 14px; height: 14px; flex: none; background: var(--sym-ok) center / contain no-repeat; }
+body.adm-theme span.rounded-full[class*="px-"][class*="bg-red"]::before { content: ""; width: 14px; height: 14px; flex: none; background: var(--sym-bad) center / contain no-repeat; }
+
+/* ── kanciasty styl jak na stronie Staplero: kontenery i sekcje bez zaokrągleń, przyciski i pola 4 px ── */
+body.adm-theme { --radius: 4px; }
+body.adm-theme :is(.adm-side, .adm-top, .ac-card, .ac-kc, .ac-panel, .ac-box, .ac-group, .ac-item:not(.flat) .ac-item-in, .ap-card, .ap-panel, .ap-box, .ap-place, .ab-card, .ab-media img, .ab-media video, .pd-list,
+  .rounded-lg.border.bg-card, .rounded-xl, .rounded-2xl, [role="dialog"], [role="alertdialog"], [role="dialog"].adm-sheet, [role="listbox"], [role="menu"], ol.fixed > li,
+  .ab-pq, .ab-drop, .ac-drop, .ap-empty, .ac-exam, .ac-mod, .ab-prev .ab-card) { border-radius: 0 !important; }
+body.adm-theme :is(button, a.inline-flex, input, select, textarea, [role="combobox"], .ac-btn, .ap-btn, .ab-btn, .adm-nav, .seg, .seg button, .ac-seg, .ac-seg button, .ap-seg, .ap-seg button, [role="tablist"], [role="tab"],
+  .ac-ltabs, .ac-ltabs button, .ap-chips button, .ap-lchip, .ab-tabs button, .ac-sitem, .ac-trow, .ap-row, .ac-qrow, .ac-fl input, .ac-fl textarea, .ap-fl input, .ab .fld input, .ab .fld textarea, .ab .fld select, .ac-okb, .ac-rm, .arow .ok, .arow .del,
+  .ap-dtile, .ac-mod-n, .ac-num button, .ac-x, .ap-x, .adm-tb, .ac-qimg, .de, .src-de, .ac-fl .de, .ac-vid video, .ab-filters input, .ab-filters select) { border-radius: 4px !important; }
+body.adm-theme :is(.adm-tile, .adm-brand-ic, .ap-lc, .ac-sitem .kt) { border-radius: 4px !important; }
+body.adm-theme :is(.ac-sw, .ap-sw, button[role="switch"]) { border-radius: 980px !important; }
+body.adm-theme :is(.ac-sw, .ap-sw, button[role="switch"])::after { border-radius: 50% !important; }
+body.adm-theme :is(.ac-x, .ap-x) { border-radius: 4px !important; }
+body.adm-theme .av, body.adm-theme .rounded-full:not(span) { border-radius: 50%; }
+
+/* awatar z inicjałami i ikona-kafelek w starych sekcjach (adminUi.tsx) */
+.adm-av { display: inline-grid; place-items: center; flex: none; border-radius: 50%; overflow: hidden; color: #fff; font-weight: 700; letter-spacing: 0;
+  background: linear-gradient(160deg, hsl(var(--h) 80% 66%), hsl(calc(var(--h) + 25) 65% 46%)); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 0 0 1.5px #fff, 0 1px 3px rgba(0,0,0,.18); }
+.adm-av img { width: 100%; height: 100%; object-fit: cover; }
+.adm-tile-x svg { width: 58% !important; height: 58% !important; color: #fff !important; stroke-width: 2.2; filter: drop-shadow(0 1px 0 rgba(0,0,0,.18)); }
+.adm-num { font-variant-numeric: tabular-nums; color: #8e8e93; font-size: 13px; font-weight: 500; }
+.adm-role { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: #3a3a3c; }
+.adm-role svg { width: 15px; height: 15px; }
+.adm-role.admin { color: #9a3412; font-weight: 600; } .adm-role.admin svg { color: #f97316; }
+/* Badge z shadcn bez tła: tekst nie może zostać biały */
+body.adm-theme .inline-flex.items-center.rounded-full.border:is([class*="text-primary-foreground"], [class*="text-white"], [class*="text-secondary-foreground"], [class*="text-destructive-foreground"]) { color: #3a3a3c !important; }

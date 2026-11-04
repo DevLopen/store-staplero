@@ -29,13 +29,13 @@ export function PlanSim({ data, last, finishLabel }: StepProps<SimData>) {
     </>;
 }
 
-/* ───────── egzamin: suwak z progiem 70 % ───────── */
+/* ───────── egzamin: suwak z progiem zaliczenia ───────── */
 export function ExamSim({ data, last, finishLabel }: StepProps<SimData>) {
     const { x, useStepState } = usePlayer();
     const T = useSimText(data);
     const total = Number(data.questions ?? 50), pass = Number(data.passPercent ?? 70);
     const need = Math.ceil(total * pass / 100);
-    const [v, setV] = useStepState<number>(Math.round(total * .76));
+    const [v, setV] = useStepState<number>(Math.round(total * .86));
     const ok = v >= need;
     return <>
         <h2 className="q">{x(data.title)}</h2>
@@ -46,7 +46,7 @@ export function ExamSim({ data, last, finishLabel }: StepProps<SimData>) {
         </div>
         <label className="small" htmlFor="eIn">{T("Schiebe den Regler: Wie viele Fragen beantwortest du richtig?")}</label>
         <input id="eIn" type="range" min={0} max={total} value={v} onChange={e => setV(+e.target.value)} />
-        <p className={`status ${ok ? "ok" : "no"}`}>{ok ? T("Bestanden mit {p} %", { p: Math.round(v / total * 100) }) : T("Nicht bestanden: noch {n} Fragen bis 70 %", { n: need - v })}</p>
+        <p className={`status ${ok ? "ok" : "no"}`}>{ok ? T("Bestanden mit {p} %", { p: Math.round(v / total * 100) }) : T("Nicht bestanden: noch {n} Fragen bis {p} %", { n: need - v, p: pass })}</p>
         <div className="grid2">
             <div><span>{T("Fragen")}</span><b>{T("ca. 50")}</b></div><div><span>{T("Form")}</span><b>Multiple Choice</b></div>
             <div><span>{T("Zeit")}</span><b>{T("max. 45 Min.")}</b></div><div><span>{T("Danach")}</span><b>{T("Prüfungsfahrt")}</b></div>

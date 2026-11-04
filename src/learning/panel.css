@@ -176,3 +176,15 @@ a.pn-row:hover { background: var(--g50); }
   .pn-table.resp td:nth-child(1) { grid-column: 1; } .pn-table.resp td:nth-child(4) { grid-column: 2; grid-row: 1; text-align: right; font-weight: 600; color: var(--g900); }
   .pn-table.resp td:nth-child(2) { grid-column: 1 / -1; } .pn-table.resp td:nth-child(3) { grid-column: 1; } .pn-table.resp td:nth-child(5) { grid-column: 2; text-align: right; }
 }
+
+/* Meine Produkte: sekcje, stan dostępu, wygasłe */
+.pn-sec { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--g500); margin: 10px 0 -4px; font-family: inherit; }
+.pn-acc { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 13.5px; font-weight: 600; color: #1f7a45; }
+.pn-acc svg { flex: none; }
+.pn-acc.off { color: var(--red, #dc2626); }
+.pn-vis-test { display: grid; place-items: center; color: var(--amber700, #b45309); }
+.pn-vis-test .ic, .pn-expired .vis .ic { width: 56px; height: 56px; stroke-width: 1.4; }
+.pn-expired { opacity: .85; }
+.pn-expired .vis { display: grid; place-items: center; background: var(--g100, #f3f4f6); border-right-color: var(--g200, #e5e7eb); color: var(--g400, #9ca3af); }
+.pn-expired .vis img { filter: grayscale(1); opacity: .6; }
+.pn-expired h3 { color: var(--g600, #4b5563); }

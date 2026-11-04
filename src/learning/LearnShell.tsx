@@ -14,8 +14,8 @@ const mobile = () => typeof window !== "undefined" && window.innerWidth < 900;
 
 /** Wspólny pasek stron kursu v2: menu kursu, Übersicht / kurs, przełącznik języka.
  *  `sidebar` dostaje funkcję zamykającą, żeby na telefonie wybór tematu chował menu. */
-export default function LearnShell({ courseId, courseTitle, children, scroll, sidebar }: {
-    courseId: string; courseTitle?: string; children: ReactNode; scroll?: boolean; sidebar?: (close: () => void) => ReactNode;
+export default function LearnShell({ courseId, courseTitle, children, scroll, sidebar, homeHref }: {
+    courseId: string; courseTitle?: string; homeHref?: string; children: ReactNode; scroll?: boolean; sidebar?: (close: () => void) => ReactNode;
 }) {
     const { setLanguage } = useLanguage();
     const lang = useLearnLang();
@@ -39,7 +39,7 @@ export default function LearnShell({ courseId, courseTitle, children, scroll, si
                     <span>{ui("dashboard", lang)}</span>
                 </Link>
                 <span className="sep">/</span>
-                <Link to={`/lernen/${courseId}`} className="course">{courseTitle ?? ui("overview", lang)}</Link>
+                <Link to={homeHref ?? `/lernen/${courseId}`} className="course">{courseTitle ?? ui("overview", lang)}</Link>
                 <div className="lp-lang" role="group" aria-label="Sprache">
                     {LANGS.map(l => <button key={l} type="button" aria-pressed={l === lang} onClick={() => setLanguage(l)}>{l.toUpperCase()}</button>)}
                 </div>
