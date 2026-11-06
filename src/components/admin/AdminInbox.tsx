@@ -82,11 +82,51 @@ export default function AdminInbox() {
     const [styleText, setStyleText] = useState("");
     const [styleMeta, setStyleMeta] = useState<{ updatedAt?: string; updatedBy?: string }>({});
     const [styleBusy, setStyleBusy] = useState(false);
+    const [analyzing, setAnalyzing] = useState(false);
+    const [history, setHistory] = useState<{ imap: boolean; imported: number; state: any } | null>(null);
 
+    const loadHistory = useCallback(async () => {
+        const r = await fetch(`${API}/inbox/settings/history`, { headers: authH() }).catch(() => null);
+        if (r?.ok) setHistory(await r.json());
+    }, []);
     const openStyle = async () => {
         setStyleOpen(true);
+        loadHistory();
         const r = await fetch(`${API}/inbox/settings/style`, { headers: authH() }).catch(() => null);
         if (r?.ok) { const d = await r.json(); setStyleText(d.text || ""); setStyleMeta(d); }
+    };
+    // import historii trwa kilka minut: odświeżamy status, dopóki okno jest otwarte
+    useEffect(() => {
+        if (!styleOpen || history?.state?.status !== "running") return;
+        const t = window.setInterval(loadHistory, 5000);
+        return () => clearInterval(t);
+    }, [styleOpen, history?.state?.status, loadHistory]);
+    const analyze = async () => {
+        setAnalyzing(true);
+        try {
+            const r = await fetch(`${API}/inbox/settings/style/analyze`, { method: "POST", headers: authH() });
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error);
+            setStyleText(d.text);
+            toast({ title: "Vorschlag erstellt", description: `Aus ${d.basedOn} gesendeten Antworten. Prüfen und speichern.` });
+        } catch (e: any) {
+            toast({ title: "Kein Vorschlag", description: e.message, variant: "destructive" });
+        } finally { setAnalyzing(false); }
+    };
+    const reimport = async () => {
+        const r = await fetch(`${API}/inbox/settings/history/import`, { method: "POST", headers: authH(), body: JSON.stringify({ months: 12 }) }).catch(() => null);
+        const d = await r?.json().catch(() => ({}));
+        if (r?.ok) { toast({ title: "Import gestartet", description: "Dauert je nach Postfach einige Minuten." }); setTimeout(loadHistory, 1500); }
+        else toast({ title: "Import nicht möglich", description: d?.error, variant: "destructive" });
+    };
+    const historyLine = () => {
+        const st = history?.state;
+        if (!history) return "";
+        if (!history.imap) return "Postfach nicht verbunden: Es lernt nur aus Antworten, die hier gesendet werden.";
+        if (!st) return "Verlauf wird beim nächsten Abruf importiert.";
+        if (st.status === "running") return "Verlauf wird importiert…";
+        if (st.status === "failed") return `Import fehlgeschlagen: ${st.error}`;
+        return `Gelernt aus ${st.sentMails} gesendeten E-Mails der letzten ${st.months} Monate (Ordner „${st.sentFolder}“), Stand ${fmtFull(st.finishedAt)}. Neue Antworten aus „Gesendet“ kommen automatisch dazu.`;
     };
     const saveStyle = async () => {
         setStyleBusy(true);
@@ -326,9 +366,18 @@ export default function AdminInbox() {
                 <DialogHeader>
                     <DialogTitle>Schreibstil der KI</DialogTitle>
                     <DialogDescription>
-                        Wie sollen Entwürfe klingen? Die KI liest diesen Text bei jedem Entwurf. Zusätzlich nimmt sie die zuletzt hier gesendeten Antworten als Vorbild, vor allem aus derselben Kategorie.
+                        Wie sollen Entwürfe klingen? Die KI liest diesen Text bei jedem Entwurf. Zusätzlich nimmt sie die ähnlichsten früheren Antworten als Vorbild: aus dem Ordner „Gesendet“ und aus diesem Panel.
                     </DialogDescription>
                 </DialogHeader>
+                <div className="ib-hist">
+                    <span>{history?.state?.status === "running" && <Loader2 className="ib-i ib-spin" />}{historyLine()}</span>
+                    <div>
+                        <button type="button" className="ib-btn ghost" disabled={analyzing} onClick={analyze}>
+                            {analyzing ? <Loader2 className="ib-i ib-spin" /> : <Sparkles className="ib-i" />}Aus gesendeten E-Mails erstellen
+                        </button>
+                        {history?.imap && history?.state?.status !== "running" && <button type="button" className="ib-btn ghost" onClick={reimport}><RefreshCw className="ib-i" />Verlauf neu importieren</button>}
+                    </div>
+                </div>
                 <textarea className="ib-style-ta" value={styleText} onChange={e => setStyleText(e.target.value)} rows={12}
                     placeholder={"Zum Beispiel:\nKurz, höchstens 5 Sätze.\nAnrede \"Hallo <Vorname>,\" statt \"Guten Tag\".\nBei Terminfragen immer auch die Telefonnummer nennen.\nKeine Entschuldigungen, lieber direkt die Lösung."} />
                 <div className="ib-style-foot">

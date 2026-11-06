@@ -50,6 +50,7 @@ export interface InboxThreadDoc extends Document {
     subject: string;
     customer: { name?: string; email: string; phone?: string; company?: string };
     source: "form" | "email";
+    imported?: boolean;          // rozmowa z historii skrzynki (import przy podłączeniu): tylko wzór dla AI, bez szkicu
     category?: InboxCategory;
     priority: "normal" | "high";
     setByHand: { category?: boolean; priority?: boolean };   // ręczny wybór w panelu ma pierwszeństwo przed AI
@@ -108,6 +109,7 @@ const InboxThreadSchema = new Schema<InboxThreadDoc>({
         company: String,
     },
     source: { type: String, enum: ["form", "email"], required: true },
+    imported: Boolean,
     category: { type: String, enum: INBOX_CATEGORIES },
     priority: { type: String, enum: ["normal", "high"], default: "normal" },
     setByHand: { category: Boolean, priority: Boolean },
@@ -139,5 +141,7 @@ InboxThreadSchema.index({ "messages.messageId": 1 }, { unique: true, sparse: tru
 InboxThreadSchema.index({ status: 1, lastMessageAt: -1 });
 InboxThreadSchema.index({ category: 1, lastMessageAt: -1 });
 InboxThreadSchema.index({ "customer.email": 1 });
+// wyszukiwanie podobnych wcześniejszych rozmów jako wzór dla AI; "none" = bez stemmingu, bo maile są w kilku językach
+InboxThreadSchema.index({ subject: "text", "messages.text": "text" }, { default_language: "none", language_override: "textIndexLanguage", weights: { subject: 3, "messages.text": 1 }, name: "inbox_text" });
 
 export default mongoose.model<InboxThreadDoc>("InboxThread", InboxThreadSchema);

@@ -13,8 +13,9 @@ import InboxThread, { INBOX_CATEGORIES, INBOX_STATUSES } from "../models/InboxTh
 import InboxSetting from "../models/InboxSetting";
 import { buildOpenAiBody } from "../services/inboxPrompt";
 import {
-    ingestEmail, applyAiResult, threadForAi, requestDraft, sendReply, INBOX_FILES_DIR,
+    ingestEmail, applyAiResult, threadForAi, requestDraft, sendReply, analyzeStyle, INBOX_FILES_DIR,
 } from "../services/inbox.service";
+import { importHistory, historyState, imapEnabled } from "../services/inboxImap.service";
 
 const router = express.Router();
 
@@ -110,6 +111,22 @@ router.put("/settings/style", async (req: any, res) => {
     const text = typeof req.body?.text === "string" ? req.body.text.slice(0, 6000) : "";
     const st = await InboxSetting.findOneAndUpdate({ key: "style" }, { $set: { text, updatedBy: req.user?.email } }, { upsert: true, new: true }).lean();
     res.json({ text: st.text, updatedAt: st.updatedAt, updatedBy: st.updatedBy });
+});
+
+// AI tworzy opis stylu z wysłanych odpowiedzi; panel wstawia go do pola, zapis dopiero po „Speichern”
+router.post("/settings/style/analyze", async (_req, res) => {
+    try { res.json(await analyzeStyle()); }
+    catch (err: any) { res.status(err.status || 500).json({ error: err.message }); }
+});
+
+router.get("/settings/history", async (_req, res) => {
+    res.json({ imap: imapEnabled(), state: await historyState(), imported: await InboxThread.countDocuments({ imported: true }) });
+});
+router.post("/settings/history/import", async (req, res) => {
+    if (!imapEnabled()) return res.status(400).json({ error: "IMAP ist nicht eingerichtet (INBOX_IMAP_* in .env)" });
+    const months = Math.min(36, Math.max(1, Number(req.body?.months) || 12));
+    void importHistory(months);
+    res.json({ ok: true, months });
 });
 
 router.get("/:id", validId, async (req, res) => {

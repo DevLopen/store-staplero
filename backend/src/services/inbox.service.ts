@@ -201,6 +201,61 @@ export const ingestEmail = async (m: IngestEmail): Promise<IngestResult> => {
     return { status: "created", threadId: String(created._id) };
 };
 
+/**
+ * Rozmowa z historii skrzynki (import przy podłączeniu): pytanie klienta z INBOX albo nasza odpowiedź z „Gesendet”.
+ * Bez szkicu AI i bez załączników; trafia do „Beantwortet”, służy jako wzór stylu i odpowiedzi.
+ */
+export const ingestHistory = async (m: IngestEmail, direction: "in" | "out"): Promise<"created" | "appended" | "duplicate" | "skipped"> => {
+    const messageId = normId(m.messageId);
+    if (!messageId) return "skipped";
+    if (await InboxThread.exists({ "messages.messageId": messageId })) return "duplicate";
+    const inReplyTo = normId(m.inReplyTo);
+    const references = parseRefs(m.references);
+    const rawText = m.text?.trim() ? m.text : m.html ? htmlToText(m.html) : "";
+    const text = stripQuoted(rawText) || rawText.trim();
+    if (!text) return "skipped";
+    const date = m.date && !isNaN(Date.parse(m.date)) ? new Date(m.date) : new Date();
+    const fromEmail = (m.fromEmail || "").toLowerCase();
+    const customerEmail = direction === "in" ? fromEmail : (m.to?.match(/[^\s<>,"]+@[^\s<>,"]+/)?.[0] || "").toLowerCase();
+    if (!customerEmail) return "skipped";
+
+    const message: InboxMessage = {
+        direction, source: "email", messageId, inReplyTo,
+        references: references.length ? references : undefined,
+        fromName: direction === "in" ? m.fromName || undefined : "STAPLERO",
+        fromEmail, to: m.to, subject: m.subject || "", text, attachments: [], date,
+    };
+    const ids = [inReplyTo, ...references].filter(Boolean) as string[];
+    const thread = ids.length ? await InboxThread.findOne({ "messages.messageId": { $in: ids } }) : null;
+    if (thread) {
+        thread.messages.push(message);
+        thread.messages.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        if (date > thread.lastMessageAt) thread.lastMessageAt = date;
+        if (direction === "in" && (!thread.lastInboundAt || date > thread.lastInboundAt)) thread.lastInboundAt = date;
+        const last = thread.messages[thread.messages.length - 1];
+        if (last.direction === "out") {
+            // odpowiedź wysłana poza panelem (Outlook, telefon): rozmowa jest załatwiona
+            if (thread.status !== "archived") thread.status = "sent";
+            thread.unread = false;
+            if (!thread.imported) { thread.draft = { text: "", fromAi: false, editedAt: undefined }; thread.ai.suggestion = undefined; }
+        } else if (thread.imported) thread.status = thread.messages.some(x => x.direction === "out") ? "sent" : "archived";
+        await thread.save();
+        return "appended";
+    }
+    await InboxThread.create({
+        subject: m.subject || "(ohne Betreff)",
+        customer: { name: direction === "in" ? m.fromName || undefined : undefined, email: customerEmail },
+        source: "email",
+        imported: true,
+        status: direction === "out" ? "sent" : "archived",
+        unread: false,
+        messages: [message],
+        lastMessageAt: date,
+        lastInboundAt: direction === "in" ? date : undefined,
+    });
+    return "created";
+};
+
 export const createFromForm = async (f: { name: string; email: string; phone?: string; company?: string; message: string }) => {
     const now = new Date();
     const thread = await InboxThread.create({
@@ -290,20 +345,30 @@ const courseSpan = (start: string, end: string | undefined, time: string) => {
 };
 
 /**
- * Wcześniejsze odpowiedzi wysłane z panelu jako wzór stylu: najpierw ta sama kategoria, potem najnowsze.
- * Każda odpowiedź z panelu od razu staje się przykładem dla kolejnych szkiców.
+ * Wcześniejsze odpowiedzi jako wzór stylu: najpierw rozmowy najbardziej podobne treścią (także z historii skrzynki),
+ * potem najnowsze z tej samej kategorii. Każda odpowiedź z panelu od razu staje się przykładem.
  */
-const pastReplies = async (excludeId: string, category?: string, limit = 4): Promise<string> => {
+const pastReplies = async (excludeId: string, category: string | undefined, queryText: string, limit = 4): Promise<string> => {
     const base = { _id: { $ne: excludeId }, "messages.direction": "out" };
-    const pick = async (filter: any, n: number) =>
-        n > 0 ? InboxThread.find(filter).sort({ lastMessageAt: -1 }).limit(n).select("category messages").lean() : [];
-    const same = category ? await pick({ ...base, category }, limit) : [];
-    const rest = await pick({ ...base, _id: { $nin: [excludeId, ...same.map(x => x._id)] } }, limit - same.length);
-    return [...same, ...rest].map(th => {
+    // najdłuższe słowa z pytania klienta jako zapytanie (OR); krótkie słowa i liczby niewiele mówią
+    const words = [...new Set((queryText.toLowerCase().match(/[\p{L}]{5,}/gu) || []))].sort((a, b) => b.length - a.length).slice(0, 14);
+    let similar: any[] = [];
+    if (words.length) {
+        try {
+            similar = await InboxThread.find({ ...base, $text: { $search: words.join(" ") } }, { score: { $meta: "textScore" } })
+                .sort({ score: { $meta: "textScore" } }).limit(3).select("category messages").lean();
+        } catch (err: any) {
+            console.warn("[inbox] Textsuche:", err.message);   // np. indeks jeszcze się buduje
+        }
+    }
+    const taken = [excludeId, ...similar.map(x => String(x._id))];
+    const recent = await InboxThread.find({ ...base, _id: { $nin: taken }, ...(category ? { category } : {}) })
+        .sort({ lastMessageAt: -1 }).limit(Math.max(0, limit - similar.length)).select("category messages").lean();
+    return [...similar, ...recent].map(th => {
         const msgs = th.messages;
-        const outIdx = msgs.map(m => m.direction).lastIndexOf("out");
-        const q = msgs.slice(0, outIdx).reverse().find(m => m.direction === "in");
-        return `[Kategorie ${th.category || "?"}]\nKUNDE: ${(q?.text || "").slice(0, 700)}\nUNSERE ANTWORT: ${msgs[outIdx].text.slice(0, 1200)}`;
+        const outIdx = msgs.map((m: any) => m.direction).lastIndexOf("out");
+        const q = msgs.slice(0, outIdx).reverse().find((m: any) => m.direction === "in");
+        return `${th.category ? `[Kategorie ${th.category}]\n` : ""}KUNDE: ${(q?.text || "(Gespräch von uns begonnen)").slice(0, 700)}\nUNSERE ANTWORT: ${msgs[outIdx].text.slice(0, 1200)}`;
     }).join("\n\n---\n\n");
 };
 
@@ -339,7 +404,7 @@ export const threadForAi = async (id: string) => {
 
     const [style, examples] = await Promise.all([
         InboxSetting.findOne({ key: "style" }).lean(),
-        pastReplies(String(t._id), t.category),
+        pastReplies(String(t._id), t.category, [...t.messages].reverse().find(m => m.direction === "in")?.text || t.subject),
     ]);
 
     return {
@@ -506,4 +571,32 @@ export const sendReply = async (id: string, replyText: string, sentBy: string) =
     t.ai.suggestion = undefined;
     await t.save();
     return t;
+};
+
+// ─── Styl z historii ──────────────────────────────────────────────────────────
+
+/** Opis stylu zespołu z ostatnich wysłanych odpowiedzi (historia skrzynki + panel). Zwraca tekst, nie zapisuje. */
+export const analyzeStyle = async (): Promise<{ text: string; basedOn: number }> => {
+    const threads = await InboxThread.find({ "messages.direction": "out" }).sort({ lastMessageAt: -1 }).limit(60).select("messages").lean();
+    const samples = threads.map(th => {
+        const outs = th.messages.filter((m: any) => m.direction === "out");
+        return outs[outs.length - 1]?.text?.slice(0, 900) || "";
+    }).filter(t => t.length > 40).slice(0, 40);
+    if (samples.length < 3) throw Object.assign(new Error("Zu wenige gesendete Antworten für eine Analyse (mindestens 3)"), { status: 400 });
+    const completion: any = await openai.chat.completions.create({
+        model: process.env.INBOX_AI_MODEL || "gpt-5.4-mini",
+        messages: [
+            { role: "system", content: "Du analysierst, wie ein Team E-Mails an Kunden schreibt, damit eine KI künftig genauso schreibt. Antworte nur mit der Stilbeschreibung." },
+            { role: "user", content:
+                "Hier sind echte Antworten des STAPLERO-Teams an Kunden, durch --- getrennt.\n\n" + samples.join("\n---\n") +
+                "\n\nBeschreibe den Schreibstil als kurze Regeln auf Deutsch, höchstens 15 Zeilen, jede Zeile beginnt mit \"- \":" +
+                " Anrede und Grußformel je Sprache, Sie oder du, typische Länge, Ton, wiederkehrende Formulierungen (wörtlich zitieren)," +
+                " wie Termine, Preise und Links genannt werden, was das Team vermeidet." +
+                " Keine Namen, E-Mail-Adressen, Telefonnummern von Kunden, keine konkreten Termine oder Bestellnummern." +
+                " Keine Gedankenstriche (– oder —)." },
+        ],
+        ...(/^(gpt-5|o\d)/.test(process.env.INBOX_AI_MODEL || "gpt-5.4-mini") ? { reasoning_effort: "low" } : { temperature: 0.2 }),
+    } as any, { timeout: 120000, maxRetries: 2 });
+    const text = String(completion.choices?.[0]?.message?.content || "").replace(/\s[–—]\s/g, ", ").trim();
+    return { text, basedOn: samples.length };
 };

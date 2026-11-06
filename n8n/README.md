@@ -32,6 +32,8 @@ INBOX_FROM=STAPLERO <info@staplero.com>
 # opcjonalnie
 # INBOX_IMAP_HOST / INBOX_IMAP_PORT / INBOX_IMAP_USER / INBOX_IMAP_PASS   inne dane do odbioru (domyślnie jak SMTP, port 993)
 # INBOX_IMAP_FIRST_RUN_DAYS=3     przy pierwszym uruchomieniu import maili z ostatnich N dni (0 = tylko nowe)
+# INBOX_HISTORY_MONTHS=12         ile miesięcy historii z „Gesendet” pobrać do nauki stylu
+# INBOX_HISTORY_ENABLED=false     wyłącza naukę z folderu „Gesendet”
 # INBOX_IMAP_ENABLED=false        wyłącza odbiór maili (formularz dalej trafia do panelu)
 # INBOX_AI_MODEL=gpt-5.4-mini     model OpenAI do szkiców (klucz: OPENAI_API_KEY, już jest)
 # INBOX_FILES_DIR=/var/staplero/inbox-files   załączniki (domyślnie backend/inbox-files, nie są publiczne)
@@ -55,9 +57,14 @@ Bez danych IMAP/SMTP w `.env` do panelu trafia tylko formularz, a odpowiedzi id�
 - **Szkic**: AI zna ofertę i FAQ (`backend/src/services/staplero.knowledge.ts`, tę samą wiedzę ma czat na stronie),
   wolne terminy z „Standorte & Termine” (kurs = 2 dni od startu) i ostatnie zamówienia klienta.
   Czego nie wie, oznacza jako `[BITTE ERGÄNZEN: …]`.
-- **Twój styl**: w panelu „Schreibstil der KI” (nad kategoriami) opisujesz, jak mają brzmieć odpowiedzi. Dodatkowo AI dostaje
-  4 ostatnie odpowiedzi wysłane z panelu (najpierw z tej samej kategorii) jako wzór, więc każda wysłana odpowiedź uczy kolejne szkice.
-  Przy wysyłce zapisujemy też szkic AI (`aiDraft`), żeby później porównać „co AI napisało → co poszło do klienta”.
+- **Nauka z historii**: po pierwszym połączeniu backend raz pobiera Twoje odpowiedzi z folderu „Gesendet” z ostatnich
+  12 miesięcy razem z pytaniami klientów, na które odpowiadały (spam i newslettery bez odpowiedzi pomija). Gdy opis stylu
+  jest pusty, AI tworzy go z tych odpowiedzi. Status i ponowny import: panel → „Schreibstil der KI”.
+- **Twój styl**: opis w „Schreibstil der KI” (możesz go poprawić albo wygenerować na nowo przyciskiem „Aus gesendeten
+  E-Mails erstellen”). Do każdego szkicu AI dostaje też 4 najbardziej podobne wcześniejsze rozmowy jako wzór.
+  Przy wysyłce z panelu zapisujemy szkic AI (`aiDraft`), żeby później porównać „co AI napisało → co poszło do klienta”.
+- **Odpowiedzi z Outlooka/telefonu**: nowe maile w „Gesendet” są pobierane co 2 minuty. Rozmowa, na którą odpowiedziałeś
+  poza panelem, sama przechodzi do „Beantwortet”, a odpowiedź staje się kolejnym wzorem.
 - **Ręczne zmiany wygrywają**: poprawiony szkic, kategoria i „Dringend” nie są nadpisywane przez AI.
   „Neu schreiben” (opcjonalnie z podpowiedzią, np. „kürzer”) celowo zastępuje szkic.
 - **Spam**: kategoria `spam` od razu trafia do archiwum.
