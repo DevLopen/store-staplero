@@ -245,3 +245,6 @@ body.adm-theme .av, body.adm-theme .rounded-full:not(span) { border-radius: 50%;
 .adm-role.admin { color: #9a3412; font-weight: 600; } .adm-role.admin svg { color: #f97316; }
 /* Badge z shadcn bez tła: tekst nie może zostać biały */
 body.adm-theme .inline-flex.items-center.rounded-full.border:is([class*="text-primary-foreground"], [class*="text-white"], [class*="text-secondary-foreground"], [class*="text-destructive-foreground"]) { color: #3a3a3c !important; }
+
+/* licznik nieprzeczytanych maili w pasku bocznym */
+.adm-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: #0a84ff; color: #fff; font-size: 11.5px; font-weight: 600; display: grid; place-items: center; font-variant-numeric: tabular-nums; }

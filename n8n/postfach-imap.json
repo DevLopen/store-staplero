@@ -1,0 +1,99 @@
+{
+  "name": "Staplero Postfach: E-Mails ins Panel",
+  "nodes": [
+    {
+      "id": "9778620d-0759-43bd-8e8f-aa2ee015e0dd",
+      "name": "Neue E-Mail (IMAP)",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "mailbox": "INBOX",
+        "postProcessAction": "nothing",
+        "format": "resolved",
+        "downloadAttachments": true,
+        "options": {}
+      },
+      "credentials": {
+        "imap": {
+          "id": "",
+          "name": "IMAP info@staplero.com"
+        }
+      }
+    },
+    {
+      "id": "74cc2f96-d00e-4814-9c0e-bca3ebcaa362",
+      "name": "Aufbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Ein Element pro E-Mail: Felder normalisieren, Anhänge als Base64 anhängen\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json;\n  const from = (j.from && j.from.value && j.from.value[0]) || {};\n  const attachments = [];\n  for (const key of Object.keys(items[i].binary || {})) {\n    const b = items[i].binary[key];\n    const buf = await this.helpers.getBinaryDataBuffer(i, key);\n    if (buf.length > 15 * 1024 * 1024) continue;\n    attachments.push({ filename: b.fileName || key, mimeType: b.mimeType, contentBase64: buf.toString('base64') });\n  }\n  const subject = j.subject || '';\n  const fromEmail = (from.address || '').toLowerCase();\n  // Benachrichtigung des Kontaktformulars liegt schon im Panel, Abwesenheitsnotizen brauchen keine Antwort\n  const auto = String((j.headers && (j.headers['auto-submitted'] || j.headers['x-autoreply'])) || '').toLowerCase();\n  if (/^neue kontaktanfrage von/i.test(subject) && fromEmail.startsWith('noreply@')) continue;\n  if (auto && auto !== 'no') continue;\n  if (/^(mailer-daemon|postmaster)@/i.test(fromEmail)) continue;\n  out.push({ json: {\n    messageId: j.messageId,\n    inReplyTo: j.inReplyTo,\n    references: j.references,\n    fromName: from.name || '',\n    fromEmail,\n    to: (j.to && j.to.text) || '',\n    subject,\n    text: j.text || '',\n    html: typeof j.html === 'string' ? j.html : '',\n    date: j.date,\n    attachments,\n  }});\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "fe660e27-ef2b-4fda-bc3d-fcb112623cb3",
+      "name": "An Panel senden",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://staplero.de/api/inbox/hook/ingest",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Staplero Inbox Secret"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Neue E-Mail (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "Aufbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aufbereiten": {
+      "main": [
+        [
+          {
+            "node": "An Panel senden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -36,3 +36,6 @@ backend/backups/
 # pliki z panelu i paczki
 backend/uploads/
 *.zip
+
+# skrzynka w panelu: załączniki maili klientów (poza publicznym /uploads)
+backend/inbox-files/

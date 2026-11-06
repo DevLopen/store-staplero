@@ -24,6 +24,7 @@ import certificateRoutes from "./routes/certificateRoutes";
 import uploadRoutes      from "./routes/uploadRoutes";
 import productRoutes     from "./routes/productRoutes";
 import learningRoutes    from "./routes/learningRoutes";
+import inboxRoutes       from "./routes/inbox.routes";
 
 import orderService from "./services/order.service";
 
@@ -57,6 +58,9 @@ app.use(cors({
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
+
+// Skrzynka przed globalnym parserem: n8n wysyła maile z załącznikami (base64) większe niż 10 MB
+app.use("/api/inbox", inboxRoutes);
 
 app.use(express.json({ limit: "10mb" }));
 

@@ -7,7 +7,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./admin-theme.css";
 
-export type AdminSection = "kurse" | "products" | "courses" | "content" | "tests" | "fragen" | "locations" | "orders" | "users" | "certificates" | "participants" | "stats";
+export type AdminSection = "mails" | "kurse" | "products" | "courses" | "content" | "tests" | "fragen" | "locations" | "orders" | "users" | "certificates" | "participants" | "stats";
 
 const I: Record<string, string> = {
     bag: "M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2",
@@ -23,10 +23,14 @@ const I: Record<string, string> = {
     chart: "M4 20V10M10 20V4M16 20v-7M22 20H2",
     menu: "M4 7h16M4 12h16M4 17h16",
     out: "M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3",
+    mail: "M4 6h16a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a1 1 0 0 1 1-1zM3.5 7l8.5 6.5L20.5 7",
     web: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18",
 };
 type NavItem = { id: AdminSection; label: string; icon: string; color: string };
 const GROUPS: { title?: string; archive?: boolean; items: NavItem[] }[] = [
+    { title: "Kommunikation", items: [
+        { id: "mails", label: "E-Mails", icon: I.mail, color: "orange" },
+    ] },
     { title: "Verkauf", items: [
         { id: "orders", label: "Bestellungen", icon: I.bag, color: "blue" },
         { id: "products", label: "Produkte", icon: I.box, color: "brown" },
@@ -61,6 +65,15 @@ export default function AdminShell({ active, onSelect, onLogout, children, actio
 }) {
     const [open, setOpen] = useState(false);
     const [arch, setArch] = useState(() => ["courses", "content", "tests"].includes(active));
+    const [unread, setUnread] = useState(0);
+    useEffect(() => {
+        const api = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+        const load = () => fetch(`${api}/inbox/stats`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } })
+            .then(r => (r.ok ? r.json() : null)).then(d => d && setUnread(d.unread || 0)).catch(() => {});
+        load();
+        const t = window.setInterval(load, 60000);
+        return () => clearInterval(t);
+    }, [active]);
     useEffect(() => {
         document.body.classList.add("adm-theme");
         return () => document.body.classList.remove("adm-theme");
@@ -76,7 +89,7 @@ export default function AdminShell({ active, onSelect, onLogout, children, actio
                     ? <button type="button" className="adm-grp-t adm-grp-btn" aria-expanded={arch} onClick={() => setArch(a => !a)}>{g.title}<span>{arch ? "−" : "+"}</span></button>
                     : <div className="adm-grp-t">{g.title}</div>)}
                 {(!g.archive || arch) && g.items.map(it => {
-                    const inner = <><span className={`adm-tile t-${it.color}`}><Ico d={it.icon} /></span>{it.label}</>;
+                    const inner = <><span className={`adm-tile t-${it.color}`}><Ico d={it.icon} /></span>{it.label}{it.id === "mails" && unread > 0 && <span className="adm-badge" aria-label={`${unread} ungelesen`}>{unread}</span>}</>;
                     const cls = "adm-nav";
                     // sekcje starego panelu przełączają się w miejscu, Fragenkatalog ma własną stronę
                     return onSelect && !OWN_PAGE.includes(it.id)

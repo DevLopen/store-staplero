@@ -3,6 +3,7 @@ import { sendContactFormEmail } from '../services/email.service';
 import { contactRateLimiter } from '../middleware/rateLimiter';
 import { isLikelySpam, isValidEmail } from '../utils/spamFilter';
 import { verifyRecaptcha } from '../services/recaptcha.service';
+import { createFromForm } from '../services/inbox.service';
 
 const router = express.Router();
 
@@ -74,6 +75,11 @@ router.post('/contact', contactRateLimiter, async (req, res) => {
             console.warn('[contact] Content flagged as spam, ignoring submission', { ip: req.ip });
             return res.status(200).json({ success: true, message: 'Nachricht erfolgreich gesendet' });
         }
+
+        // Zapis w skrzynce panelu (/admin#mails). Błąd bazy nie może zablokować maila do info@
+        await createFromForm({ name, email, phone, company, message }).catch((err) =>
+            console.error('[contact] Inbox save failed:', err.message)
+        );
 
         // Wysyłka emaila
         await sendContactFormEmail(name, email, phone || '', company || '', message);

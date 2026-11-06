@@ -1,0 +1,119 @@
+/* Postfach (/admin#mails): lista po lewej, rozmowa i szkic po prawej. Styl jak reszta panelu (admin-theme.css). */
+.ib { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 14px; height: calc(100vh - 120px); min-height: 560px; }
+.ib-i { width: 15px; height: 15px; flex: none; }
+.ib-i-lg { width: 30px; height: 30px; color: #c7c7cc; stroke-width: 1.5; }
+.ib-spin { animation: ib-spin 1s linear infinite; }
+@keyframes ib-spin { to { transform: rotate(360deg); } }
+
+.ib-list, .ib-detail { background: #fff; border-radius: 18px; box-shadow: var(--adm-e1); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+/* ── lista ── */
+.ib-tools { padding: 12px; display: grid; gap: 10px; border-bottom: .5px solid rgba(0,0,0,.08); }
+.ib-seg { display: grid; grid-template-columns: repeat(4, 1fr); background: #f2f2f5; border-radius: 10px; padding: 2px; }
+.ib-seg button { border: 0; background: none; height: 28px; border-radius: 8px; font-size: 12.5px; color: #3a3a3c; cursor: pointer; }
+.ib-seg button[aria-selected="true"] { background: #fff; font-weight: 600; color: #1d1d1f; box-shadow: 0 1px 3px rgba(0,0,0,.1), 0 0 0 .5px rgba(0,0,0,.05); }
+.ib-search { display: flex; align-items: center; gap: 8px; background: #f2f2f5; border-radius: 10px; padding: 0 4px 0 10px; color: #8e8e93; }
+.ib-search input { flex: 1; min-width: 0; border: 0; background: none; height: 34px; font-size: 13.5px; outline: none; color: #1d1d1f; }
+.ib-icon { border: 0; background: none; width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; color: #6e6e73; cursor: pointer; }
+.ib-icon:hover { background: rgba(0,0,0,.05); }
+.ib-cats { display: flex; flex-wrap: wrap; gap: 4px 2px; }
+.ib-cats button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; height: 28px; padding: 0 8px; border-radius: 8px; font-size: 12.5px; color: #3a3a3c; cursor: pointer; }
+.ib-cats button:hover { background: #f2f2f5; }
+.ib-cats button.on { background: #1d1d1f; color: #fff; }
+.ib-cats i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.ib-cats em { font-style: normal; font-size: 11.5px; color: #8e8e93; font-variant-numeric: tabular-nums; }
+.ib-cats button.on em { color: rgba(255,255,255,.7); }
+
+.ib-rows { overflow-y: auto; flex: 1; padding: 6px; }
+.ib-row { display: grid; gap: 3px; width: 100%; text-align: left; border: 0; background: none; padding: 10px 12px; border-radius: 12px; cursor: pointer; position: relative; color: #1d1d1f; }
+.ib-row + .ib-row { margin-top: 1px; }
+.ib-row:hover { background: #f6f6f8; }
+.ib-row.on { background: #fff4ea; box-shadow: inset 0 0 0 1px rgba(249,115,22,.35); }
+.ib-row.unread::before { content: ""; position: absolute; left: 3px; top: 16px; width: 6px; height: 6px; border-radius: 50%; background: #0a84ff; }
+.ib-row-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ib-row-top b { font-size: 13.5px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ib-row.unread .ib-row-top b { font-weight: 700; }
+.ib-row-top time { font-size: 11.5px; color: #8e8e93; flex: none; font-variant-numeric: tabular-nums; }
+.ib-row-subj { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ib-row-sum { font-size: 12.5px; color: #6e6e73; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ib-row-meta { display: flex; gap: 12px; margin-top: 3px; font-size: 11.5px; }
+.ib-cat { display: inline-flex; align-items: center; gap: 5px; color: #3a3a3c; }
+.ib-cat i { width: 7px; height: 7px; border-radius: 50%; }
+.ib-cat.muted { color: #aeaeb2; }
+.ib-urgent { color: #d70015; font-weight: 600; margin-right: 6px; }
+/* status: tekst w kolorze, bez „pigułek” (turkus w toku, zielony zrobione, szary archiwum) */
+.ib-st { font-weight: 500; }
+.ib-st.teal { color: #0e8a9c; } .ib-st.green { color: #248a3d; } .ib-st.grey { color: #8e8e93; }
+.ib-more { font-size: 12px; color: #8e8e93; text-align: center; padding: 12px; }
+
+.ib-empty { display: grid; justify-items: center; gap: 4px; text-align: center; padding: 48px 20px; color: #6e6e73; font-size: 13px; }
+.ib-empty b { color: #1d1d1f; font-size: 14.5px; margin-top: 6px; }
+.ib-empty.big { margin: auto; }
+
+/* ── wątek ── */
+.ib-head { padding: 18px 22px 14px; border-bottom: .5px solid rgba(0,0,0,.08); display: grid; gap: 10px; }
+.ib-back { display: none; align-items: center; gap: 6px; border: 0; background: none; color: #f97316; font-size: 14px; padding: 0; cursor: pointer; justify-self: start; }
+.ib-head h2 { font-size: 19px; font-weight: 650; letter-spacing: -.4px; margin: 0; line-height: 1.25; overflow-wrap: anywhere; }
+.ib-cust { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: #3a3a3c; }
+.ib-cust > * { display: inline-flex; align-items: center; gap: 6px; color: inherit; text-decoration: none; min-width: 0; overflow-wrap: anywhere; }
+.ib-cust a:hover { color: #f97316; }
+.ib-cust .ib-i { color: #8e8e93; }
+.ib-ctrl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; font-size: 13px; color: #6e6e73; }
+.ib-ctrl label { display: inline-flex; align-items: center; gap: 8px; }
+.ib-ctrl select { height: 30px; border-radius: 8px; border: .5px solid rgba(0,0,0,.15); background: #fff; padding: 0 8px; font-size: 13px; color: #1d1d1f; }
+.ib-check input { width: 15px; height: 15px; accent-color: #f97316; }
+.ib-top-sp { flex: 1; }
+.ib-summary { display: flex; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 10px; background: #f6f6f8; font-size: 13px; line-height: 1.45; color: #3a3a3c; }
+.ib-summary .ib-i { color: #8e8e93; margin-top: 2px; }
+
+.ib-msgs { overflow-y: auto; flex: 1 1 auto; min-height: 120px; padding: 16px 22px; display: grid; gap: 12px; align-content: start; background: #fafafb; }
+.ib-msg { border-radius: 14px; padding: 12px 14px; max-width: 760px; background: #fff; box-shadow: 0 0 0 .5px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04); }
+.ib-msg.out { background: #fff7f0; box-shadow: 0 0 0 .5px rgba(249,115,22,.25); justify-self: end; }
+.ib-msg-h { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; margin-bottom: 6px; }
+.ib-msg-h b { font-size: 13.5px; }
+.ib-msg-h span { font-size: 11.5px; color: #8e8e93; }
+.ib-msg-b { font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; color: #1d1d1f; }
+.ib-atts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ib-atts button { display: inline-flex; align-items: center; gap: 6px; border: .5px solid rgba(0,0,0,.12); background: #fff; border-radius: 8px; height: 30px; padding: 0 10px; font-size: 12.5px; cursor: pointer; max-width: 100%; }
+.ib-atts button span { color: #8e8e93; }
+.ib-atts button:hover { border-color: #f97316; }
+
+.ib-compose { border-top: .5px solid rgba(0,0,0,.08); padding: 14px 22px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; flex: none; }
+.ib-compose > *, .ib-head > * { min-width: 0; }
+.ib-compose-h { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 13px; }
+.ib-ai-state { display: inline-flex; align-items: center; gap: 6px; color: #8e8e93; font-size: 12.5px; }
+.ib-err { color: #d70015; }
+.ib-suggest { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: #3a3a3c; background: #f6f6f8; border-radius: 8px; padding: 6px 10px; }
+.ib-suggest button { border: 0; background: none; color: #f97316; font-weight: 600; cursor: pointer; font-size: 12.5px; }
+.ib-compose textarea { box-sizing: border-box; width: 100%; min-height: 150px; max-height: 38vh; resize: vertical; border: .5px solid rgba(0,0,0,.15); border-radius: 12px; padding: 12px 14px; font: inherit; font-size: 14px; line-height: 1.55; color: #1d1d1f; outline: none; background: #fff; }
+.ib-compose textarea:focus { border-color: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,.15); }
+.ib-hint { margin: 0; font-size: 11.5px; color: #8e8e93; }
+.ib-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.ib-regen { display: flex; gap: 8px; flex: 1; min-width: 240px; }
+.ib-regen input { flex: 1; min-width: 0; height: 36px; border: .5px solid rgba(0,0,0,.15); border-radius: 10px; padding: 0 12px; font-size: 13px; outline: none; }
+.ib-regen input:focus { border-color: #f97316; }
+.ib-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 10px; border: 0; font-size: 13.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.ib-btn:disabled { opacity: .45; cursor: default; }
+.ib-btn.primary { background: #f97316; color: #fff; padding: 0 20px; box-shadow: 0 1px 2px rgba(194,65,12,.3); }
+.ib-btn.primary:not(:disabled):hover { background: #ea670c; }
+.ib-btn.ghost { background: #f2f2f5; color: #1d1d1f; }
+.ib-btn.ghost:not(:disabled):hover { background: #e8e8ed; }
+
+.ib-style-btn { display: inline-flex; align-items: center; gap: 6px; justify-self: start; border: 0; background: none; color: #f97316; font-size: 12.5px; font-weight: 500; padding: 0 2px; cursor: pointer; }
+.ib-style-btn:hover { text-decoration: underline; }
+.ib-style-ta { box-sizing: border-box; width: 100%; border: .5px solid rgba(0,0,0,.15); border-radius: 12px; padding: 12px 14px; font: inherit; font-size: 14px; line-height: 1.55; outline: none; resize: vertical; }
+.ib-style-ta:focus { border-color: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,.15); }
+.ib-style-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ib-style-foot span { flex: 1; min-width: 160px; font-size: 12px; color: #8e8e93; }
+
+/* ── telefon / wąski ekran: lista albo wątek ── */
+@media (max-width: 900px) {
+  .ib { grid-template-columns: 1fr; height: auto; min-height: 0; }
+  .ib-list { max-height: none; }
+  .ib.ib-has .ib-list { display: none; }
+  .ib:not(.ib-has) .ib-detail { display: none; }
+  .ib-back { display: inline-flex; }
+  .ib-head, .ib-msgs, .ib-compose { padding-left: 14px; padding-right: 14px; }
+  .ib-rows { max-height: none; }
+  .ib-seg button { font-size: 12px; }
+}
