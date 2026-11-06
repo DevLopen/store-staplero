@@ -27,6 +27,7 @@ import learningRoutes    from "./routes/learningRoutes";
 import inboxRoutes       from "./routes/inbox.routes";
 
 import orderService from "./services/order.service";
+import { pollInbox, imapEnabled } from "./services/inboxImap.service";
 
 const app = express();
 
@@ -117,6 +118,13 @@ cron.schedule("0 9 * * *", async () => {
   try { await orderService.sendExpiryReminders(); }
   catch (err) { console.error("❌ Reminders failed:", err); }
 });
+
+// Postfach: nowe maile z info@ co 2 minuty (gdy ustawione dane IMAP/SMTP w .env)
+if (imapEnabled()) {
+  cron.schedule("*/2 * * * *", () => { void pollInbox(); });
+  mongoose.connection.once("open", () => setTimeout(() => void pollInbox(), 5000));
+  console.log("📬 Postfach: IMAP-Abruf alle 2 Minuten aktiv");
+}
 
 // ── Graceful shutdown ─────────────────────────────────────────────────────────
 process.on("SIGTERM", () => {

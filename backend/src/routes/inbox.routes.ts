@@ -11,6 +11,7 @@ import mongoose from "mongoose";
 import { protect, admin } from "../middleware/authMiddleware";
 import InboxThread, { INBOX_CATEGORIES, INBOX_STATUSES } from "../models/InboxThread";
 import InboxSetting from "../models/InboxSetting";
+import { buildOpenAiBody } from "../services/inboxPrompt";
 import {
     ingestEmail, applyAiResult, threadForAi, requestDraft, sendReply, INBOX_FILES_DIR,
 } from "../services/inbox.service";
@@ -51,7 +52,8 @@ router.use(express.json({ limit: "2mb" }));
 router.get("/hook/threads/:id", hookAuth, validId, async (req, res) => {
     const data = await threadForAi(req.params.id);
     if (!data) return res.status(404).json({ error: "not found" });
-    res.json(data);
+    // gotowe zapytanie do OpenAI, żeby n8n nie trzymało własnej kopii promptu
+    res.json({ ...data, openaiBody: buildOpenAiBody(data) });
 });
 
 router.post("/hook/threads/:id/ai", hookAuth, validId, async (req, res) => {
@@ -137,7 +139,7 @@ router.post("/:id/regenerate", validId, async (req: any, res) => {
     t.draft.editedAt = undefined;
     await t.save();
     const ok = await requestDraft(t, instruction);
-    if (!ok) return res.status(502).json({ error: "n8n ist nicht erreichbar oder nicht konfiguriert" });
+    if (!ok) return res.status(502).json({ error: "KI nicht erreichbar oder nicht konfiguriert" });
     res.json({ ok: true });
 });
 

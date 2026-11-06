@@ -2,10 +2,10 @@
  * Skrzynka w panelu: przyjmowanie maili (formularz + IMAP przez n8n), łączenie w wątki,
  * zlecanie szkicu odpowiedzi do n8n i wysyłka odpowiedzi.
  *
- * Przepływ:
+ * Przepływ (domyślnie wszystko w backendzie, bez n8n):
  *   formularz /api/contact ──► createFromForm ─┐
- *   n8n (IMAP) ──► POST /api/inbox/hook/ingest ─┴► wątek w Mongo ──► requestDraft ──► webhook n8n
- *   n8n (AI) ──► POST /api/inbox/hook/threads/:id/ai ──► kategoria, streszczenie, szkic
+ *   cron IMAP (inboxImap.service) ─────────────┼► wątek w Mongo ──► requestDraft ──► OpenAI ──► kategoria, streszczenie, szkic
+ *   n8n (opcjonalnie) ──► /api/inbox/hook/* ───┘                     (albo webhook n8n, gdy ustawione N8N_INBOX_WEBHOOK_URL)
  *   panel ──► POST /api/inbox/:id/send ──► SMTP skrzynki info@ (albo Resend, gdy SMTP nie ustawione)
  */
 import fs from "fs/promises";
@@ -19,6 +19,8 @@ import Order from "../models/Order";
 import Location from "../models/Location";
 import InboxSetting from "../models/InboxSetting";
 import { STAPLERO_KNOWLEDGE } from "./staplero.knowledge";
+import OpenAI from "openai";
+import { buildOpenAiBody } from "./inboxPrompt";
 
 // ─── Konfiguracja ─────────────────────────────────────────────────────────────
 
@@ -227,20 +229,30 @@ export const createFromForm = async (f: { name: string; email: string; phone?: s
 
 // ─── Szkic odpowiedzi (n8n) ───────────────────────────────────────────────────
 
-/** Zleca n8n przygotowanie kategorii i szkicu. Nie rzuca: brak n8n nie może blokować formularza ani panelu. */
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" });
+
+/**
+ * Zleca kategorię i szkic: wbudowane OpenAI albo webhook n8n (gdy ustawione N8N_INBOX_WEBHOOK_URL).
+ * Nie czeka na wynik i nie rzuca: brak AI nie może blokować formularza ani panelu.
+ */
 export const requestDraft = async (thread: InboxThreadDoc, instruction?: string): Promise<boolean> => {
+    const id = String(thread._id);
+    await InboxThread.updateOne({ _id: thread._id }, {
+        $set: { "ai.status": "pending", "ai.requestedAt": new Date(), "ai.instruction": instruction || undefined, "ai.error": undefined },
+    });
     if (!N8N_WEBHOOK) {
-        console.warn("[inbox] N8N_INBOX_WEBHOOK_URL nicht gesetzt, kein KI-Entwurf");
-        return false;
+        if (!process.env.OPENAI_API_KEY) {
+            await InboxThread.updateOne({ _id: thread._id }, { $set: { "ai.status": "failed", "ai.error": "OPENAI_API_KEY nicht gesetzt" } });
+            return false;
+        }
+        void generateDraft(id);
+        return true;
     }
     try {
-        await InboxThread.updateOne({ _id: thread._id }, {
-            $set: { "ai.status": "pending", "ai.requestedAt": new Date(), "ai.instruction": instruction || undefined, "ai.error": undefined },
-        });
         const res = await fetch(N8N_WEBHOOK, {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-inbox-secret": process.env.INBOX_HOOK_SECRET || "" },
-            body: JSON.stringify({ threadId: String(thread._id), instruction: instruction || "" }),
+            body: JSON.stringify({ threadId: id, instruction: instruction || "" }),
             signal: AbortSignal.timeout(10000),
         });
         if (!res.ok) throw new Error(`n8n antwortete ${res.status}`);
@@ -249,6 +261,22 @@ export const requestDraft = async (thread: InboxThreadDoc, instruction?: string)
         console.error("[inbox] KI-Entwurf konnte nicht angefordert werden:", err.message);
         await InboxThread.updateOne({ _id: thread._id }, { $set: { "ai.status": "failed", "ai.error": err.message } });
         return false;
+    }
+};
+
+/** Szkic przez OpenAI bezpośrednio z backendu (ten sam prompt co w n8n, inboxPrompt.ts). */
+const generateDraft = async (id: string) => {
+    try {
+        const ctx = await threadForAi(id);
+        if (!ctx) return;
+        const completion: any = await openai.chat.completions.create(buildOpenAiBody(ctx) as any, { timeout: 90000, maxRetries: 2 });
+        const raw = completion.choices?.[0]?.message?.content || "";
+        let result: AiResult;
+        try { result = JSON.parse(raw); } catch { result = { error: "KI-Antwort war kein JSON" }; }
+        await applyAiResult(id, result);
+    } catch (err: any) {
+        console.error("[inbox] OpenAI:", err.message);
+        await applyAiResult(id, { error: `OpenAI: ${err.message}` });
     }
 };
 
@@ -335,6 +363,7 @@ export const threadForAi = async (id: string) => {
 };
 
 export interface AiResult {
+    summary_de?: string;
     category?: string;
     priority?: string;
     language?: string;
@@ -353,6 +382,9 @@ export const applyAiResult = async (id: string, r: AiResult) => {
         await t.save();
         return t;
     }
+    if (r.summary_de && !r.summary) r.summary = r.summary_de;
+    // bez pauz w tekstach do klientów
+    if (r.draft) r.draft = r.draft.replace(/\s[–—]\s/g, ", ").replace(/[–—]/g, "-");
     if (!t.setByHand?.category && r.category && (INBOX_CATEGORIES as readonly string[]).includes(r.category)) t.category = r.category as InboxCategory;
     if (!t.setByHand?.priority && (r.priority === "high" || r.priority === "normal")) t.priority = r.priority;
     if (r.language) t.language = String(r.language).slice(0, 5).toLowerCase();
