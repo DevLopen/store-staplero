@@ -1,12 +1,23 @@
 /**
- * Odbiór maili z info@ przez IMAP (bez n8n). Cron w server.ts woła pollInbox co 2 minuty.
- * Maile zostają w skrzynce nieprzeczytane (czytamy przez BODY.PEEK), panel jest tylko kopią.
- * Pozycję trzymamy w InboxSetting "imap_state" (UIDVALIDITY + ostatni UID), więc nic nie wpada dwa razy.
+ * Skrzynka info@ przez IMAP (bez n8n).
+ *
+ * - Synchronizacja przy pierwszym połączeniu (syncMailbox): cała skrzynka z ostatnich miesięcy (INBOX + „Gesendet”)
+ *   trafia do panelu, żeby dało się z niego korzystać jak ze zwykłej skrzynki:
+ *     rozmowy z naszą odpowiedzią → „Beantwortet”, bez odpowiedzi z ostatnich openDays dni → „Offen” ze szkicem AI,
+ *     starsze bez odpowiedzi → „Archiv”. Potem AI tworzy opis stylu z naszych odpowiedzi (gdy jest pusty).
+ * - Bieżący odbiór (pollInbox): cron co 2 minuty albo przycisk „Abrufen” w panelu. Nowe maile z INBOX i nowe
+ *   odpowiedzi z „Gesendet” (wysłane z Outlooka/telefonu zamykają rozmowę w panelu).
+ * - Odpowiedzi z panelu dopisujemy do „Gesendet” (appendToSent), żeby Outlook widział to samo co panel.
+ *
+ * Maile w skrzynce zostają nieprzeczytane (BODY.PEEK). Pozycję trzymamy w InboxSetting (UIDVALIDITY + ostatni UID).
  */
 import { ImapFlow } from "imapflow";
 import { simpleParser, AddressObject } from "mailparser";
+import MailComposer from "nodemailer/lib/mail-composer";
+import type Mail from "nodemailer/lib/mailer";
 import InboxSetting from "../models/InboxSetting";
-import { ingestEmail, ingestHistory, analyzeStyle, IngestEmail } from "./inbox.service";
+import InboxThread from "../models/InboxThread";
+import { ingestEmail, ingestHistory, analyzeStyle, requestDraft, isOwnAddress, IngestEmail } from "./inbox.service";
 
 const cfg = () => ({
     host: process.env.INBOX_IMAP_HOST || process.env.INBOX_SMTP_HOST || "",
@@ -14,8 +25,12 @@ const cfg = () => ({
     user: process.env.INBOX_IMAP_USER || process.env.INBOX_SMTP_USER || "",
     pass: process.env.INBOX_IMAP_PASS || process.env.INBOX_SMTP_PASS || "",
     mailbox: process.env.INBOX_IMAP_MAILBOX || "INBOX",
-    // przy pierwszym uruchomieniu pobieramy maile z ostatnich N dni (0 = tylko nowe)
-    firstRunDays: Number(process.env.INBOX_IMAP_FIRST_RUN_DAYS ?? 3),
+    syncMonths: Number(process.env.INBOX_HISTORY_MONTHS || 12),
+    syncMax: Number(process.env.INBOX_HISTORY_MAX || 3000),
+    // bez odpowiedzi i młodsze niż tyle dni = „Offen” ze szkicem; starsze = archiwum
+    openDays: Number(process.env.INBOX_OPEN_DAYS || 14),
+    // załączniki zapisujemy tylko z maili z ostatnich N dni (starsze zostają w skrzynce)
+    attachmentDays: Number(process.env.INBOX_ATTACHMENT_DAYS || 60),
 });
 
 export const imapEnabled = () => {
@@ -47,120 +62,17 @@ const toIngest = (p: Awaited<ReturnType<typeof simpleParser>>, withAttachments: 
     };
 };
 
-/** To samo, co filtr w workflow n8n: powiadomienie z formularza, autoodpowiedzi i zwrotki pomijamy. */
+/** Powiadomienie z formularza (jest już w panelu), autoodpowiedzi, zwrotki, newslettery: nie są rozmową z klientem. */
 const skipReason = (m: IngestEmail, headers: Map<string, any>): string | null => {
     if (/^neue kontaktanfrage von/i.test(m.subject || "") && m.fromEmail.startsWith("noreply@")) return "form notification";
+    if (isOwnAddress(m.fromEmail)) return "own address";
     const auto = String(headers.get("auto-submitted") || headers.get("x-autoreply") || "").toLowerCase();
     if (auto && auto !== "no") return "auto reply";
     if (/^(mailer-daemon|postmaster)@/i.test(m.fromEmail)) return "bounce";
-    if (String(headers.get("precedence") || "").toLowerCase() === "bulk" && headers.get("list-unsubscribe")) return "newsletter";
+    // mailparser zbiera nagłówki List-* w obiekt "list"
+    const list: any = headers.get("list");
+    if (/^(bulk|junk|list)$/i.test(String(headers.get("precedence") || "")) || list?.unsubscribe || headers.get("list-unsubscribe")) return "newsletter";
     return null;
-};
-
-let running = false;
-
-export const pollInbox = async (): Promise<{ imported: number; skipped: number } | null> => {
-    if (running || !imapEnabled()) return null;
-    running = true;
-    const c = cfg();
-    const client = new ImapFlow({
-        host: c.host, port: c.port, secure: c.port === 993,
-        auth: { user: c.user, pass: c.pass },
-        logger: false,
-        socketTimeout: 60000,
-    });
-    let imported = 0, skipped = 0;
-    try {
-        await client.connect();
-        const lock = await client.getMailboxLock(c.mailbox);
-        try {
-            const box = client.mailbox as any;
-            const uidValidity = String(box.uidValidity);
-            const state = await InboxSetting.findOne({ key: "imap_state" }).lean();
-            let saved: { uidValidity?: string; lastUid?: number } = {};
-            try { saved = JSON.parse(state?.text || "{}"); } catch { /* pusty stan */ }
-
-            let uids: number[];
-            if (!saved.lastUid || saved.uidValidity !== uidValidity) {
-                // pierwszy raz (albo serwer przenumerował skrzynkę): tylko ostatnie dni, nie całe archiwum
-                uids = c.firstRunDays > 0
-                    ? ((await client.search({ since: new Date(Date.now() - c.firstRunDays * 86400000) }, { uid: true })) || [])
-                    : [];
-                saved = { uidValidity, lastUid: Math.max(0, (box.uidNext || 1) - 1) };
-            } else {
-                uids = ((await client.search({ uid: `${saved.lastUid + 1}:*` }, { uid: true })) || []).filter(u => u > saved.lastUid!);
-            }
-
-            for (const uid of uids.sort((a, b) => a - b).slice(0, 200)) {
-                const msg = await client.fetchOne(String(uid), { source: true }, { uid: true });
-                if (!msg || !msg.source) continue;
-                const p = await simpleParser(msg.source);
-                const mail = toIngest(p, true);
-                const reason = skipReason(mail, p.headers);
-                if (reason) skipped++;
-                else {
-                    const r = await ingestEmail(mail);
-                    if (r.status === "created" || r.status === "appended") imported++; else skipped++;
-                }
-                // pozycję zapisujemy po każdym mailu: przerwany import nie zdubluje ani nie zgubi wiadomości
-                saved.lastUid = Math.max(saved.lastUid || 0, uid);
-                await InboxSetting.updateOne({ key: "imap_state" }, { $set: { text: JSON.stringify(saved) } }, { upsert: true });
-            }
-            await InboxSetting.updateOne({ key: "imap_state" }, { $set: { text: JSON.stringify(saved) } }, { upsert: true });
-        } finally {
-            lock.release();
-        }
-        await pollSent(client);
-        await client.logout();
-        // historia rozmów (Gesendet + pytania klientów) raz, po pierwszym udanym połączeniu
-        void maybeImportHistory();
-        if (imported) console.log(`📬 Postfach: ${imported} neue E-Mail(s) importiert, ${skipped} übersprungen`);
-        return { imported, skipped };
-    } catch (err: any) {
-        console.error("❌ Postfach IMAP:", err.message);
-        try { client.close(); } catch { /* już zamknięte */ }
-        return null;
-    } finally {
-        running = false;
-    }
-};
-
-let sentPath: string | null | undefined;
-
-/** Odpowiedzi wysłane poza panelem (folder „Gesendet”): zamykają rozmowę w panelu i są wzorem dla AI. */
-const pollSent = async (client: ImapFlow) => {
-    if (process.env.INBOX_HISTORY_ENABLED === "false") return;
-    try {
-        if (sentPath === undefined) sentPath = (await findSentFolder(client))?.path || null;
-        if (!sentPath) return;
-        const lock = await client.getMailboxLock(sentPath);
-        try {
-            const box = client.mailbox as any;
-            const uidValidity = String(box.uidValidity);
-            const st = await InboxSetting.findOne({ key: "imap_sent_state" }).lean();
-            let saved: { uidValidity?: string; lastUid?: number } = {};
-            try { saved = JSON.parse(st?.text || "{}"); } catch { /* pusty stan */ }
-            if (!saved.lastUid || saved.uidValidity !== uidValidity) {
-                // przeszłość zbiera import historii, tu tylko nowe
-                saved = { uidValidity, lastUid: Math.max(0, (box.uidNext || 1) - 1) };
-            } else {
-                const uids = ((await client.search({ uid: `${saved.lastUid + 1}:*` }, { uid: true })) || []).filter(u => u > saved.lastUid!).sort((a, b) => a - b).slice(0, 200);
-                if (uids.length) for await (const msg of client.fetch(uids, { source: true }, { uid: true })) {
-                    if (msg.source) await ingestHistory(toIngest(await simpleParser(msg.source), false), "out");
-                    saved.lastUid = Math.max(saved.lastUid || 0, msg.uid);
-                }
-            }
-            await InboxSetting.updateOne({ key: "imap_sent_state" }, { $set: { text: JSON.stringify(saved) } }, { upsert: true });
-        } finally { lock.release(); }
-    } catch (err: any) {
-        console.error("❌ Postfach Gesendet:", err.message);
-    }
-};
-
-const findSentFolder = async (client: ImapFlow) => {
-    const boxes = await client.list();
-    return boxes.find(b => b.specialUse === "\\Sent")
-        || boxes.find(b => /^(inbox[./])?(sent|gesendet|gesendete( objekte| elemente)?|sent items|sent messages)$/i.test(b.path)) || null;
 };
 
 const newClient = () => {
@@ -168,89 +80,182 @@ const newClient = () => {
     return new ImapFlow({ host: c.host, port: c.port, secure: c.port === 993, auth: { user: c.user, pass: c.pass }, logger: false, socketTimeout: 120000 });
 };
 
-const saveHistoryState = (st: Record<string, unknown>) =>
-    InboxSetting.updateOne({ key: "history_import" }, { $set: { text: JSON.stringify(st) } }, { upsert: true });
-
-export const historyState = async () => {
-    const st = await InboxSetting.findOne({ key: "history_import" }).lean();
+const readState = async (key: string): Promise<any> => {
+    const st = await InboxSetting.findOne({ key }).lean();
     try { return JSON.parse(st?.text || "null"); } catch { return null; }
 };
+const writeState = (key: string, v: unknown) =>
+    InboxSetting.updateOne({ key }, { $set: { text: JSON.stringify(v) } }, { upsert: true });
 
-let historyRunning = false;
-
-const maybeImportHistory = async () => {
-    if (process.env.INBOX_HISTORY_ENABLED === "false" || historyRunning) return;
-    const st = await historyState();
-    if (st && st.status !== "failed") return;   // już zrobione albo w toku; po błędzie ponawiamy
-    void importHistory();
+const findSentFolder = async (client: ImapFlow) => {
+    const boxes = await client.list();
+    return boxes.find(b => b.specialUse === "\\Sent")
+        || boxes.find(b => /^(inbox[./])?(sent|gesendet|gesendete( objekte| elemente)?|sent items|sent messages)$/i.test(b.path)) || null;
 };
 
-/**
- * Import historii przy podłączeniu skrzynki: nasze odpowiedzi z folderu „Gesendet” z ostatnich miesięcy
- * i pytania klientów, na które odpowiadały (z INBOX). Maile bez naszej odpowiedzi (spam, newslettery) pomijamy.
- * Potem, gdy opis stylu jest pusty, AI tworzy go z tych odpowiedzi.
- */
-export const importHistory = async (months = Number(process.env.INBOX_HISTORY_MONTHS || 12)) => {
-    if (historyRunning || !imapEnabled()) return null;
-    historyRunning = true;
+/** Ostatnie pobranie: pokazujemy w panelu (czas, wynik albo błąd logowania). */
+export const lastPoll = () => readState("imap_last");
+
+// ─── Bieżący odbiór ───────────────────────────────────────────────────────────
+
+export type PollResult = { ok: boolean; imported: number; skipped: number; answeredElsewhere: number; error?: string; at: string };
+let running: Promise<PollResult> | null = null;
+
+/** Nowe maile z INBOX i nowe odpowiedzi z „Gesendet”. Równoległe wywołania (cron + przycisk) dostają ten sam wynik. */
+export const pollInbox = (): Promise<PollResult> => {
+    if (!imapEnabled()) return Promise.resolve({ ok: false, imported: 0, skipped: 0, answeredElsewhere: 0, error: "IMAP nicht eingerichtet (INBOX_IMAP_HOST/USER/PASS in backend/.env)", at: new Date().toISOString() });
+    if (!running) running = doPoll().finally(() => { running = null; });
+    return running;
+};
+
+const doPoll = async (): Promise<PollResult> => {
+    const c = cfg();
+    const client = newClient();
+    const res: PollResult = { ok: true, imported: 0, skipped: 0, answeredElsewhere: 0, at: new Date().toISOString() };
+    try {
+        await client.connect();
+        // INBOX
+        {
+            const lock = await client.getMailboxLock(c.mailbox);
+            try {
+                const box = client.mailbox as any;
+                const uidValidity = String(box.uidValidity);
+                let saved = (await readState("imap_state")) || {};
+                let uids: number[] = [];
+                if (!saved.lastUid || saved.uidValidity !== uidValidity) {
+                    // przeszłość zbiera synchronizacja; tu zapamiętujemy tylko pozycję
+                    saved = { uidValidity, lastUid: Math.max(0, (box.uidNext || 1) - 1) };
+                } else {
+                    uids = ((await client.search({ uid: `${saved.lastUid + 1}:*` }, { uid: true })) || []).filter(u => u > saved.lastUid).sort((a, b) => a - b).slice(0, 300);
+                }
+                for (const uid of uids) {
+                    const msg = await client.fetchOne(String(uid), { source: true }, { uid: true });
+                    if (msg && msg.source) {
+                        const p = await simpleParser(msg.source);
+                        const mail = toIngest(p, true);
+                        if (skipReason(mail, p.headers)) res.skipped++;
+                        else {
+                            const r = await ingestEmail(mail);
+                            if (r.status === "created" || r.status === "appended") res.imported++; else res.skipped++;
+                        }
+                    }
+                    saved.lastUid = Math.max(saved.lastUid || 0, uid);
+                    await writeState("imap_state", saved);
+                }
+                await writeState("imap_state", saved);
+            } finally { lock.release(); }
+        }
+        // Gesendet: odpowiedzi wysłane poza panelem
+        const sent = await findSentFolder(client);
+        if (sent) {
+            const lock = await client.getMailboxLock(sent.path);
+            try {
+                const box = client.mailbox as any;
+                const uidValidity = String(box.uidValidity);
+                let saved = (await readState("imap_sent_state")) || {};
+                if (!saved.lastUid || saved.uidValidity !== uidValidity) {
+                    saved = { uidValidity, lastUid: Math.max(0, (box.uidNext || 1) - 1) };
+                } else {
+                    const uids = ((await client.search({ uid: `${saved.lastUid + 1}:*` }, { uid: true })) || []).filter(u => u > saved.lastUid).sort((a, b) => a - b).slice(0, 300);
+                    if (uids.length) for await (const msg of client.fetch(uids, { source: true }, { uid: true })) {
+                        if (msg.source) {
+                            const r = await ingestHistory(toIngest(await simpleParser(msg.source), false), "out");
+                            if (r === "appended") res.answeredElsewhere++;
+                        }
+                        saved.lastUid = Math.max(saved.lastUid || 0, msg.uid);
+                    }
+                }
+                await writeState("imap_sent_state", saved);
+            } finally { lock.release(); }
+        }
+        await client.logout();
+        if (res.imported || res.answeredElsewhere) console.log(`📬 Postfach: ${res.imported} neue E-Mail(s), ${res.answeredElsewhere} Antwort(en) aus „Gesendet“, ${res.skipped} übersprungen`);
+    } catch (err: any) {
+        res.ok = false;
+        res.error = imapError(err);
+        console.error("❌ Postfach IMAP:", res.error);
+        try { client.close(); } catch { /* już zamknięte */ }
+    }
+    await writeState("imap_last", res);
+    // pełna synchronizacja raz, po pierwszym udanym połączeniu (i ponownie po błędzie)
+    if (res.ok) void maybeSync();
+    return res;
+};
+
+/** Czytelny błąd zamiast „Command failed” (np. złe hasło). */
+const imapError = (err: any) => {
+    const raw = [err?.responseText, err?.message].filter(Boolean).join(": ");
+    if (err?.authenticationFailed || /auth|login|credentials/i.test(raw)) return `Anmeldung am Postfach fehlgeschlagen, Benutzer oder Passwort prüfen (${raw})`;
+    if (/ENOTFOUND|ECONNREFUSED|ETIMEDOUT|timeout/i.test(raw)) return `Mailserver nicht erreichbar (${raw})`;
+    return raw || "unbekannter Fehler";
+};
+
+// ─── Synchronizacja całej skrzynki ────────────────────────────────────────────
+
+export const syncState = () => readState("history_import");
+let syncing = false;
+export const isSyncing = () => syncing;
+
+const maybeSync = async () => {
+    if (process.env.INBOX_HISTORY_ENABLED === "false" || syncing) return;
+    const st = await syncState();
+    if (st && st.status !== "failed" && st.version === 2) return;   // zrobione albo w toku
+    void syncMailbox();
+};
+
+export const syncMailbox = async (months = cfg().syncMonths) => {
+    if (syncing || !imapEnabled()) return null;
+    syncing = true;
+    const c = cfg();
     const startedAt = new Date().toISOString();
     const since = new Date(Date.now() - months * 30 * 86400000);
-    const MAX = Number(process.env.INBOX_HISTORY_MAX || 1500);
-    await saveHistoryState({ status: "running", startedAt, months });
+    const attachmentsSince = Date.now() - c.attachmentDays * 86400000;
+    await writeState("history_import", { status: "running", version: 2, startedAt, months });
     const client = newClient();
     try {
         await client.connect();
-        const sent = await findSentFolder(client);
-        if (!sent) throw new Error(`Kein Ordner für gesendete E-Mails gefunden (Ordner: ${(await client.list()).map(b => b.path).join(", ")})`);
-
-        // 1) nasze odpowiedzi
         type Item = { mail: IngestEmail; dir: "in" | "out" };
         const items: Item[] = [];
-        const repliedTo = new Set<string>(), sentIds = new Set<string>();
-        {
-            const lock = await client.getMailboxLock(sent.path);
+        let skipped = 0;
+        const sent = await findSentFolder(client);
+        const folders: [string, "in" | "out"][] = [[c.mailbox, "in"], ...(sent ? [[sent.path, "out"] as [string, "out"]] : [])];
+        for (const [path, dir] of folders) {
+            const lock = await client.getMailboxLock(path);
             try {
-                const uids = ((await client.search({ since }, { uid: true })) || []).sort((a, b) => b - a).slice(0, MAX);
-                if (uids.length) for await (const msg of client.fetch(uids, { source: true }, { uid: true })) {
+                const uids = ((await client.search({ since }, { uid: true })) || []).sort((a, b) => b - a).slice(0, c.syncMax);
+                if (uids.length) for await (const msg of client.fetch(uids, { source: true, internalDate: true }, { uid: true })) {
                     if (!msg.source) continue;
-                    const mail = toIngest(await simpleParser(msg.source), false);
-                    if (!mail.messageId) continue;
-                    items.push({ mail, dir: "out" });
-                    sentIds.add(mail.messageId);
-                    if (mail.inReplyTo) repliedTo.add(mail.inReplyTo);
-                    for (const r of (Array.isArray(mail.references) ? mail.references : String(mail.references || "").split(/\s+/))) if (r) repliedTo.add(r);
-                }
-            } finally { lock.release(); }
-        }
-
-        // 2) pytania klientów, na które odpowiedzieliśmy (albo odpowiedzi klientów na nasze maile)
-        {
-            const lock = await client.getMailboxLock("INBOX");
-            try {
-                const uids = ((await client.search({ since }, { uid: true })) || []).sort((a, b) => b - a).slice(0, MAX * 3);
-                const wanted: number[] = [];
-                if (uids.length) for await (const msg of client.fetch(uids, { envelope: true, headers: ["references"] }, { uid: true })) {
-                    const id = msg.envelope?.messageId;
-                    const refs = String(msg.headers?.toString() || "").match(/<[^>]+>/g) || [];
-                    const parent = msg.envelope?.inReplyTo;
-                    if ((id && repliedTo.has(id)) || (parent && sentIds.has(parent)) || refs.some(r => sentIds.has(r))) wanted.push(msg.uid);
-                }
-                if (wanted.length) for await (const msg of client.fetch(wanted, { source: true }, { uid: true })) {
-                    if (!msg.source) continue;
-                    const mail = toIngest(await simpleParser(msg.source), false);
-                    if (mail.fromEmail) items.push({ mail, dir: "in" });
+                    const p = await simpleParser(msg.source);
+                    const when = new Date(p.date || msg.internalDate || Date.now()).getTime();
+                    const mail = toIngest(p, dir === "in" && when >= attachmentsSince);
+                    if (!mail.messageId) { skipped++; continue; }
+                    if (dir === "in" && skipReason(mail, p.headers)) { skipped++; continue; }
+                    items.push({ mail, dir });
                 }
             } finally { lock.release(); }
         }
         await client.logout();
 
-        // 3) chronologicznie, żeby odpowiedzi trafiały do rozmów założonych przez pytania
+        // chronologicznie, żeby odpowiedzi trafiały do rozmów założonych przez pytania
         items.sort((a, b) => Date.parse(a.mail.date || "0") - Date.parse(b.mail.date || "0"));
-        const count = { created: 0, appended: 0, duplicate: 0, skipped: 0 };
+        const count = { created: 0, appended: 0, duplicate: 0, skipped };
         for (const it of items) count[await ingestHistory(it.mail, it.dir)]++;
 
-        // 4) opis stylu, jeśli nikt go jeszcze nie napisał
-        let style = "";
+        // otwarte rozmowy: ostatnia wiadomość od klienta z ostatnich openDays dni → „Offen” ze szkicem AI
+        const openSince = new Date(Date.now() - c.openDays * 86400000);
+        const candidates = await InboxThread.find({ imported: true, status: "archived", lastInboundAt: { $gte: openSince } });
+        let opened = 0;
+        for (const t of candidates) {
+            if (t.messages[t.messages.length - 1]?.direction !== "in") continue;
+            t.status = "new"; t.unread = true;
+            await t.save();
+            opened++;
+            await requestDraft(t);
+            await new Promise(r => setTimeout(r, 400));   // spokojnie z limitem OpenAI
+        }
+
+        // opis stylu z naszych odpowiedzi, jeśli nikt go jeszcze nie napisał
+        let style = "vorhanden, nicht geändert";
         const current = await InboxSetting.findOne({ key: "style" }).lean();
         if (!current?.text?.trim()) {
             try {
@@ -258,22 +263,42 @@ export const importHistory = async (months = Number(process.env.INBOX_HISTORY_MO
                 await InboxSetting.updateOne({ key: "style" }, { $set: { text: r.text, updatedBy: "KI (aus gesendeten E-Mails)" } }, { upsert: true });
                 style = `aus ${r.basedOn} Antworten erstellt`;
             } catch (err: any) { style = `nicht erstellt: ${err.message}`; }
-        } else style = "vorhanden, nicht geändert";
+        }
 
         const result = {
-            status: "done", startedAt, finishedAt: new Date().toISOString(), months, sentFolder: sent.path,
-            sentMails: items.filter(i => i.dir === "out").length, customerMails: items.filter(i => i.dir === "in").length,
-            conversations: count.created, ...count, style,
+            status: "done", version: 2, startedAt, finishedAt: new Date().toISOString(), months,
+            sentFolder: sent?.path || null,
+            inboxMails: items.filter(i => i.dir === "in").length, sentMails: items.filter(i => i.dir === "out").length,
+            ...count, opened, style,
         };
-        await saveHistoryState(result);
-        console.log(`📚 Postfach-Verlauf: ${result.sentMails} gesendete + ${result.customerMails} Kunden-E-Mails aus ${months} Monaten, ${count.created} Gespräche, Stil ${style}`);
+        await writeState("history_import", result);
+        console.log(`📚 Postfach synchronisiert: ${result.inboxMails} eingehende + ${result.sentMails} gesendete E-Mails aus ${months} Monaten, ${opened} offen mit Entwurf, Stil ${style}`);
         return result;
     } catch (err: any) {
-        console.error("❌ Postfach-Verlauf:", err.message);
+        const error = imapError(err);
+        console.error("❌ Postfach-Synchronisierung:", error);
         try { client.close(); } catch { /* już zamknięte */ }
-        await saveHistoryState({ status: "failed", startedAt, months, error: err.message });
+        await writeState("history_import", { status: "failed", version: 2, startedAt, months, error });
         return null;
     } finally {
-        historyRunning = false;
+        syncing = false;
+    }
+};
+
+// ─── Odpowiedzi z panelu w „Gesendet” ─────────────────────────────────────────
+
+/** Dopisuje odpowiedź z panelu do folderu „Gesendet”, żeby Outlook/telefon widziały ją jak każdą inną. Nie rzuca. */
+export const appendToSent = async (mail: Mail.Options) => {
+    if (!imapEnabled()) return;
+    const client = newClient();
+    try {
+        const raw = await new MailComposer(mail).compile().build();
+        await client.connect();
+        const sent = await findSentFolder(client);
+        if (sent) await client.append(sent.path, raw, ["\\Seen"], new Date());
+        await client.logout();
+    } catch (err: any) {
+        console.error("❌ Postfach: Antwort nicht in „Gesendet“ abgelegt:", imapError(err));
+        try { client.close(); } catch { /* już zamknięte */ }
     }
 };

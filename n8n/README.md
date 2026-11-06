@@ -31,9 +31,10 @@ INBOX_FROM=STAPLERO <info@staplero.com>
 
 # opcjonalnie
 # INBOX_IMAP_HOST / INBOX_IMAP_PORT / INBOX_IMAP_USER / INBOX_IMAP_PASS   inne dane do odbioru (domyślnie jak SMTP, port 993)
-# INBOX_IMAP_FIRST_RUN_DAYS=3     przy pierwszym uruchomieniu import maili z ostatnich N dni (0 = tylko nowe)
-# INBOX_HISTORY_MONTHS=12         ile miesięcy historii z „Gesendet” pobrać do nauki stylu
-# INBOX_HISTORY_ENABLED=false     wyłącza naukę z folderu „Gesendet”
+# INBOX_HISTORY_MONTHS=12         ile miesięcy skrzynki zsynchronizować przy pierwszym połączeniu
+# INBOX_OPEN_DAYS=14              maile bez odpowiedzi młodsze niż N dni → „Offen” ze szkicem, starsze → „Archiv”
+# INBOX_ATTACHMENT_DAYS=60        załączniki zapisujemy z maili z ostatnich N dni (starsze zostają w skrzynce)
+# INBOX_HISTORY_ENABLED=false     wyłącza synchronizację i naukę z „Gesendet”
 # INBOX_IMAP_ENABLED=false        wyłącza odbiór maili (formularz dalej trafia do panelu)
 # INBOX_AI_MODEL=gpt-5.4-mini     model OpenAI do szkiców (klucz: OPENAI_API_KEY, już jest)
 # INBOX_FILES_DIR=/var/staplero/inbox-files   załączniki (domyślnie backend/inbox-files, nie są publiczne)
@@ -42,8 +43,9 @@ INBOX_FROM=STAPLERO <info@staplero.com>
 
 4. Frontend: build i wdrożenie jak zwykle.
 
-Po restarcie backend pisze w logu `📬 Postfach: IMAP-Abruf alle 2 Minuten aktiv`, a po pierwszym imporcie
-`📬 Postfach: N neue E-Mail(s) importiert`. Błąd logowania do skrzynki widać jako `❌ Postfach IMAP: …`.
+Po restarcie backend pisze w logu `📬 Postfach: IMAP-Abruf alle 2 Minuten aktiv`, a po synchronizacji
+`📚 Postfach synchronisiert: …`. Błąd logowania widać w logu jako `❌ Postfach IMAP: …` i w panelu pod wyszukiwarką
+(„Abruf fehlgeschlagen: …”). Przycisk „Abrufen” w panelu pobiera nowe maile od razu.
 Bez danych IMAP/SMTP w `.env` do panelu trafia tylko formularz, a odpowiedzi idą przez Resend.
 
 ## Jak to działa
@@ -57,9 +59,12 @@ Bez danych IMAP/SMTP w `.env` do panelu trafia tylko formularz, a odpowiedzi id�
 - **Szkic**: AI zna ofertę i FAQ (`backend/src/services/staplero.knowledge.ts`, tę samą wiedzę ma czat na stronie),
   wolne terminy z „Standorte & Termine” (kurs = 2 dni od startu) i ostatnie zamówienia klienta.
   Czego nie wie, oznacza jako `[BITTE ERGÄNZEN: …]`.
-- **Nauka z historii**: po pierwszym połączeniu backend raz pobiera Twoje odpowiedzi z folderu „Gesendet” z ostatnich
-  12 miesięcy razem z pytaniami klientów, na które odpowiadały (spam i newslettery bez odpowiedzi pomija). Gdy opis stylu
-  jest pusty, AI tworzy go z tych odpowiedzi. Status i ponowny import: panel → „Schreibstil der KI”.
+- **Synchronizacja przy pierwszym połączeniu**: cała skrzynka z 12 miesięcy (INBOX + „Gesendet”) trafia do panelu,
+  żeby można było od razu pracować tylko w panelu. Rozmowy z odpowiedzią → „Beantwortet”, bez odpowiedzi z ostatnich
+  14 dni → „Offen” ze szkicem AI, starsze bez odpowiedzi → „Archiv”. Newslettery, autoodpowiedzi i zwrotki są pomijane.
+  Potem AI tworzy opis stylu z Twoich odpowiedzi (gdy jest pusty). Status i ponowna synchronizacja: „Schreibstil der KI”.
+- **Odpowiedzi z panelu w „Gesendet”**: kopia każdej odpowiedzi trafia do folderu „Gesendet” w All-Inkl, więc Outlook
+  i telefon widzą to samo co panel.
 - **Twój styl**: opis w „Schreibstil der KI” (możesz go poprawić albo wygenerować na nowo przyciskiem „Aus gesendeten
   E-Mails erstellen”). Do każdego szkicu AI dostaje też 4 najbardziej podobne wcześniejsze rozmowy jako wzór.
   Przy wysyłce z panelu zapisujemy szkic AI (`aiDraft`), żeby później porównać „co AI napisało → co poszło do klienta”.

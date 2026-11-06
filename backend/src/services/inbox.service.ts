@@ -40,6 +40,8 @@ const ownAddresses = (): string[] => {
     return list.map(a => (a.match(/<([^>]+)>/)?.[1] || a).trim().toLowerCase()).filter(Boolean);
 };
 
+export const isOwnAddress = (email: string) => ownAddresses().includes((email || "").trim().toLowerCase());
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 const smtp = process.env.INBOX_SMTP_HOST
     ? nodemailer.createTransport({
@@ -223,10 +225,17 @@ export const ingestHistory = async (m: IngestEmail, direction: "in" | "out"): Pr
         direction, source: "email", messageId, inReplyTo,
         references: references.length ? references : undefined,
         fromName: direction === "in" ? m.fromName || undefined : "STAPLERO",
-        fromEmail, to: m.to, subject: m.subject || "", text, attachments: [], date,
+        fromEmail, to: m.to, subject: m.subject || "", text, html: m.html || undefined,
+        attachments: direction === "in" ? await saveAttachments(m.attachments) : [], date,
     };
     const ids = [inReplyTo, ...references].filter(Boolean) as string[];
-    const thread = ids.length ? await InboxThread.findOne({ "messages.messageId": { $in: ids } }) : null;
+    let thread = ids.length ? await InboxThread.findOne({ "messages.messageId": { $in: ids } }) : null;
+    if (!thread && baseSubject(m.subject || "")) {
+        // bez nagłówków: ten sam klient i temat w ciągu 60 dni przed tą wiadomością
+        const from60 = new Date(date.getTime() - 60 * 86400000);
+        const cands = await InboxThread.find({ "customer.email": customerEmail, lastMessageAt: { $gte: from60, $lte: new Date(date.getTime() + 86400000) } }).sort({ lastMessageAt: -1 }).limit(10);
+        thread = cands.find(t => baseSubject(t.subject) === baseSubject(m.subject || "")) || null;
+    }
     if (thread) {
         thread.messages.push(message);
         thread.messages.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -235,7 +244,8 @@ export const ingestHistory = async (m: IngestEmail, direction: "in" | "out"): Pr
         const last = thread.messages[thread.messages.length - 1];
         if (last.direction === "out") {
             // odpowiedź wysłana poza panelem (Outlook, telefon): rozmowa jest załatwiona
-            if (thread.status !== "archived") thread.status = "sent";
+            // rozmowa z historii (także zarchiwizowana przez synchronizację) albo otwarta: teraz załatwiona
+            if (thread.imported || thread.status !== "archived") thread.status = "sent";
             thread.unread = false;
             if (!thread.imported) { thread.draft = { text: "", fromAi: false, editedAt: undefined }; thread.ai.suggestion = undefined; }
         } else if (thread.imported) thread.status = thread.messages.some(x => x.direction === "out") ? "sent" : "archived";
@@ -520,6 +530,10 @@ export const sendReply = async (id: string, replyText: string, sentBy: string) =
     const { text, html } = buildBodies(body, lastIn);
     const to = t.customer.name ? `"${t.customer.name.replace(/"/g, "")}" <${t.customer.email}>` : t.customer.email;
 
+    const mail = {
+        from: INBOX_FROM, to, subject, text, html, messageId, date: new Date(),
+        ...(parent ? { inReplyTo: parent.messageId, references } : {}),
+    };
     if (smtp) {
         await smtp.sendMail({
             from: INBOX_FROM,
@@ -570,7 +584,7 @@ export const sendReply = async (id: string, replyText: string, sentBy: string) =
     t.draft = { text: "", fromAi: false, editedAt: undefined };
     t.ai.suggestion = undefined;
     await t.save();
-    return t;
+    return { thread: t, mail };
 };
 
 // ─── Styl z historii ──────────────────────────────────────────────────────────

@@ -83,7 +83,8 @@ export default function AdminInbox() {
     const [styleMeta, setStyleMeta] = useState<{ updatedAt?: string; updatedBy?: string }>({});
     const [styleBusy, setStyleBusy] = useState(false);
     const [analyzing, setAnalyzing] = useState(false);
-    const [history, setHistory] = useState<{ imap: boolean; imported: number; state: any } | null>(null);
+    const [history, setHistory] = useState<{ imap: boolean; syncing: boolean; imported: number; state: any; lastPoll: any } | null>(null);
+    const [fetching, setFetching] = useState(false);
 
     const loadHistory = useCallback(async () => {
         const r = await fetch(`${API}/inbox/settings/history`, { headers: authH() }).catch(() => null);
@@ -95,12 +96,31 @@ export default function AdminInbox() {
         const r = await fetch(`${API}/inbox/settings/style`, { headers: authH() }).catch(() => null);
         if (r?.ok) { const d = await r.json(); setStyleText(d.text || ""); setStyleMeta(d); }
     };
-    // import historii trwa kilka minut: odświeżamy status, dopóki okno jest otwarte
+    useEffect(() => { loadHistory(); }, [loadHistory]);
+    // synchronizacja trwa kilka minut: częściej odświeżamy status i listę
+    const syncRunning = !!history?.syncing || history?.state?.status === "running";
     useEffect(() => {
-        if (!styleOpen || history?.state?.status !== "running") return;
-        const t = window.setInterval(loadHistory, 5000);
+        if (!syncRunning) return;
+        const t = window.setInterval(() => { loadHistory(); loadList(true); }, 5000);
         return () => clearInterval(t);
-    }, [styleOpen, history?.state?.status, loadHistory]);
+    }, [syncRunning, loadHistory]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    /** „Abrufen”: nowe maile od razu, bez czekania na automatyczny odbiór co 2 minuty. */
+    const fetchNow = async () => {
+        setFetching(true);
+        try {
+            const r = await fetch(`${API}/inbox/fetch`, { method: "POST", headers: authH() });
+            const d = await r.json();
+            if (!d.ok) throw new Error(d.error || "Abruf fehlgeschlagen");
+            const parts = [d.imported ? `${d.imported} neue E-Mail${d.imported === 1 ? "" : "s"}` : "", d.answeredElsewhere ? `${d.answeredElsewhere} außerhalb beantwortet` : ""].filter(Boolean);
+            toast({ title: parts.length ? parts.join(", ") : "Keine neuen E-Mails" });
+        } catch (e: any) {
+            toast({ title: "Postfach nicht abrufbar", description: e.message, variant: "destructive" });
+        } finally {
+            setFetching(false);
+            loadList(true); loadHistory();
+        }
+    };
     const analyze = async () => {
         setAnalyzing(true);
         try {
@@ -116,17 +136,17 @@ export default function AdminInbox() {
     const reimport = async () => {
         const r = await fetch(`${API}/inbox/settings/history/import`, { method: "POST", headers: authH(), body: JSON.stringify({ months: 12 }) }).catch(() => null);
         const d = await r?.json().catch(() => ({}));
-        if (r?.ok) { toast({ title: "Import gestartet", description: "Dauert je nach Postfach einige Minuten." }); setTimeout(loadHistory, 1500); }
-        else toast({ title: "Import nicht möglich", description: d?.error, variant: "destructive" });
+        if (r?.ok) { toast({ title: "Synchronisierung gestartet", description: "Dauert je nach Postfach einige Minuten." }); setTimeout(loadHistory, 1500); }
+        else toast({ title: "Synchronisierung nicht möglich", description: d?.error, variant: "destructive" });
     };
     const historyLine = () => {
         const st = history?.state;
         if (!history) return "";
         if (!history.imap) return "Postfach nicht verbunden: Es lernt nur aus Antworten, die hier gesendet werden.";
-        if (!st) return "Verlauf wird beim nächsten Abruf importiert.";
-        if (st.status === "running") return "Verlauf wird importiert…";
-        if (st.status === "failed") return `Import fehlgeschlagen: ${st.error}`;
-        return `Gelernt aus ${st.sentMails} gesendeten E-Mails der letzten ${st.months} Monate (Ordner „${st.sentFolder}“), Stand ${fmtFull(st.finishedAt)}. Neue Antworten aus „Gesendet“ kommen automatisch dazu.`;
+        if (!st || st.version !== 2) return "Das Postfach wird beim nächsten Abruf synchronisiert.";
+        if (st.status === "running") return "Postfach wird synchronisiert…";
+        if (st.status === "failed") return `Synchronisierung fehlgeschlagen: ${st.error}`;
+        return `Gelernt aus ${st.sentMails} gesendeten E-Mails der letzten ${st.months} Monate${st.sentFolder ? ` (Ordner „${st.sentFolder}“)` : ", kein Ordner „Gesendet“ gefunden"}, Stand ${fmtFull(st.finishedAt)}. Neue Antworten kommen automatisch dazu.`;
     };
     const saveStyle = async () => {
         setStyleBusy(true);
@@ -251,8 +271,16 @@ export default function AdminInbox() {
                 <div className="ib-search">
                     <Search className="ib-i" />
                     <input value={q} onChange={e => setQ(e.target.value)} placeholder="Name, E-Mail oder Text suchen" />
-                    <button type="button" className="ib-icon" aria-label="Aktualisieren" onClick={() => loadList()}><RefreshCw className={`ib-i ${loading ? "ib-spin" : ""}`} /></button>
+                    <button type="button" className="ib-fetch" disabled={fetching} onClick={fetchNow} title="Neue E-Mails jetzt abrufen">
+                        <RefreshCw className={`ib-i ${fetching || loading ? "ib-spin" : ""}`} />Abrufen
+                    </button>
                 </div>
+                {history && <div className={`ib-sync ${history.lastPoll && !history.lastPoll.ok ? "err" : ""}`}>
+                    {!history.imap ? "Postfach nicht verbunden, nur Kontaktformular"
+                        : syncRunning ? <><Loader2 className="ib-i ib-spin" />Postfach wird synchronisiert, E-Mails der letzten 12 Monate…</>
+                        : history.lastPoll && !history.lastPoll.ok ? `Abruf fehlgeschlagen: ${history.lastPoll.error}`
+                        : history.lastPoll ? `Zuletzt abgerufen ${fmtWhen(history.lastPoll.at)}, automatisch alle 2 Minuten` : "Noch nicht abgerufen"}
+                </div>}
                 <button type="button" className="ib-style-btn" onClick={openStyle}><PenLine className="ib-i" />Schreibstil der KI</button>
                 <div className="ib-cats">
                     <button className={!category ? "on" : ""} onClick={() => setCategory("")}>Alle{status === "open" && openCount ? <em>{openCount}</em> : null}</button>
@@ -370,12 +398,12 @@ export default function AdminInbox() {
                     </DialogDescription>
                 </DialogHeader>
                 <div className="ib-hist">
-                    <span>{history?.state?.status === "running" && <Loader2 className="ib-i ib-spin" />}{historyLine()}</span>
+                    <span>{syncRunning && <Loader2 className="ib-i ib-spin" />}{historyLine()}</span>
                     <div>
                         <button type="button" className="ib-btn ghost" disabled={analyzing} onClick={analyze}>
                             {analyzing ? <Loader2 className="ib-i ib-spin" /> : <Sparkles className="ib-i" />}Aus gesendeten E-Mails erstellen
                         </button>
-                        {history?.imap && history?.state?.status !== "running" && <button type="button" className="ib-btn ghost" onClick={reimport}><RefreshCw className="ib-i" />Verlauf neu importieren</button>}
+                        {history?.imap && !syncRunning && <button type="button" className="ib-btn ghost" onClick={reimport}><RefreshCw className="ib-i" />Postfach neu synchronisieren</button>}
                     </div>
                 </div>
                 <textarea className="ib-style-ta" value={styleText} onChange={e => setStyleText(e.target.value)} rows={12}

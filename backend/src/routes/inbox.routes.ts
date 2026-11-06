@@ -15,7 +15,7 @@ import { buildOpenAiBody } from "../services/inboxPrompt";
 import {
     ingestEmail, applyAiResult, threadForAi, requestDraft, sendReply, analyzeStyle, INBOX_FILES_DIR,
 } from "../services/inbox.service";
-import { importHistory, historyState, imapEnabled } from "../services/inboxImap.service";
+import { syncMailbox, syncState, isSyncing, imapEnabled, pollInbox, lastPoll, appendToSent } from "../services/inboxImap.service";
 
 const router = express.Router();
 
@@ -120,13 +120,21 @@ router.post("/settings/style/analyze", async (_req, res) => {
 });
 
 router.get("/settings/history", async (_req, res) => {
-    res.json({ imap: imapEnabled(), state: await historyState(), imported: await InboxThread.countDocuments({ imported: true }) });
+    const [state, last, imported] = await Promise.all([syncState(), lastPoll(), InboxThread.countDocuments({ imported: true })]);
+    res.json({ imap: imapEnabled(), syncing: isSyncing(), state, lastPoll: last, imported });
 });
 router.post("/settings/history/import", async (req, res) => {
-    if (!imapEnabled()) return res.status(400).json({ error: "IMAP ist nicht eingerichtet (INBOX_IMAP_* in .env)" });
+    if (!imapEnabled()) return res.status(400).json({ error: "IMAP ist nicht eingerichtet (INBOX_IMAP_* in backend/.env)" });
+    if (isSyncing()) return res.status(409).json({ error: "Synchronisierung läuft bereits" });
     const months = Math.min(36, Math.max(1, Number(req.body?.months) || 12));
-    void importHistory(months);
+    void syncMailbox(months);
     res.json({ ok: true, months });
+});
+
+// „Abrufen” w panelu: od razu nowe maile zamiast czekać na cron
+router.post("/fetch", async (_req, res) => {
+    const r = await pollInbox();
+    res.status(r.ok ? 200 : 502).json(r);
 });
 
 router.get("/:id", validId, async (req, res) => {
@@ -162,8 +170,9 @@ router.post("/:id/regenerate", validId, async (req: any, res) => {
 
 router.post("/:id/send", validId, async (req: any, res) => {
     try {
-        const t = await sendReply(req.params.id, String(req.body?.text || ""), req.user?.email || "admin");
-        res.json(await InboxThread.findById(t._id).select("-messages.html").lean());
+        const { thread, mail } = await sendReply(req.params.id, String(req.body?.text || ""), req.user?.email || "admin");
+        void appendToSent(mail);   // kopia w „Gesendet”, żeby Outlook widział odpowiedź
+        res.json(await InboxThread.findById(thread._id).select("-messages.html").lean());
     } catch (err: any) {
         console.error("[inbox] send:", err);
         res.status(err.status || 500).json({ error: err.message });
