@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import LearningCourse, { CourseContent, LANGS, Lang } from "../models/LearningCourse";
 import LessonProgress from "../models/LessonProgress";
 import { UserCourse } from "../models/UserCourse";
+import User from "../models/User";
 import { AuthRequest } from "../types";
 import { myBanks } from "./questionBankController";
 import { emptyContent, findLesson, newId, outline, translationStatus, validateContent } from "../utils/learningContent";
@@ -55,6 +56,16 @@ function lockedChapters(content: CourseContent, progress: Record<string, { passe
         if (gates.some(l => !progress[l.id]?.passed)) open = false;
     }
     return locked;
+}
+
+/** Odpowiedzi testu modułu ocenia serwer, więc kursant nie dostaje klucza. `correct` zostaje tylko jako kształt (jeden wybór / ile zaznaczyć). */
+function withoutAnswerKey(lesson: any) {
+    return {
+        ...lesson,
+        steps: lesson.steps.map((st: any) => st.type === "choice" && st.data?.gate
+            ? { ...st, data: { ...st.data, items: st.data.items.map(({ why: _why, correct, ...it }: any) => ({ ...it, correct: Array.isArray(correct) ? correct.map(() => 0) : 0 })) } }
+            : st),
+    };
 }
 
 /* ════════════════ learner ════════════════ */
@@ -131,7 +142,8 @@ export const getLesson = async (req: AuthRequest, res: Response) => {
     const p = await LessonProgress.findOne({ userId: String(req.user!._id), courseId, lessonId }).lean();
     res.json({
         courseId, courseTitle: content.title, chapter: { id: hit.chapter.id, title: hit.chapter.title },
-        lesson: hit.lesson, prevLessonId: order[i - 1] ?? null, nextLessonId: order[i + 1] ?? null,
+        // podgląd szkicu (admin) ocenia test w przeglądarce, więc potrzebuje klucza
+        lesson: req.query.draft === "1" ? hit.lesson : withoutAnswerKey(hit.lesson), prevLessonId: order[i - 1] ?? null, nextLessonId: order[i + 1] ?? null,
         progress: p ? { step: p.step, completed: p.completed, passed: !!p.passed, score: p.score, total: p.total } : { step: 0, completed: false },
     });
 };
@@ -146,7 +158,8 @@ export const submitCheck = async (req: AuthRequest, res: Response) => {
     const hit = c?.published && findLesson(c.published, lessonId);
     const gate = hit && gateStep(hit.lesson);
     if (!gate) return res.status(404).json({ message: "Test nicht gefunden" });
-    const items = (gate.data as any).items as { correct: number | number[] }[];
+    if (!isAdmin(req) && lockedChapters(c!.published!, await progressMap(String(req.user!._id), courseId)).has(hit!.chapter.id)) return res.status(423).json({ message: "Modul gesperrt", locked: true, chapterId: hit!.chapter.id });
+    const items =(gate.data as any).items as { correct: number | number[] }[];
     const answers: unknown[] = Array.isArray(req.body?.answers) ? req.body.answers : [];
     // test losuje `count` pytań z puli: pytania niewylosowane mają odpowiedź -1 i nie są oceniane
     const total = Math.min(items.length, Number((gate.data as any).count) || items.length);
@@ -294,6 +307,70 @@ export const adminPublish = async (req: AuthRequest, res: Response) => {
     c.markModified("published");
     await c.save();
     res.json(await adminRow(c.toObject()));
+};
+
+/* ──────────── dostęp nadawany ręcznie ──────────── */
+
+const MANUAL_ORDER = "MANUELL";
+const endOfDay = (d: Date) => { const x = new Date(d); x.setHours(23, 59, 59, 999); return x; };
+
+// GET /api/learning/admin/courses/:courseId/access — kto ma dostęp (ręczny lub z zakupu) i ile testów zaliczył
+export const adminListAccess = async (req: AuthRequest, res: Response) => {
+    const { courseId } = req.params;
+    if (!validId(courseId)) return res.status(404).json({ message: "Kurs nicht gefunden" });
+    const c = await LearningCourse.findById(courseId).lean();
+    if (!c) return res.status(404).json({ message: "Kurs nicht gefunden" });
+    const rows = await UserCourse.find({ courseId }).sort({ expiresAt: -1 }).lean();
+    const validUsers = rows.map(r => r.userId).filter(validId);
+    const [users, passed] = await Promise.all([
+        User.find({ _id: { $in: validUsers } }).select("name email").lean(),
+        LessonProgress.find({ courseId, userId: { $in: rows.map(r => r.userId) }, passed: true }).select("userId lessonId").lean(),
+    ]);
+    const gateIds = new Set((c.published ?? c.draft).chapters.flatMap(ch => ch.lessons.filter(l => gateStep(l)).map(l => l.id)));
+    const byId = new Map(users.map(u => [String(u._id), u]));
+    const now = new Date();
+    res.json({
+        testsTotal: gateIds.size,
+        rows: rows.map(r => ({
+            userId: r.userId, name: byId.get(r.userId)?.name ?? "", email: byId.get(r.userId)?.email ?? "",
+            expiresAt: r.expiresAt, expired: r.status === "expired" || new Date(r.expiresAt) < now,
+            manual: r.orderNumber === MANUAL_ORDER, orderNumber: r.orderNumber,
+            testsPassed: passed.filter(p => p.userId === r.userId && gateIds.has(p.lessonId)).length,
+        })),
+    });
+};
+
+// PUT /api/learning/admin/courses/:courseId/access/:userId { expiresAt } — nadanie albo zmiana daty; numer zamówienia zakupu zostaje
+export const adminGrantAccess = async (req: AuthRequest, res: Response) => {
+    const { courseId, userId } = req.params;
+    if (!validId(courseId) || !validId(userId)) return res.status(404).json({ message: "Nicht gefunden" });
+    const expires = new Date(String(req.body?.expiresAt ?? ""));
+    if (isNaN(+expires)) return res.status(400).json({ message: "Bitte ein gültiges Datum angeben", field: "expiresAt" });
+    const expiresAt = endOfDay(expires);
+    if (expiresAt < new Date()) return res.status(400).json({ message: "Das Datum darf nicht in der Vergangenheit liegen", field: "expiresAt" });
+    const [course, user] = await Promise.all([LearningCourse.findById(courseId).select("published.version").lean(), User.exists({ _id: userId })]);
+    if (!course) return res.status(404).json({ message: "Kurs nicht gefunden" });
+    if (!course.published) return res.status(409).json({ message: "Der Kurs ist noch nicht veröffentlicht." });
+    if (!user) return res.status(404).json({ message: "Benutzer nicht gefunden" });
+    const existing = await UserCourse.findOne({ userId, courseId });
+    if (existing) {
+        existing.expiresAt = expiresAt;
+        existing.status = "active";
+        await existing.save();
+    } else {
+        await UserCourse.create({ userId, courseId, purchaseDate: new Date(), expiresAt, status: "active", orderNumber: MANUAL_ORDER });
+    }
+    res.json({ ok: true });
+};
+
+// DELETE /api/learning/admin/courses/:courseId/access/:userId — tylko dostęp ręczny; postęp kursanta zostaje
+export const adminRevokeAccess = async (req: AuthRequest, res: Response) => {
+    const { courseId, userId } = req.params;
+    const row = await UserCourse.findOne({ userId, courseId });
+    if (!row) return res.status(404).json({ message: "Zugang nicht gefunden" });
+    if (row.orderNumber !== MANUAL_ORDER) return res.status(409).json({ message: "Dieser Zugang stammt aus einer Bestellung und kann hier nicht entzogen werden." });
+    await row.deleteOne();
+    res.json({ ok: true });
 };
 
 // DELETE /api/learning/admin/courses/:courseId — refused while learners have access

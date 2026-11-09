@@ -101,7 +101,7 @@ function CourseView({ id }: { id: string }) {
     const { toast } = useToast();
     const [c, setC] = useState<Full | null>(null);
     const [err, setErr] = useState("");
-    const [tab, setTab] = useState<"mods" | "exam">("mods");
+    const [tab, setTab] = useState<"mods" | "exam" | "access">("mods");
     const [open, setOpen] = useState<string | null>(null);
     const [panel, setPanel] = useState<{ kind: "lesson" | "test"; ch: number; le: number } | null>(null);
     const [confirmPub, setConfirmPub] = useState(false);
@@ -151,9 +151,9 @@ function CourseView({ id }: { id: string }) {
                     : <button className="ac-btn p" disabled={c.status === "published"} onClick={() => setConfirmPub(true)}>Veröffentlichen</button>}
             </div>
         </div>
-        <div className="ac-seg"><button aria-pressed={tab === "mods"} onClick={() => setTab("mods")}>Module &amp; Themen</button>{exam && <button aria-pressed={tab === "exam"} onClick={() => setTab("exam")}>Abschlussprüfung</button>}</div>
+        <div className="ac-seg"><button aria-pressed={tab === "mods"} onClick={() => setTab("mods")}>Module &amp; Themen</button>{exam && <button aria-pressed={tab === "exam"} onClick={() => setTab("exam")}>Abschlussprüfung</button>}<button aria-pressed={tab === "access"} onClick={() => setTab("access")}>Kursanten</button></div>
 
-        {tab === "mods" ? <div className="ac-mods">{modules.map(({ ch, i }, n) => {
+        {tab === "access" ? <AccessTab courseId={id} published={c.publishedVersion > 0} onChange={load} /> : tab === "mods" ? <div className="ac-mods">{modules.map(({ ch, i }, n) => {
             const topics = ch.lessons.map((l, j) => ({ l, j })).filter(x => !isGate(x.l));
             const gate = ch.lessons.findIndex(isGate);
             const gd = gate >= 0 ? ch.lessons[gate].steps.find(s => s.data?.gate)?.data : null;
@@ -308,6 +308,12 @@ function renderNode(v: any, path: (string | number)[], parentKey: string, lang: 
     if (v && typeof v === "object") {
         const keys = Object.keys(v).sort((a, b) => (a === "title" ? -1 : b === "title" ? 1 : 0));
         const kids = keys.map(k => renderNode(v[k], [...path, k], k, lang, root, set)).filter(Boolean);
+        // Zuordnen: pozycja ma numer właściwej grupy w `a`, grupy są w `labels` kroku
+        if (typeof v.a === "number" && Array.isArray(root?.labels) && root.labels.length) kids.push(
+            <div key={[...path, "a"].join(".")} className="ac-fl">Richtige Gruppe
+                <div className="ac-seg">{root.labels.map((l: any, i: number) =>
+                    <button type="button" key={i} aria-pressed={v.a === i} onClick={() => set([...path, "a"], i)}>{strip(l?.[lang] || l?.de || `Gruppe ${i + 1}`)}</button>)}</div>
+            </div>);
         if (!kids.length) return null;
         if (!path.length || typeof key === "number") return <div key={path.join(".") || "root"} className="ac-obj">{kids}</div>;
         return <div key={path.join(".")} className="ac-group"><span className="ac-gl">{LABEL[key as string] ?? key}</span>{kids}</div>;
@@ -396,6 +402,89 @@ function TestPanel({ chapter, chIndex, lesson, onClose, onSave }: { chapter: Cha
         <footer className="ac-pf"><span className="ac-hint">{dirty ? "Nicht gespeicherte Änderungen" : "Ausgeschaltete Fragen werden beim Veröffentlichen aus dem Test genommen, bleiben hier aber erhalten."}</span>
             <div><button className="ac-btn o" onClick={onClose}>Schließen</button><button className="ac-btn p" disabled={!dirty || busy || active < d.count} onClick={save}>{busy ? "Speichert …" : "Speichern"}</button></div></footer>
     </aside>;
+}
+
+/* ═════════════ kursanci: ręczne nadawanie dostępu ═════════════ */
+interface AccessRow { userId: string; name: string; email: string; expiresAt: string; expired: boolean; manual: boolean; orderNumber: string; testsPassed: number }
+interface FoundUser { id: string; name: string; email: string }
+const dateInput = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const inDays = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return dateInput(d); };
+
+function AccessTab({ courseId, published, onChange }: { courseId: string; published: boolean; onChange: () => void }) {
+    const { toast } = useToast();
+    const [data, setData] = useState<{ testsTotal: number; rows: AccessRow[] } | null>(null);
+    const [err, setErr] = useState("");
+    const [q, setQ] = useState("");
+    const [found, setFound] = useState<FoundUser[] | null>(null);
+    const [picked, setPicked] = useState<FoundUser | null>(null);
+    const [until, setUntil] = useState(() => inDays(30));
+    const [busy, setBusy] = useState(false);
+    const [confirm, setConfirm] = useState("");
+
+    const load = useCallback(() => req<{ testsTotal: number; rows: AccessRow[] }>(`/admin/courses/${courseId}/access`).then(setData).catch(e => setErr(e.message)), [courseId]);
+    useEffect(() => { load(); }, [load]);
+
+    useEffect(() => {
+        const term = q.trim();
+        if (picked || term.length < 2) { setFound(null); return; }
+        let live = true;
+        const timer = setTimeout(() => {
+            fetch(`${API}/auth/users?limit=8&search=${encodeURIComponent(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))}`, { headers: auth() })
+                .then(r => r.json()).then(b => { if (live) setFound(b.users ?? []); }).catch(() => { if (live) setFound([]); });
+        }, 250);
+        return () => { live = false; clearTimeout(timer); };
+    }, [q, picked]);
+
+    const put = async (userId: string, expiresAt: string, msg: string) => {
+        setBusy(true);
+        try {
+            await req(`/admin/courses/${courseId}/access/${userId}`, { method: "PUT", body: JSON.stringify({ expiresAt }) });
+            await load(); onChange(); toast({ title: msg });
+            return true;
+        } catch (e: any) { toast({ title: "Speichern fehlgeschlagen", description: e.message, variant: "destructive" }); return false; }
+        finally { setBusy(false); }
+    };
+    const grant = async () => { if (picked && await put(picked.id, until, "Zugang freigeschaltet")) { setPicked(null); setQ(""); setUntil(inDays(30)); } };
+    const revoke = async (userId: string) => {
+        setBusy(true);
+        try { await req(`/admin/courses/${courseId}/access/${userId}`, { method: "DELETE" }); setConfirm(""); await load(); onChange(); toast({ title: "Zugang entzogen" }); }
+        catch (e: any) { toast({ title: "Entziehen fehlgeschlagen", description: e.message, variant: "destructive" }); }
+        finally { setBusy(false); }
+    };
+
+    if (err) return <p className="ac-err">{err}</p>;
+    if (!published) return <p className="ac-muted">Veröffentlichen Sie den Kurs, bevor Sie Kursanten freischalten.</p>;
+    const has = new Set(data?.rows.map(r => r.userId));
+    return <div className="ac-access">
+        <section className="ac-card ac-grant">
+            <div className="ac-fl ac-grant-who">Kursant suchen
+                {picked
+                    ? <div className="ac-picked"><span><b>{picked.name}</b> {picked.email}</span><button className="ac-btn g s" onClick={() => { setPicked(null); setQ(""); }}>Ändern</button></div>
+                    : <input value={q} onChange={e => setQ(e.target.value)} placeholder="Name oder E-Mail" autoComplete="off" />}
+                {!picked && found && <div className="ac-found">
+                    {found.map(u => <button key={u.id} type="button" onClick={() => { setPicked(u); setFound(null); }}><b>{u.name}</b><span>{u.email}</span>{has.has(u.id) && <small>hat bereits Zugang</small>}</button>)}
+                    {!found.length && <p className="ac-muted">Kein Konto gefunden. Der Kursant muss sich zuerst registrieren.</p>}
+                </div>}
+            </div>
+            <label className="ac-fl">Zugang bis<input type="date" min={inDays(0)} value={until} onChange={e => setUntil(e.target.value)} /></label>
+            <button className="ac-btn p" disabled={!picked || !until || busy} onClick={grant}>Freischalten</button>
+        </section>
+        <p className="ac-hint">Jedes Modul wird erst frei, wenn der Test des vorherigen Moduls bestanden ist. Bestehende Zugänge lassen sich über das Datum verlängern.</p>
+
+        {!data ? <p className="ac-muted">Lädt …</p> : !data.rows.length ? <p className="ac-muted">Noch keine Kursanten mit Zugang.</p> : <section className="ac-card ac-learners">
+            {data.rows.map(r => <div key={r.userId} className="ac-lrow">
+                <span className="who"><b>{r.name || "Unbekanntes Konto"}</b><small>{r.email}</small></span>
+                <span className="res">{r.testsPassed} von {data.testsTotal} Tests bestanden</span>
+                <span className="src">{r.manual ? "Manuell freigeschaltet" : `Bestellung ${r.orderNumber}`}</span>
+                <span className={`ac-st ${r.expired ? "bad" : "ok"}`}>{r.expired ? "Abgelaufen" : "Aktiv"}</span>
+                <input type="date" aria-label={`Zugang bis für ${r.email}`} min={inDays(0)} defaultValue={dateInput(new Date(r.expiresAt))} key={r.expiresAt} disabled={busy}
+                    onBlur={e => { if (e.target.value && e.target.value !== dateInput(new Date(r.expiresAt))) put(r.userId, e.target.value, "Zugang geändert"); }} />
+                <span className="act">{!r.manual ? null : confirm === r.userId
+                    ? <><button className="ac-btn x s" disabled={busy} onClick={() => revoke(r.userId)}>Ja, entziehen</button><button className="ac-btn g s" onClick={() => setConfirm("")}>Abbrechen</button></>
+                    : <button className="ac-btn g s" onClick={() => setConfirm(r.userId)}>Entziehen</button>}</span>
+            </div>)}
+        </section>}
+    </div>;
 }
 
 function ExamSettings({ exam, onSave }: { exam: Chapter; onSave: (d: any) => Promise<boolean> }) {

@@ -3,6 +3,7 @@ import { protect, admin } from "../middleware/authMiddleware";
 import {
     getMyCourses, getCourse, getLesson, saveProgress, submitCheck,
     adminListCourses, adminCreateCourse, adminGetCourse, adminSaveDraft, adminUpdateMeta, adminPublish, adminDeleteCourse,
+    adminListAccess, adminGrantAccess, adminRevokeAccess,
 } from "../controllers/learningController";
 import {
     getBank, answerBank, resetBankProgress, submitBankTest,
@@ -20,6 +21,9 @@ router.put("/admin/courses/:courseId/draft",     protect, admin, adminSaveDraft)
 router.patch("/admin/courses/:courseId",         protect, admin, adminUpdateMeta);
 router.post("/admin/courses/:courseId/publish",  protect, admin, adminPublish);
 router.delete("/admin/courses/:courseId",        protect, admin, adminDeleteCourse);
+router.get("/admin/courses/:courseId/access",            protect, admin, adminListAccess);
+router.put("/admin/courses/:courseId/access/:userId",    protect, admin, adminGrantAccess);
+router.delete("/admin/courses/:courseId/access/:userId", protect, admin, adminRevokeAccess);
 
 // learner
 router.get("/my",                                         protect, getMyCourses);
