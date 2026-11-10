@@ -114,6 +114,20 @@ export const sendOrderConfirmationEmail = async (
         onlineAccess,
         participants: [user.name, ...(details.additionalParticipants || []).map((p) => p.name)],
       });
+      // Pakiet z teorią online: osobny mail z dostępem, żeby kursant zaczął się uczyć przed kursem
+      if (onlineAccess) {
+        console.log(`🔔 Online-Zugang ${order.orderNumber} → ${user.email}`);
+        await emailService.sendOnlineTheoryAccessEmail({
+          to: user.email,
+          name: user.name,
+          courseName: onlineAccess.courseName,
+          expiresAt: onlineAccess.expiresAt,
+          days: onlineAccess.days,
+          courseStart: details.startDate,
+          locationName: details.locationName,
+          participantsCount: 1 + (details.additionalParticipants || []).length,
+        });
+      }
     } else if (order.type === "online") {
       const expiresAt = order.expiresAt || claimed.expiresAt;
       for (const item of order.items) {

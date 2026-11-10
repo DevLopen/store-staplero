@@ -222,7 +222,7 @@ export const heroTicket = (cols: Array<{ label: string; title: string; note?: st
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.darkSoft};border:1px solid #474747;border-radius:6px;">
   <tr>
     ${cols.map((c, i) => `
-    <td class="stack${i > 0 ? " stack-rule" : ""}" width="${Math.floor(100 / cols.length)}%" valign="top" style="padding:22px ${cols.length > 2 ? 16 : 24}px;${i > 0 ? "border-left:1px dashed #5a5a5a;" : ""}">
+    <td class="stack ticket-cell${i > 0 ? " stack-rule" : ""}" width="${Math.floor(100 / cols.length)}%" valign="top" style="padding:22px ${cols.length > 2 ? 16 : 24}px;${i > 0 ? "border-left:1px dashed #5a5a5a;" : ""}">
       <div style="font-family:${BODY_FONT};font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${C.orange};margin-bottom:6px;">${c.label}</div>
       <div style="font-family:${DISPLAY_FONT};font-size:${cols.length > 2 ? 24 : 30}px;line-height:1;font-weight:800;text-transform:uppercase;color:${C.white};">${c.title}</div>
       ${c.note ? `<div style="font-family:${BODY_FONT};font-size:14px;color:#b5b5b5;margin-top:6px;">${c.note}</div>` : ""}
@@ -232,6 +232,32 @@ export const heroTicket = (cols: Array<{ label: string; title: string; note?: st
   <tr>
     <td colspan="${cols.length}" style="padding:16px 24px;border-top:1px solid #474747;font-family:${BODY_FONT};font-size:14px;line-height:1.5;color:#d4d4d4;">${footerHtml}</td>
   </tr>` : ""}
+</table>`;
+
+/** Jeden duży przycisk na całą szerokość ciemnego pasa (gdy jest tylko jedno główne działanie) */
+export const heroButton = (href: string, label: string): string => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 0;">
+  <tr>
+    <td align="center" bgcolor="${C.orange}" style="background:${C.orange};border-radius:4px;">
+      <a href="${href}" target="_blank" style="display:block;padding:17px 20px;font-family:${BODY_FONT};font-size:16px;font-weight:700;color:${C.ink};text-decoration:none;">${label}</a>
+    </td>
+  </tr>
+</table>`;
+
+/** Lista kroków w ramce: numer w kółku, tytuł i opis. Tylko gdy kolejność ma znaczenie. */
+export const steps = (items: Array<{ title: string; text: string }>): string => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;border:1px solid ${C.hairline};border-radius:6px;">
+  ${items.map((item, i) => {
+      const line = i < items.length - 1 ? `border-bottom:1px solid ${C.hairline};` : "";
+      return `
+  <tr>
+    <td width="52" valign="top" style="padding:18px 0 18px 18px;${line}"><div style="width:30px;height:30px;line-height:30px;text-align:center;background:${i === 0 ? C.orange : C.dark};color:${i === 0 ? C.ink : C.white};border-radius:15px;font-family:${BODY_FONT};font-size:14px;font-weight:700;">${i + 1}</div></td>
+    <td valign="top" style="padding:18px 18px 18px 6px;${line}font-family:${BODY_FONT};">
+      <div style="font-size:16px;font-weight:700;color:${C.ink};margin:4px 0 4px;">${item.title}</div>
+      <div style="font-size:14px;line-height:1.55;color:${C.body};">${item.text}</div>
+    </td>
+  </tr>`;
+  }).join("")}
 </table>`;
 
 /** Dwa przyciski obok siebie na ciemnym tle (na telefonie jeden pod drugim) */
@@ -282,6 +308,7 @@ export const renderEmail = (o: LayoutOptions): string => `<!DOCTYPE html>
       .h1 { font-size:36px !important; }
       .hide-sm { display:none !important; }
       .stack { display:block !important; width:100% !important; padding:0 0 8px 0 !important; box-sizing:border-box; }
+      .ticket-cell { padding:18px 20px !important; }
       .stack-rule { border-left:0 !important; border-top:1px dashed #5a5a5a !important; }
       .step-img { width:96px !important; height:96px !important; }
     }

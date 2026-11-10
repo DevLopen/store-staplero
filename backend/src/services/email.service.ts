@@ -19,6 +19,8 @@ import {
     heroText,
     heroTicket,
     heroButtons,
+    heroButton,
+    steps,
 } from "./emailTemplates";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -356,13 +358,11 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
       ${p("Bitte leiten Sie diese E-Mail an alle Teilnehmer weiter. Jede Person braucht einen eigenen Ausweis und Sicherheitsschuhe.", { small: true, muted: true })}`
         : "";
 
+    // Szczegóły dostępu online idą osobnym mailem (sendOnlineTheoryAccessEmail) — tu tylko krótki odnośnik
     const access = opts.onlineAccess;
     const onlineAccessHtml = access
         ? `
-      ${sectionTitle("Ihr Zugang zur Online-Theorie", "Im Preis enthalten: Bereiten Sie sich schon vor dem Kurs vor.")}
-      ${callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c25e00;">${access.days ? `${access.days} Tage Zugang` : "Online-Zugang"}</span><br>Ihr Online-Kurs ${strong(`„${escapeHtml(access.courseName)}“`)} ist ab sofort freigeschaltet. Lernen Sie in Ihrem Tempo am Handy oder Computer, ideal zur Vorbereitung auf den Theorietag und die schriftliche Prüfung.<br>Zugang gültig bis ${strong(longDate(new Date(access.expiresAt)))}.`, "orange")}
-      ${button(`${FRONTEND_URL}/dashboard`, "Zum Online-Kurs")}
-      ${p(`Melden Sie sich mit Ihrer E-Mail-Adresse ${strong(escapeHtml(to))} und dem Passwort aus Ihrer Bestellung an.${people.length > 1 ? " Der Zugang gilt für das Konto des Bestellers." : ""}`, { small: true, muted: true })}`
+      ${callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c25e00;">Online-Theorie inklusive</span><br>Ihr Online-Kurs ist bereits freigeschaltet${access.days ? ` (${access.days} Tage, bis ${strong(longDate(new Date(access.expiresAt)))})` : ""}. Den Zugang und alle Schritte zum Start haben wir Ihnen in einer ${strong("separaten E-Mail")} geschickt.`, "orange")}`
         : "";
 
     const bodyHtml = `
@@ -373,11 +373,11 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
           { title: "Geeignete Arbeitskleidung", note: `${isThreeDay ? "an den Praxistagen" : "am Praxistag"}, lange Hose empfohlen. Hallentemperatur ca. 18 bis 22 °C` },
       ])}
 
+      ${onlineAccessHtml}
+
       ${arrivalHtml}
 
       ${participantsHtml}
-
-      ${onlineAccessHtml}
 
       ${sectionTitle("Ablauf der Ausbildung", "Nach DGUV Grundsatz 308-001 und DGUV Vorschrift 68.")}
       ${timelineItem({
@@ -668,6 +668,180 @@ const sendReachTruckBookingEmail = async (opts: PracticalCourseBookingEmailOptio
     });
 };
 
+// ─── Pakiet: dostęp do teorii online przed kursem (osobny mail) ───────────────
+
+interface OnlineTheoryAccessEmailOptions {
+    to: string;
+    name: string;
+    courseName: string; // kurs online, np. "Staplerschein Theorie"
+    expiresAt: Date | string;
+    days?: number; // długość dostępu z pakietu (np. 14)
+    courseStart: Date | string; // pierwszy dzień kursu praktycznego
+    locationName: string;
+    participantsCount?: number;
+    language?: "de" | "en";
+}
+
+const onlineTheoryTexts = {
+    de: {
+        locale: "de-DE",
+        subject: (d: string) => `Online-Theorie freigeschaltet: Jetzt vor Ihrem Kurs am ${d} lernen`,
+        preheader: (days: string, exp: string) => `${days} Zugang, gültig bis ${exp}. So gehen Sie gut vorbereitet in Theorie und Prüfung.`,
+        title: "Online-Zugang freigeschaltet",
+        eyebrow: "Online-Zugang freigeschaltet",
+        headline: "Lernen Sie die Theorie schon vor dem Kurs",
+        heroIntro: (n: string) => `Hallo ${n}, in Ihrer Buchung ist der Online-Theoriekurs enthalten. Er ist ab sofort freigeschaltet. Nutzen Sie die Zeit bis zum Kurs, um die Grundlagen in Ruhe zu lernen.`,
+        days: (d?: number) => (d ? `${d} Tage` : "Online"),
+        accessLabel: "Ihr Online-Zugang",
+        validUntil: (d: string) => `gültig bis ${d}`,
+        courseLabel: "Ihr Kurs beginnt",
+        device: "Am Handy, Tablet oder Computer",
+        cta: "Jetzt mit dem Lernen starten",
+        startTitle: "So starten Sie",
+        steps: (email: string) => [
+            { title: "Anmelden", text: `Mit Ihrer E-Mail-Adresse ${strong(email)} und dem Passwort, das Sie bei der Bestellung gewählt haben.` },
+            { title: "Kurs öffnen", text: "Im Kundenbereich ist Ihr Online-Kurs bereits freigeschaltet. Ein Klick genügt." },
+            { title: "In Ihrem Tempo lernen", text: "Arbeiten Sie die Module nacheinander durch und prüfen Sie Ihr Wissen mit den Übungstests. Ihr Fortschritt wird gespeichert." },
+        ],
+        forgot: (url: string) => `Passwort vergessen? <a href="${url}" style="color:#111111;font-weight:700;">Hier neues Passwort festlegen</a>`,
+        pathTitle: "Ihr Weg zum Staplerschein",
+        pathLead: "Die Online-Theorie bereitet Sie gezielt auf den Kurs vor Ort vor.",
+        nowTitle: "Ab heute &middot; Online lernen",
+        nowMeta: (d: string) => `bis ${d}`,
+        nowText: "Rechtliche Grundlagen, Aufbau des Staplers, Standsicherheit und Tragfähigkeit, Lastdiagramme und Verkehrsregeln im Betrieb: in kurzen Lektionen, so oft Sie möchten.",
+        courseTitle: "Kurs vor Ort",
+        courseText: "Theorie und Praxis mit Ihrem Ausbilder. Mit Vorwissen folgen Sie dem Unterricht leichter und gehen sicherer in die Prüfung.",
+        exam: "Prüfung",
+        examText: "Schriftlicher Test und Fahrprüfung",
+        endsBefore: (exp: string, start: string) => `${strong("Hinweis:")} Ihr Online-Zugang endet am ${strong(exp)}, also vor Ihrem Kurs am ${strong(start)}. Planen Sie Ihre Lernzeit am besten gleich ein.`,
+        goodToKnow: "Gut zu wissen",
+        notes: (exp: string, multi: boolean) => `Der Zugang endet automatisch am ${strong(exp)}. Es entstehen keine weiteren Kosten.${multi ? " Der Online-Zugang gilt für das Konto des Bestellers." : ""}<br>Treffpunkt, Uhrzeiten und Checkliste stehen in Ihrer separaten Buchungsbestätigung.`,
+        help: "Fragen zum Online-Kurs?",
+        whatsapp: "Per WhatsApp schreiben",
+        bye: `Viel Erfolg beim Lernen!<br>${strong("Ihr STAPLERO Team")}`,
+    },
+    en: {
+        locale: "en-GB",
+        subject: (d: string) => `Online theory unlocked: start learning before your course on ${d}`,
+        preheader: (days: string, exp: string) => `${days} of access, valid until ${exp}. Go into the theory day and exam well prepared.`,
+        title: "Online access unlocked",
+        eyebrow: "Online access unlocked",
+        headline: "Learn the theory before your course",
+        heroIntro: (n: string) => `Hello ${n}, your booking includes the online theory course. It is unlocked now. Use the time before your course to learn the basics at your own pace.`,
+        days: (d?: number) => (d ? `${d} days` : "Online"),
+        accessLabel: "Your online access",
+        validUntil: (d: string) => `valid until ${d}`,
+        courseLabel: "Your course starts",
+        device: "On your phone, tablet or computer",
+        cta: "Start learning now",
+        startTitle: "How to start",
+        steps: (email: string) => [
+            { title: "Log in", text: `With your email address ${strong(email)} and the password you chose when ordering.` },
+            { title: "Open the course", text: "Your online course is already unlocked in your customer area. One click is all it takes." },
+            { title: "Learn at your own pace", text: "Work through the modules one by one and check your knowledge with the practice tests. Your progress is saved." },
+        ],
+        forgot: (url: string) => `Forgot your password? <a href="${url}" style="color:#111111;font-weight:700;">Set a new password here</a>`,
+        pathTitle: "Your way to the forklift licence",
+        pathLead: "The online theory prepares you for the course on site.",
+        nowTitle: "From today &middot; Learn online",
+        nowMeta: (d: string) => `until ${d}`,
+        nowText: "Legal basics, design of the forklift, stability and load capacity, load charts and traffic rules on site: in short lessons, as often as you like.",
+        courseTitle: "Course on site",
+        courseText: "Theory and practice with your instructor. With prior knowledge you follow the lessons more easily and go into the exam with more confidence.",
+        exam: "Exam",
+        examText: "Written test and driving test",
+        endsBefore: (exp: string, start: string) => `${strong("Please note:")} your online access ends on ${strong(exp)}, before your course on ${strong(start)}. Plan your learning time now.`,
+        goodToKnow: "Good to know",
+        notes: (exp: string, multi: boolean) => `Access ends automatically on ${strong(exp)}. There are no further costs.${multi ? " The online access applies to the account of the person who booked." : ""}<br>Meeting point, times and checklist are in your separate booking confirmation.`,
+        help: "Questions about the online course?",
+        whatsapp: "Message us on WhatsApp",
+        bye: `Good luck with your studies!<br>${strong("Your STAPLERO Team")}`,
+    },
+};
+
+/**
+ * Osobny mail do pakietu „kurs + teoria online”: dostęp do kursu online jest aktywny od razu,
+ * żeby kursant uczył się jeszcze przed terminem. Wysyłany zaraz po potwierdzeniu rezerwacji.
+ * Język jak w mailu Stufe 2: opts.language, inaczej angielski dla terminów „auf Englisch”.
+ */
+export const sendOnlineTheoryAccessEmail = async (opts: OnlineTheoryAccessEmailOptions): Promise<void> => {
+    const { to, name, courseName, locationName } = opts;
+    const lang = opts.language === "en" || (!opts.language && /englisch|english/i.test(locationName)) ? "en" : "de";
+    const T = onlineTheoryTexts[lang];
+
+    const expires = new Date(opts.expiresAt);
+    const start = new Date(opts.courseStart);
+    const fmt = (d: Date, o: Intl.DateTimeFormatOptions) => d.toLocaleDateString(T.locale, { timeZone: BERLIN_TZ, ...o });
+    const longDate = (d: Date) => fmt(d, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const shortDate = (d: Date) => fmt(d, { weekday: "short", day: "numeric", month: "short" });
+    const subjectDate = lang === "en" ? fmt(start, { day: "numeric", month: "short" }) : berlinDate(start, { day: "2-digit", month: "2-digit" });
+    const city = escapeHtml(locationName.split(/[(\-–]/)[0].trim() || locationName);
+    const daysLabel = T.days(opts.days);
+    const multi = (opts.participantsCount || 1) > 1;
+    const dashboardUrl = `${FRONTEND_URL}/dashboard`;
+    const label = (text: string, color: string) => `<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${color};">${text}</span>`;
+
+    const heroHtml = `
+      ${heroText(T.heroIntro(escapeHtml(name)))}
+      ${heroTicket(
+          [
+              { label: T.accessLabel, title: daysLabel, note: T.validUntil(shortDate(expires)) },
+              { label: T.courseLabel, title: shortDate(start), note: city },
+          ],
+          `<strong style="color:#ffffff;">${lang === "en" ? `“${escapeHtml(courseName)}”` : `„${escapeHtml(courseName)}“`}</strong><br><span style="color:#b5b5b5;">${T.device}</span>`,
+      )}
+      ${heroButton(dashboardUrl, T.cta)}
+    `;
+
+    const bodyHtml = `
+      ${expires < start ? callout(T.endsBefore(longDate(expires), longDate(start)), "orange") : ""}
+
+      ${sectionTitle(T.startTitle, undefined, { first: expires >= start })}
+      ${steps(T.steps(escapeHtml(to)))}
+      ${p(T.forgot(`${FRONTEND_URL}/forgot-password`), { small: true, muted: true })}
+
+      ${sectionTitle(T.pathTitle, T.pathLead)}
+      ${timelineItem({
+          title: T.nowTitle,
+          meta: T.nowMeta(shortDate(expires)),
+          text: T.nowText,
+          accent: "orange",
+      })}
+      ${timelineItem({
+          title: T.courseTitle,
+          meta: `${shortDate(start)} &middot; ${city}`,
+          text: T.courseText,
+          extraHtml: labeledPill(T.exam, T.examText),
+          last: true,
+      })}
+
+      <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
+      ${button(dashboardUrl, T.cta)}
+
+      ${twoColumns(
+          callout(`${label(T.goodToKnow, "#707072")}<br>${T.notes(longDate(expires), multi)}`, "gray"),
+          callout(`${label(T.help, "#c25e00")}<br>${strong(`<a href="tel:+4916092490070" style="color:#111111;text-decoration:none;">+49 160 92490070</a>`)}<br>${strong(`<a href="tel:+4917622067783" style="color:#111111;text-decoration:none;">+49 176 22067783</a>`)}<br><a href="https://wa.me/4917622067783" target="_blank" style="color:#111111;font-weight:700;">${T.whatsapp}</a>`, "orange"),
+      )}
+
+      ${p(T.bye)}
+    `;
+
+    await sendMail({
+        from: FROM_EMAIL,
+        to,
+        subject: T.subject(subjectDate),
+        html: layout({
+            title: T.title,
+            preheader: T.preheader(daysLabel, longDate(expires)),
+            eyebrow: T.eyebrow,
+            eyebrowTone: "success",
+            headline: T.headline,
+            heroHtml,
+            bodyHtml,
+        }),
+    });
+};
+
 // ─── Nowy termin (lista oczekujących "Benachrichtigen") ────────────────────────
 
 interface NewDatesEmailOptions {
@@ -857,6 +1031,7 @@ export default {
     sendPasswordChangedEmail,
     sendOnlineCoursePurchaseEmail,
     sendPracticalCourseBookingEmail,
+    sendOnlineTheoryAccessEmail,
     sendExpiryReminderEmail,
     sendNewCourseDatesEmail,
     sendInvoiceEmail,
