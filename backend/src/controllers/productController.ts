@@ -174,6 +174,7 @@ export const adminCreateProduct = async (req: Request, res: Response) => {
       locationIds: body.locationIds ?? [],
       includesOnlineAccess: !!body.includesOnlineAccess,
       linkedCourseId: body.linkedCourseId,
+      onlineAccessDays: body.onlineAccessDays || undefined,
       durationDays: body.durationDays || undefined,
     });
 
@@ -200,6 +201,7 @@ export const adminUpdateProduct = async (req: Request, res: Response) => {
       "thumbnailUrl", "gallery", "price", "promoPrice", "isPromoActive",
       "priceUnit", "status", "featured", "order", "courseId",
       "locationIds", "includesOnlineAccess", "linkedCourseId", "durationDays",
+      "onlineAccessDays",
     ] as const;
 
     fields.forEach((field) => {

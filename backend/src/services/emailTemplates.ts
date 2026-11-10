@@ -128,13 +128,13 @@ export const checklist = (items: Array<{ title: string; note?: string; tag?: str
 </table>`;
 
 /** Kroki z miniaturą zdjęcia (np. dojazd). Numeracja „Schritt 1”, „Schritt 2”… */
-export const photoSteps = (steps: Array<{ imageUrl: string; alt: string; title: string; text: string }>): string => `
+export const photoSteps = (steps: Array<{ imageUrl: string; alt: string; title: string; text: string }>, stepLabel = "Schritt"): string => `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
   ${steps.map((s, i) => `
   <tr>
     <td width="130" valign="top" style="padding:0 16px 16px 0;"><img class="step-img" src="${s.imageUrl}" alt="${escapeHtml(s.alt)}" width="114" height="114" style="display:block;width:114px;height:114px;border-radius:6px;"></td>
     <td valign="top" style="padding:4px 0 16px;${i < steps.length - 1 ? `border-bottom:1px solid ${C.cloud};` : ""}font-family:${BODY_FONT};">
-      <div style="font-family:${DISPLAY_FONT};font-size:14px;font-weight:800;letter-spacing:1.5px;color:${C.orange};text-transform:uppercase;">Schritt ${i + 1}</div>
+      <div style="font-family:${DISPLAY_FONT};font-size:14px;font-weight:800;letter-spacing:1.5px;color:${C.orange};text-transform:uppercase;">${stepLabel} ${i + 1}</div>
       <div style="font-size:16px;font-weight:700;color:${C.ink};margin:4px 0;">${s.title}</div>
       <div style="font-size:14px;line-height:1.5;color:#555555;">${s.text}</div>
     </td>

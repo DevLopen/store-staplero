@@ -291,6 +291,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             // bez productId — z ceny lokalizacji. Wartość z przeglądarki tylko weryfikujemy.
             let courseNet: number;
             let linkedCourseId: string | undefined;
+            let linkedAccessDays: number | undefined;
             if (data.productId) {
                 const product = await Product.findById(data.productId).lean();
                 if (!product || product.status !== "active" || product.type !== "normal") {
@@ -308,6 +309,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                 // Pakiet z dostępem online — kurs bierzemy z produktu, nie z żądania
                 if (product.includesOnlineAccess && product.linkedCourseId) {
                     linkedCourseId = product.linkedCourseId;
+                    linkedAccessDays = product.onlineAccessDays || undefined;
                 }
             } else {
                 courseNet = location.price;
@@ -343,6 +345,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
                         price: 0,
                         quantity: 1,
                         type: "online",
+                        accessDays: linkedAccessDays,
                     });
                 }
             }

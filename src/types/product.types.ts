@@ -43,6 +43,7 @@ export interface Product {
   locationIds: string[];
   includesOnlineAccess: boolean;
   linkedCourseId?: string;
+  onlineAccessDays?: number | null;
   /** Długość szkolenia w dniach (opcjonalnie), panel podpowiada z niej koniec terminu */
   durationDays?: number | null;
 

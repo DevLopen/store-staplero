@@ -249,6 +249,10 @@ interface PracticalCourseBookingEmailOptions {
     startDate: Date | string; // 1. dzień (teoria); praktyka jest dzień później
     endDate?: Date | string; // ostatni dzień; 3 dni = Intensivausbildung z dniem na Schubmaststapler
     participants?: string[]; // pierwsza osoba to zamawiający
+    language?: "de" | "en" | "uk" | "pl"; // język maila (na razie używany tylko w mailu Stufe 2)
+    // Pakiet z teorią online: dostęp do kursu (nadany przy zapłacie) — sekcja w mailu
+    onlineAccess?: { courseName: string; expiresAt: Date | string; days?: number };
+    time?: string; // godziny z terminu, np. "09:00 - 17:30" (używane w mailu jednodniowym)
 }
 
 const BERLIN_TZ = "Europe/Berlin";
@@ -285,6 +289,8 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
     const spanDays = opts.endDate
         ? Math.round((new Date(opts.endDate).getTime() - theory.getTime()) / 86_400_000) + 1
         : 2;
+    // Kurs jednodniowy = Schubmaststapler Stufe 2 (osobny mail: inny przebieg, wymagany Staplerschein Stufe 1)
+    if (spanDays <= 1) return sendReachTruckBookingEmail(opts);
     const isThreeDay = spanDays >= 3;
     const reach = addDays(theory, 2); // 3. dzień (tylko przy isThreeDay)
     const lastDay = isThreeDay ? reach : practice;
@@ -350,6 +356,15 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
       ${p("Bitte leiten Sie diese E-Mail an alle Teilnehmer weiter. Jede Person braucht einen eigenen Ausweis und Sicherheitsschuhe.", { small: true, muted: true })}`
         : "";
 
+    const access = opts.onlineAccess;
+    const onlineAccessHtml = access
+        ? `
+      ${sectionTitle("Ihr Zugang zur Online-Theorie", "Im Preis enthalten: Bereiten Sie sich schon vor dem Kurs vor.")}
+      ${callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c25e00;">${access.days ? `${access.days} Tage Zugang` : "Online-Zugang"}</span><br>Ihr Online-Kurs ${strong(`„${escapeHtml(access.courseName)}“`)} ist ab sofort freigeschaltet. Lernen Sie in Ihrem Tempo am Handy oder Computer, ideal zur Vorbereitung auf den Theorietag und die schriftliche Prüfung.<br>Zugang gültig bis ${strong(longDate(new Date(access.expiresAt)))}.`, "orange")}
+      ${button(`${FRONTEND_URL}/dashboard`, "Zum Online-Kurs")}
+      ${p(`Melden Sie sich mit Ihrer E-Mail-Adresse ${strong(escapeHtml(to))} und dem Passwort aus Ihrer Bestellung an.${people.length > 1 ? " Der Zugang gilt für das Konto des Bestellers." : ""}`, { small: true, muted: true })}`
+        : "";
+
     const bodyHtml = `
       ${sectionTitle("Bitte mitbringen", undefined, { first: true })}
       ${checklist([
@@ -361,6 +376,8 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
       ${arrivalHtml}
 
       ${participantsHtml}
+
+      ${onlineAccessHtml}
 
       ${sectionTitle("Ablauf der Ausbildung", "Nach DGUV Grundsatz 308-001 und DGUV Vorschrift 68.")}
       ${timelineItem({
@@ -403,6 +420,248 @@ export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBooki
             eyebrow: "Anmeldung bestätigt",
             eyebrowTone: "success",
             headline: "Ihr Platz ist reserviert",
+            heroHtml,
+            bodyHtml,
+        }),
+    });
+};
+
+const reachTruckTexts = {
+    de: {
+        locale: "de-DE",
+        hours: (a: string, b: string) => `${a} – ca. ${b} Uhr`,
+        calTitle: "STAPLERO Schubmaststapler-Ausbildung (Stufe 2)",
+        calDetails: (o: string) => `Bestellnummer ${o}. Bitte mitbringen: Ausweis, Staplerschein Stufe 1, Sicherheitsschuhe.`,
+        heroIntro: (n: string) => `Hallo ${n}, wir freuen uns auf Sie. Hier finden Sie alles, was Sie für die <strong style="color:#ffffff;">Schubmaststapler-Ausbildung (Stufe&nbsp;2)</strong> brauchen.`,
+        ticketDay: "Schulungstag &middot; Stufe 2",
+        ticketWhat: "Theorie, Praxis &amp; Prüfung",
+        ticketLen: "1 Tag",
+        ticketTruck: "Schubmaststapler",
+        ticketFooter: (n: number) => `${n} Teilnehmer &middot; Bitte 10 bis 15 Minuten vor Kursbeginn da sein`,
+        calBtn: "In den Kalender eintragen",
+        routeBtn: "Route planen",
+        findUs: "So finden Sie uns",
+        findUsNote: "Bitte betreten Sie das Betriebsgelände nicht selbstständig. Ein STAPLERO-Ausbilder holt Sie am Eingang ab.",
+        arrival: "Anreise &amp; Treffpunkt",
+        arrivalText: `Bitte erscheinen Sie <strong>10 bis 15 Minuten vor Kursbeginn</strong> am Schulungsort. Ein STAPLERO-Ausbilder empfängt Sie dort und begleitet Sie zum Schulungsraum.`,
+        steps: [
+            { title: "Über die Neuköllnische Allee", text: "Fahren Sie bis zur Hausnummer 80." },
+            { title: "Zum Haupteingang NLND Berlin", text: "Das Gebäude mit dem NLND-Schriftzug." },
+            { title: "An der Wache melden", text: "Am Tor mit der Nummer 80 bzw. am Empfang." },
+            { title: "Im Eingangsbereich warten", text: "Ein Ausbilder holt Sie ab. Verspätet? Rufen Sie uns an:" },
+        ],
+        or: "oder",
+        step: "Schritt",
+        participants: "Angemeldete Teilnehmer",
+        buyer: "Besteller",
+        forward: "Bitte leiten Sie diese E-Mail an alle Teilnehmer weiter. Jede Person braucht einen eigenen Ausweis, einen eigenen Staplerschein der Stufe 1 und Sicherheitsschuhe.",
+        reqLabel: "Wichtig: Voraussetzung",
+        reqText: `Die Ausbildung zum Schubmaststapler ist eine <strong>Zusatzqualifikation</strong>. Teilnehmen kann nur, wer bereits einen <strong>deutschen Staplerschein der Stufe&nbsp;1</strong> (Frontstapler) besitzt. Bitte bringen Sie den Nachweis unbedingt mit. Ohne Nachweis ist eine Teilnahme leider nicht möglich.`,
+        bring: "Bitte mitbringen",
+        required: "Pflicht",
+        items: [
+            { title: "Personalausweis oder Reisepass" },
+            { title: "Deutscher Staplerschein Stufe 1", note: "Original, Fahrausweis oder Zertifikat (auch digital)" },
+            { title: "Arbeitssicherheitsschuhe", note: "für den Praxisteil Pflicht" },
+            { title: "Geeignete Arbeitskleidung", note: "lange Hose empfohlen. Hallentemperatur ca. 18 bis 22 °C" },
+        ],
+        flow: "Ablauf des Schulungstages",
+        flowNote: "Nach DGUV Grundsatz 308-001 und DGUV Vorschrift 68.",
+        morning: "Vormittag &middot; Theorie",
+        from: (h: string) => `ab ${h}`,
+        morningText: "Aufbau und Funktion des Schubmaststaplers, Unterschiede zum Frontstapler, Tragfähigkeit und Lastschwerpunkt, Standsicherheit beim Arbeiten in der Höhe, Sicherheitsvorschriften und Unfallverhütung.",
+        exam: "Prüfung",
+        writtenTest: "Schriftlicher Test",
+        afternoon: "Nachmittag &middot; Praxis",
+        until: (h: string) => `bis ca. ${h}`,
+        afternoonText: "Tägliche Sichtprüfung, Bedienung des Schubmasts, sicheres Fahren und Rangieren in engen Gängen, Lastaufnahme und Lastabsetzung, Ein- und Auslagern im Regal.",
+        practicalTest: "Praktische Prüfung, danach Ihre Stufe-2-Qualifikation",
+        afterExam: `Nach bestandener Prüfung erhalten Sie Ihr <strong>Zertifikat für die Stufe-2-Qualifikation</strong> und die <strong>Staplero ProCard</strong>.`,
+        help: "Fragen? Wir helfen",
+        whatsapp: "Per WhatsApp schreiben",
+        bye: (c: string) => `Bis bald in ${c}!<br><strong>Ihr STAPLERO Team</strong>`,
+        subject: (d: string, c: string) => `Platz reserviert: Schubmaststapler (Stufe 2) am ${d} in ${c}`,
+        preheader: (d: string, c: string) => `Ihr Platz ist reserviert: ${d}, ${c}. Bitte Ausweis, Staplerschein Stufe 1 und Sicherheitsschuhe mitbringen.`,
+        title: "Anmeldebestätigung",
+        eyebrow: "Anmeldung bestätigt",
+        headline: "Ihr Platz ist reserviert",
+    },
+    en: {
+        locale: "en-GB",
+        hours: (a: string, b: string) => `${a} – approx. ${b}`,
+        calTitle: "STAPLERO Reach Truck Training (Level 2)",
+        calDetails: (o: string) => `Order number ${o}. Please bring: ID, German forklift licence Level 1, safety shoes.`,
+        heroIntro: (n: string) => `Hello ${n}, we look forward to seeing you. Here is everything you need for the <strong style="color:#ffffff;">Reach Truck Training (Level&nbsp;2)</strong>.`,
+        ticketDay: "Training day &middot; Level 2",
+        ticketWhat: "Theory, practice &amp; exam",
+        ticketLen: "1 day",
+        ticketTruck: "Reach truck",
+        ticketFooter: (n: number) => `${n} ${n === 1 ? "participant" : "participants"} &middot; Please arrive 10 to 15 minutes before the start`,
+        calBtn: "Add to calendar",
+        routeBtn: "Plan route",
+        findUs: "How to find us",
+        findUsNote: "Please do not enter the company premises on your own. A STAPLERO instructor will pick you up at the entrance.",
+        arrival: "Arrival &amp; meeting point",
+        arrivalText: `Please arrive at the training location <strong>10 to 15 minutes before the start</strong>. A STAPLERO instructor will welcome you and take you to the training room.`,
+        steps: [
+            { title: "Via Neuköllnische Allee", text: "Go to house number 80." },
+            { title: "To the main entrance of NLND Berlin", text: "The building with the NLND sign." },
+            { title: "Report to the security gate", text: "At the gate with number 80 or at the reception." },
+            { title: "Wait in the entrance area", text: "An instructor will pick you up. Running late? Call us:" },
+        ],
+        or: "or",
+        step: "Step",
+        participants: "Registered participants",
+        buyer: "Booked by",
+        forward: "Please forward this email to all participants. Each person needs their own ID, their own Level 1 forklift licence and safety shoes.",
+        reqLabel: "Important: requirement",
+        reqText: `The reach truck training is an <strong>additional qualification</strong>. You can only take part if you already hold a <strong>German forklift licence (Staplerschein) Level&nbsp;1</strong> (counterbalance forklift). Please make sure to bring proof of it. Without proof, participation is unfortunately not possible.`,
+        bring: "Please bring",
+        required: "Required",
+        items: [
+            { title: "ID card or passport" },
+            { title: "German forklift licence Level 1", note: "original licence card or certificate (digital is fine)" },
+            { title: "Safety shoes", note: "required for the practical part" },
+            { title: "Suitable work clothes", note: "long trousers recommended. Hall temperature approx. 18 to 22 °C" },
+        ],
+        flow: "Schedule of the training day",
+        flowNote: "According to DGUV Principle 308-001 and DGUV Regulation 68.",
+        morning: "Morning &middot; Theory",
+        from: (h: string) => `from ${h}`,
+        morningText: "Design and function of the reach truck, differences from the counterbalance forklift, load capacity and load centre, stability when working at height, safety regulations and accident prevention.",
+        exam: "Exam",
+        writtenTest: "Written test",
+        afternoon: "Afternoon &middot; Practice",
+        until: (h: string) => `until approx. ${h}`,
+        afternoonText: "Daily visual inspection, operating the reach mast, safe driving and manoeuvring in narrow aisles, picking up and setting down loads, storing and retrieving in racks.",
+        practicalTest: "Practical exam, then your Level 2 qualification",
+        afterExam: `After passing the exam you receive your <strong>Level 2 qualification certificate</strong> and the <strong>Staplero ProCard</strong>.`,
+        help: "Questions? We are here to help",
+        whatsapp: "Message us on WhatsApp",
+        bye: (c: string) => `See you soon in ${c}!<br><strong>Your STAPLERO Team</strong>`,
+        subject: (d: string, c: string) => `Place reserved: Reach Truck Training (Level 2) on ${d} in ${c}`,
+        preheader: (d: string, c: string) => `Your place is reserved: ${d}, ${c}. Please bring your ID, Level 1 forklift licence and safety shoes.`,
+        title: "Booking confirmation",
+        eyebrow: "Booking confirmed",
+        headline: "Your place is reserved",
+    },
+};
+
+/**
+ * Potwierdzenie rezerwacji kursu jednodniowego: Schubmaststapler-Ausbildung Stufe 2 (DE/EN).
+ * Warunek udziału: niemiecki Staplerschein Stufe 1 — mocno to podkreślamy.
+ * Język: opts.language, a bez niego angielski dla terminów „auf Englisch”, inaczej niemiecki.
+ */
+const sendReachTruckBookingEmail = async (opts: PracticalCourseBookingEmailOptions): Promise<void> => {
+    const { to, name, orderNumber, locationName, locationAddress, participants = [] } = opts;
+    const lang = opts.language === "en" || (!opts.language && /englisch|english/i.test(locationName)) ? "en" : "de";
+    const T = reachTruckTexts[lang];
+
+    const day = new Date(opts.startDate);
+
+    // Godziny z terminu ("09:00 - 17:30"), inaczej domyślne
+    const m = (opts.time || "").match(/(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/);
+    const hFrom = m ? m[1].padStart(5, "0") : COURSE_HOURS.from;
+    const hTo = m ? m[2].padStart(5, "0") : COURSE_HOURS.to;
+    const hours = T.hours(hFrom, hTo);
+
+    const fmt = (o: Intl.DateTimeFormatOptions) => day.toLocaleDateString(T.locale, { timeZone: BERLIN_TZ, ...o });
+    const longDate = fmt({ weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const shortDate = fmt({ weekday: "short", day: "numeric", month: "short" });
+    const numericDate = lang === "en" ? fmt({ day: "numeric", month: "short" }) : berlinDate(day, { day: "2-digit", month: "2-digit" });
+
+    const loc = escapeHtml(locationName);
+    const addr = escapeHtml(locationAddress);
+    const isBerlin = /berlin/i.test(locationName) || /neuk[öo]llnische\s+allee/i.test(locationAddress);
+    // "Berlin (auf Englisch) Stufe 2 - Schubmaststapler" → "Berlin" do tematu i pożegnania
+    const city = locationName.split(/[(\-–]/)[0].trim() || locationName;
+
+    const calendarUrl = "https://calendar.google.com/calendar/render?action=TEMPLATE"
+        + `&text=${encodeURIComponent(T.calTitle)}`
+        + `&dates=${calendarDay(day)}T${hFrom.replace(":", "")}00/${calendarDay(day)}T${hTo.replace(":", "")}00`
+        + `&ctz=${encodeURIComponent(BERLIN_TZ)}`
+        + `&location=${encodeURIComponent(locationAddress)}`
+        + `&details=${encodeURIComponent(T.calDetails(orderNumber))}`;
+    const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(locationAddress)}`;
+
+    const people = participants.length ? participants : [name];
+    const phones = `<a href="tel:+4916092490070" style="color:#111111;font-weight:700;">+49 160 92490070</a> ${T.or} <a href="tel:+4917622067783" style="color:#111111;font-weight:700;">+49 176 22067783</a>`;
+    const label = (text: string, color: string) => `<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${color};">${text}</span>`;
+
+    const heroHtml = `
+      ${heroText(T.heroIntro(escapeHtml(name)))}
+      ${heroTicket(
+          [
+              { label: T.ticketDay, title: shortDate, note: hours },
+              { label: T.ticketWhat, title: T.ticketLen, note: T.ticketTruck },
+          ],
+          `<strong style="color:#ffffff;">${loc}</strong> &middot; ${addr}<br><span style="color:#b5b5b5;">${T.ticketFooter(people.length)}</span>`,
+      )}
+      ${heroButtons({ href: calendarUrl, label: T.calBtn }, { href: routeUrl, label: T.routeBtn })}
+    `;
+
+    const arrivalHtml = isBerlin
+        ? `
+      ${sectionTitle(T.findUs, T.findUsNote)}
+      ${photoSteps(berlinArrivalSteps.map((s, i) => ({
+          imageUrl: `${EMAIL_ASSETS_URL}/${s.image}`,
+          alt: s.alt,
+          title: T.steps[i].title,
+          text: i === 3 ? `${T.steps[i].text} ${phones}` : T.steps[i].text,
+      })), T.step)}`
+        : `
+      ${sectionTitle(T.arrival)}
+      ${p(T.arrivalText)}`;
+
+    const participantsHtml = people.length > 1
+        ? `
+      ${sectionTitle(T.participants)}
+      ${numberedList(people.map((n, i) => i === 0 ? `${escapeHtml(n)} <span style="font-weight:400;color:#707072;font-size:13px;">&middot; ${T.buyer}</span>` : escapeHtml(n)))}
+      ${p(T.forward, { small: true, muted: true })}`
+        : "";
+
+    const bodyHtml = `
+      ${callout(`${label(T.reqLabel, "#c25e00")}<br>${T.reqText}`, "orange")}
+
+      ${sectionTitle(T.bring)}
+      ${checklist(T.items.map((it, i) => i < 3 ? { ...it, tag: T.required, strong: true } : it))}
+
+      ${arrivalHtml}
+
+      ${participantsHtml}
+
+      ${sectionTitle(T.flow, T.flowNote)}
+      ${timelineItem({
+          title: T.morning,
+          meta: `${shortDate} &middot; ${T.from(hFrom)}`,
+          text: T.morningText,
+          extraHtml: labeledPill(T.exam, T.writtenTest),
+      })}
+      ${timelineItem({
+          title: T.afternoon,
+          meta: T.until(hTo),
+          text: T.afternoonText,
+          extraHtml: labeledPill(T.exam, T.practicalTest, "orange"),
+          accent: "orange",
+          last: true,
+      })}
+      ${p(T.afterExam, { small: true, muted: true })}
+
+      ${callout(`${label(T.help, "#c25e00")}<br>${strong(`<a href="tel:+4916092490070" style="color:#111111;text-decoration:none;">+49 160 92490070</a>`)}<br>${strong(`<a href="tel:+4917622067783" style="color:#111111;text-decoration:none;">+49 176 22067783</a>`)}<br><a href="https://wa.me/4917622067783" target="_blank" style="color:#111111;font-weight:700;">${T.whatsapp}</a>`, "orange")}
+
+      ${p(T.bye(escapeHtml(city)))}
+    `;
+
+    await sendMail({
+        from: FROM_EMAIL,
+        to,
+        subject: T.subject(numericDate, city),
+        html: layout({
+            title: T.title,
+            preheader: T.preheader(longDate, city),
+            eyebrow: T.eyebrow,
+            eyebrowTone: "success",
+            headline: T.headline,
             heroHtml,
             bodyHtml,
         }),

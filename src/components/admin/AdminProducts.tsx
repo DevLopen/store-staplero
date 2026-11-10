@@ -74,6 +74,7 @@ type ProductForm = {
   locationIds: string[];
   includesOnlineAccess: boolean;
   linkedCourseId: string;
+  onlineAccessDays: string;
   durationDays: string;
 };
 
@@ -95,6 +96,7 @@ const emptyForm = (): ProductForm => ({
   locationIds: [],
   includesOnlineAccess: false,
   linkedCourseId: "",
+  onlineAccessDays: "14",
   durationDays: "",
 });
 
@@ -116,6 +118,7 @@ const productToForm = (p: Product): ProductForm => ({
   locationIds: p.locationIds || [],
   includesOnlineAccess: p.includesOnlineAccess,
   linkedCourseId: p.linkedCourseId || "",
+  onlineAccessDays: p.onlineAccessDays ? String(p.onlineAccessDays) : "",
   durationDays: p.durationDays ? String(p.durationDays) : "",
 });
 
@@ -354,6 +357,7 @@ const AdminProducts = () => {
         locationIds: form.type === "normal" ? form.locationIds : [],
         includesOnlineAccess: form.type === "normal" ? form.includesOnlineAccess : false,
         linkedCourseId: form.type === "normal" && form.includesOnlineAccess ? form.linkedCourseId : undefined,
+        onlineAccessDays: form.type === "normal" && form.includesOnlineAccess && Number(form.onlineAccessDays) > 0 ? Number(form.onlineAccessDays) : null,
         durationDays: form.type === "normal" && Number(form.durationDays) > 0 ? Number(form.durationDays) : null,
       } as any;
 
@@ -893,6 +897,9 @@ const AdminProducts = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    <Label className="pt-2 block">Zugangsdauer (Tage ab Zahlung)</Label>
+                    <Input type="number" min={1} max={365} className="max-w-[160px]" value={form.onlineAccessDays} placeholder="30"
+                      onChange={(e) => setForm((p) => ({ ...p, onlineAccessDays: e.target.value }))} />
                   </div>
                 )}
               </>

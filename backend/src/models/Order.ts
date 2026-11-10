@@ -6,6 +6,7 @@ export interface OrderItem {
     price: number;      // cena jednostkowa (brutto)
     quantity: number;   // liczba sztuk / uczestników (domyślnie 1)
     type: "online" | "practical" | "practical-addon";
+    accessDays?: number; // długość dostępu online dla tej pozycji (pakiet); brak = 30 dni
 }
 
 export interface AdditionalParticipant {
@@ -79,6 +80,7 @@ const OrderItemSchema = new Schema<OrderItem>({
     price: { type: Number, required: true },
     quantity: { type: Number, required: true, default: 1, min: 1 },
     type: { type: String, enum: ["online", "practical", "practical-addon"], required: true },
+    accessDays: Number,
 });
 
 const AdditionalParticipantSchema = new Schema<AdditionalParticipant>(

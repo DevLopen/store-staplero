@@ -376,7 +376,7 @@ export const addManualParticipant = async (req: AuthRequest, res: Response) => {
             try {
                 await sendPracticalCourseBookingEmail({
                     to: userEmail, name: userName, orderNumber, locationName, locationAddress,
-                    startDate, endDate, participants: [userName],
+                    startDate, endDate, time, participants: [userName],
                 });
                 confirmationSent = true;
             } catch (mailErr: any) {

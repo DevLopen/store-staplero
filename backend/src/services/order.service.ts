@@ -89,6 +89,19 @@ export const sendOrderConfirmationEmail = async (
     if (order.type === "practical" && order.practicalCourseDetails) {
       const details = order.practicalCourseDetails;
       console.log(`🔔 Buchungsbestätigung ${order.orderNumber} → ${user.email}`);
+      // Pakiet z teorią online: data końca dostępu z nadanego UserCourse
+      const onlineItem = order.items.find((i) => i.courseId);
+      let onlineAccess: { courseName: string; expiresAt: Date; days?: number } | undefined;
+      if (onlineItem) {
+        const uc = await UserCourse.findOne({ userId: String(order.userId), courseId: onlineItem.courseId }).lean();
+        if (uc?.expiresAt) {
+          onlineAccess = {
+            courseName: onlineItem.courseName.replace(/\s*\(Online-Zugang\)\s*$/, ""),
+            expiresAt: uc.expiresAt,
+            days: onlineItem.accessDays || 30,
+          };
+        }
+      }
       await emailService.sendPracticalCourseBookingEmail({
         to: user.email,
         name: user.name,
@@ -97,6 +110,8 @@ export const sendOrderConfirmationEmail = async (
         locationAddress: details.locationAddress,
         startDate: details.startDate,
         endDate: details.endDate,
+        time: details.time,
+        onlineAccess,
         participants: [user.name, ...(details.additionalParticipants || []).map((p) => p.name)],
       });
     } else if (order.type === "online") {
@@ -161,23 +176,29 @@ export const markOrderAsPaid = async (
   // (kurs praktyczny + dołączony dostęp online) też poprawnie nadają dostęp.
   const courseItems = order.items.filter(i => !!i.courseId);
   if (courseItems.length > 0) {
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    // Długość dostępu: z pozycji (pakiet, np. 14 dni), domyślnie 30 dni
+    const expiryFor = (item: { accessDays?: number }) => {
+      const d = new Date();
+      d.setDate(d.getDate() + (item.accessDays || 30));
+      return d;
+    };
     if (order.type === "online") {
-      order.expiresAt = expiresAt;
+      order.expiresAt = expiryFor(courseItems[0]);
     }
 
+    const granted: Array<{ courseId: string; expiresAt: Date }> = [];
     for (const item of courseItems) {
-      await assignCourseToUser(order.userId, item.courseId as string, order.orderNumber, expiresAt);
+      const expiresAt = await assignCourseToUser(order.userId, item.courseId as string, order.orderNumber, expiryFor(item));
+      granted.push({ courseId: item.courseId as string, expiresAt });
     }
 
     await User.findByIdAndUpdate(order.userId, {
       $push: {
         purchasedCourses: {
-          $each: courseItems.map(i => ({
-            courseId: i.courseId,
+          $each: granted.map(g => ({
+            courseId: g.courseId,
             purchaseDate: order.paidAt,
-            expiresAt,
+            expiresAt: g.expiresAt,
             status: "active",
             orderNumber: order.orderNumber,
           })),
@@ -263,9 +284,13 @@ export const assignCourseToUser = async (
   courseId: string,
   orderNumber: string,
   expiresAt: Date
-): Promise<void> => {
+): Promise<Date> => {
   const existing = await UserCourse.findOne({ userId, courseId });
   if (existing) {
+    // Nie skracamy dostępu, który jest jeszcze aktywny i dłuższy (np. 30 dni z wcześniejszego zakupu)
+    if (existing.status === "active" && existing.expiresAt && existing.expiresAt > expiresAt) {
+      expiresAt = existing.expiresAt;
+    }
     existing.expiresAt = expiresAt;
     existing.status = "active";
     existing.purchaseDate = new Date();
@@ -274,6 +299,7 @@ export const assignCourseToUser = async (
   } else {
     await UserCourse.create({ userId, courseId, purchaseDate: new Date(), expiresAt, status: "active", orderNumber });
   }
+  return expiresAt;
 };
 
 export const expireOldCourses = async (): Promise<void> => {
