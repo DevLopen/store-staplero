@@ -284,7 +284,7 @@ export interface FooterOptions {
     assetsUrl?: string;
     // Podpis osobisty (np. Bohdan Kutko); bez niego stopka ogólna firmy
     person?: { name: string; role: string; email: string };
-    email?: string; // adres w stopce ogólnej (domyślnie info@staplero.com)
+    email?: string; // adres w stopce ogólnej (domyślnie info@staplero.de)
 }
 
 /**
@@ -295,7 +295,7 @@ export interface FooterOptions {
  */
 export const footerInner = (f: FooterOptions): string => {
     const assets = f.assetsUrl || f.baseUrl;
-    const mail = f.person?.email || f.email || "info@staplero.com";
+    const mail = f.person?.email || f.email || "info@staplero.de";
     const label = (t: string) =>
         `<td valign="top" style="padding:0 10px 0 0;font-family:${BODY_FONT};font-size:10px;line-height:22px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${C.orange};white-space:nowrap;">${t}</td>`;
     const value = (html: string) =>
@@ -352,10 +352,11 @@ export interface LayoutOptions {
     headline: string; // duży nagłówek (wersaliki)
     heroHtml?: string; // dodatkowa treść w ciemnym pasie pod nagłówkiem (np. terminy, przyciski)
     bodyHtml: string;
+    lang?: string; // atrybut <html lang>, domyślnie "de"
 }
 
 export const renderEmail = (o: LayoutOptions): string => `<!DOCTYPE html>
-<html lang="de">
+<html lang="${o.lang || "de"}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
