@@ -277,6 +277,69 @@ export const heroButtons = (primary: { href: string; label: string }, secondary:
   </tr>
 </table>`;
 
+// ─── Stopka / podpis ──────────────────────────────────────────────────────────
+
+export interface FooterOptions {
+    baseUrl: string;
+    assetsUrl?: string;
+    // Podpis osobisty (np. Bohdan Kutko); bez niego stopka ogólna firmy
+    person?: { name: string; role: string; email: string };
+    email?: string; // adres w stopce ogólnej (domyślnie info@staplero.com)
+}
+
+/**
+ * Wnętrze stopki: jasne, ciepłe tło, logo, dane kontaktowe z pomarańczowymi etykietami
+ * i ciemny kafel z animowanym wózkiem (GIF).
+ * Używane w layoucie maili i w podpisach do programów pocztowych (brand-assets/podpis-email).
+ * Gradient tła i cienie to dodatek: Outlook pokaże jednolity kolor, bez cienia.
+ */
+export const footerInner = (f: FooterOptions): string => {
+    const assets = f.assetsUrl || f.baseUrl;
+    const mail = f.person?.email || f.email || "info@staplero.com";
+    const label = (t: string) =>
+        `<td valign="top" style="padding:0 10px 0 0;font-family:${BODY_FONT};font-size:10px;line-height:22px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${C.orange};white-space:nowrap;">${t}</td>`;
+    const value = (html: string) =>
+        `<td valign="top" style="font-family:${BODY_FONT};font-size:13px;line-height:22px;color:${C.body};">${html}</td>`;
+    const link = (href: string, text: string, strong = false) =>
+        `<a href="${href}" style="color:${strong ? C.ink : C.body};text-decoration:none;${strong ? "font-weight:700;" : ""}">${text}</a>`;
+    const heading = f.person
+        ? `<div style="font-family:${DISPLAY_FONT};font-size:24px;line-height:1.05;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:${C.ink};">${escapeHtml(f.person.name)}</div>
+           <div style="font-family:${BODY_FONT};font-size:13px;line-height:1.5;font-weight:600;color:${C.body};margin:2px 0 14px;">${escapeHtml(f.person.role)} &middot; STAPLERO Ausbildungszentrum</div>`
+        : `<div style="font-family:${DISPLAY_FONT};font-size:24px;line-height:1.05;font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:${C.ink};">STAPLERO Ausbildungszentrum</div>
+           <div style="font-family:${BODY_FONT};font-size:13px;line-height:1.5;font-weight:600;color:${C.body};margin:2px 0 14px;">Staplerschein nach DGUV V68</div>`;
+    return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td valign="top" style="padding:0;">
+      <a href="${f.baseUrl}" target="_blank"><img src="${assets}/staplero-email-logo.png" alt="STAPLERO" width="112" height="40" style="display:block;width:112px;height:auto;border:0;margin:0 0 16px;"></a>
+      ${heading}
+      <table role="presentation" cellpadding="0" cellspacing="0">
+        <tr>${label("Tel.")}${value(`${link("tel:+4916092490070", "+49 160 92490070")} &middot; ${link("tel:+4917622067783", "+49 176 22067783")}`)}</tr>
+        <tr>${label("E-Mail")}${value(link(`mailto:${mail}`, mail, true))}</tr>
+        <tr>${label("Web")}${value(link(f.baseUrl, "staplero.de", true))}</tr>
+        <tr>${label("Adresse")}${value("Jakobstr. 13, 02826 G&ouml;rlitz")}</tr>
+      </table>
+    </td>
+    <td class="foot-gif-cell" valign="top" align="right" width="150" style="width:150px;padding-left:20px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" style="border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.10);">
+        <tr><td style="padding:0;line-height:0;font-size:0;">
+          <a href="${f.baseUrl}" target="_blank"><img class="foot-gif" src="${assets}/staplero-email-wozek-scena.gif" alt="" width="150" height="160" style="display:block;width:150px;height:auto;border:0;border-radius:10px;"></a>
+        </td></tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" style="padding:18px 0 0;">
+      <div style="padding:12px 0 0;border-top:1px solid #f1dcc4;font-family:${BODY_FONT};font-size:12px;line-height:1.6;color:#8a8a8c;">
+        <a href="${f.baseUrl}/datenschutz" style="color:#8a8a8c;">Datenschutz</a> &middot; <a href="${f.baseUrl}/impressum" style="color:#8a8a8c;">Impressum</a>
+      </div>
+    </td>
+  </tr>
+</table>`;
+};
+
+/** Tło stopki: od białego do ciepłego kremu, z pomarańczową linią na górze. */
+export const FOOTER_TD_STYLE = `background:#fffaf4;background-image:linear-gradient(180deg,${C.white} 0%,${C.cream} 100%);border-top:4px solid ${C.orange};`;
+
 // ─── Layout ────────────────────────────────────────────────────────────────────
 
 export interface LayoutOptions {
@@ -311,6 +374,7 @@ export const renderEmail = (o: LayoutOptions): string => `<!DOCTYPE html>
       .ticket-cell { padding:18px 20px !important; }
       .stack-rule { border-left:0 !important; border-top:1px dashed #5a5a5a !important; }
       .step-img { width:96px !important; height:96px !important; }
+      .foot-gif, .foot-gif-cell { width:104px !important; }
     }
   </style>
 </head>
@@ -355,11 +419,8 @@ export const renderEmail = (o: LayoutOptions): string => `<!DOCTYPE html>
 
           <!-- Stopka -->
           <tr>
-            <td class="px" style="padding:30px 40px;background:${C.dark};border-top:4px solid ${C.orange};font-family:${BODY_FONT};font-size:13px;line-height:1.8;color:#a1a1a1;">
-              <strong style="color:${C.white};">STAPLERO Ausbildungszentrum</strong><br>
-              Jakobstr. 13, 02826 G&ouml;rlitz<br>
-              <a href="mailto:info@staplero.com" style="color:#d4d4d4;text-decoration:none;">info@staplero.com</a> &middot; +49 160 92490070 &middot; +49 176 22067783<br>
-              <a href="${o.baseUrl}/datenschutz" style="color:#d4d4d4;">Datenschutz</a> &middot; <a href="${o.baseUrl}/impressum" style="color:#d4d4d4;">Impressum</a>
+            <td class="px" style="padding:28px 40px 26px;${FOOTER_TD_STYLE}">
+              ${footerInner({ baseUrl: o.baseUrl, assetsUrl: o.assetsUrl })}
             </td>
           </tr>
 
