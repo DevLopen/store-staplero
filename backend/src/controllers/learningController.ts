@@ -6,15 +6,17 @@ import { UserCourse } from "../models/UserCourse";
 import User from "../models/User";
 import { AuthRequest } from "../types";
 import { myBanks } from "./questionBankController";
+import { tutorLeft } from "./tutorController";
+import { TUTOR_DAILY_LIMIT } from "../services/courseTutor.service";
 import { emptyContent, findLesson, newId, outline, translationStatus, validateContent } from "../utils/learningContent";
 
 const ADMIN_EMAILS = ["info@staplero.com", "k.lopuch@satisfly.co"];
-const isAdmin = (req: AuthRequest) =>
+export const isAdmin = (req: AuthRequest) =>
     req.user?.isAdmin === true || ADMIN_EMAILS.includes(String(req.user?.email || "").trim().toLowerCase());
-const validId = (id: string) => mongoose.Types.ObjectId.isValid(id);
+export const validId = (id: string) => mongoose.Types.ObjectId.isValid(id);
 
 /** Active, not expired purchase of this course. Admins always have access. */
-async function accessOf(req: AuthRequest, courseId: string) {
+export async function accessOf(req: AuthRequest, courseId: string) {
     if (isAdmin(req)) return { ok: true as const, expiresAt: null };
     const uc = await UserCourse.findOne({ userId: String(req.user!._id), courseId, status: { $in: ["active", "expired"] } }).sort({ expiresAt: -1 }).lean();
     if (!uc) return { ok: false as const };
@@ -23,10 +25,10 @@ async function accessOf(req: AuthRequest, courseId: string) {
     return { ok: true as const, expiresAt: uc.expiresAt };
 }
 /** 403 z datą wygaśnięcia, żeby kursant zobaczył „Zugang abgelaufen am …” zamiast samego braku dostępu. */
-const denied = (res: Response, acc: { expiredAt?: Date }) =>
+export const denied = (res: Response, acc: { expiredAt?: Date }) =>
     res.status(403).json({ message: acc.expiredAt ? "Zugang abgelaufen" : "Kein Zugriff auf diesen Kurs", ...(acc.expiredAt ? { expired: true, expiredAt: acc.expiredAt } : {}) });
 
-const progressMap = async (userId: string, courseId: string) => {
+export const progressMap = async (userId: string, courseId: string) => {
     const rows = await LessonProgress.find({ userId, courseId }).lean();
     return Object.fromEntries(rows.map(r => [r.lessonId, { step: r.step, completed: r.completed, ...(r.total ? { score: r.score, total: r.total, passed: !!r.passed } : {}) }]));
 };
@@ -47,7 +49,7 @@ function testInfo(ch: any) {
     }
     return null;
 }
-function lockedChapters(content: CourseContent, progress: Record<string, { passed?: boolean }>) {
+export function lockedChapters(content: CourseContent, progress: Record<string, { passed?: boolean }>) {
     const locked = new Set<string>();
     let open = true;
     for (const ch of content.chapters) {
@@ -145,6 +147,7 @@ export const getLesson = async (req: AuthRequest, res: Response) => {
         // podgląd szkicu (admin) ocenia test w przeglądarce, więc potrzebuje klucza
         lesson: req.query.draft === "1" ? hit.lesson : withoutAnswerKey(hit.lesson), prevLessonId: order[i - 1] ?? null, nextLessonId: order[i + 1] ?? null,
         progress: p ? { step: p.step, completed: p.completed, passed: !!p.passed, score: p.score, total: p.total } : { step: 0, completed: false },
+        tutor: { limit: TUTOR_DAILY_LIMIT, left: isAdmin(req) ? TUTOR_DAILY_LIMIT : await tutorLeft(String(req.user!._id)) },
     });
 };
 

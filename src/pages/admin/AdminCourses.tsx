@@ -101,7 +101,7 @@ function CourseView({ id }: { id: string }) {
     const { toast } = useToast();
     const [c, setC] = useState<Full | null>(null);
     const [err, setErr] = useState("");
-    const [tab, setTab] = useState<"mods" | "exam" | "access">("mods");
+    const [tab, setTab] = useState<"mods" | "exam" | "access" | "tutor">("mods");
     const [open, setOpen] = useState<string | null>(null);
     const [panel, setPanel] = useState<{ kind: "lesson" | "test"; ch: number; le: number } | null>(null);
     const [confirmPub, setConfirmPub] = useState(false);
@@ -151,9 +151,9 @@ function CourseView({ id }: { id: string }) {
                     : <button className="ac-btn p" disabled={c.status === "published"} onClick={() => setConfirmPub(true)}>Veröffentlichen</button>}
             </div>
         </div>
-        <div className="ac-seg"><button aria-pressed={tab === "mods"} onClick={() => setTab("mods")}>Module &amp; Themen</button>{exam && <button aria-pressed={tab === "exam"} onClick={() => setTab("exam")}>Abschlussprüfung</button>}<button aria-pressed={tab === "access"} onClick={() => setTab("access")}>Kursanten</button></div>
+        <div className="ac-seg"><button aria-pressed={tab === "mods"} onClick={() => setTab("mods")}>Module &amp; Themen</button>{exam && <button aria-pressed={tab === "exam"} onClick={() => setTab("exam")}>Abschlussprüfung</button>}<button aria-pressed={tab === "access"} onClick={() => setTab("access")}>Kursanten</button><button aria-pressed={tab === "tutor"} onClick={() => setTab("tutor")}>Lernhilfe</button></div>
 
-        {tab === "access" ? <AccessTab courseId={id} published={c.publishedVersion > 0} onChange={load} /> : tab === "mods" ? <div className="ac-mods">{modules.map(({ ch, i }, n) => {
+        {tab === "tutor" ? <TutorTab courseId={id} /> : tab === "access" ? <AccessTab courseId={id} published={c.publishedVersion > 0} onChange={load} /> : tab === "mods" ? <div className="ac-mods">{modules.map(({ ch, i }, n) => {
             const topics = ch.lessons.map((l, j) => ({ l, j })).filter(x => !isGate(x.l));
             const gate = ch.lessons.findIndex(isGate);
             const gd = gate >= 0 ? ch.lessons[gate].steps.find(s => s.data?.gate)?.data : null;
@@ -484,6 +484,54 @@ function AccessTab({ courseId, published, onChange }: { courseId: string; publis
                     : <button className="ac-btn g s" onClick={() => setConfirm(r.userId)}>Entziehen</button>}</span>
             </div>)}
         </section>}
+    </div>;
+}
+
+/* ═════════════ Lernhilfe: o co pytają kursanci ═════════════ */
+interface TutorStats {
+    days: number; total: number; learners: number; limit: number; outOfScope: number;
+    byStep: { module?: string; lesson?: string; step?: string; lessonId: string; stepId: string; count: number; learners: number; checks: number; checkWrong: number }[];
+    recent: { id: string; at: string; lang: string; module?: string; lesson?: string; step?: string; user: { name: string; email: string }; selection: string; question: string; answer: string; inScope: boolean; checkOk: boolean | null }[];
+}
+function TutorTab({ courseId }: { courseId: string }) {
+    const [days, setDays] = useState(30);
+    const [data, setData] = useState<TutorStats | null>(null);
+    const [err, setErr] = useState("");
+    const [open, setOpen] = useState<string | null>(null);
+    useEffect(() => { setData(null); req<TutorStats>(`/admin/courses/${courseId}/tutor?days=${days}`).then(setData).catch(e => setErr(e.message)); }, [courseId, days]);
+    if (err) return <p className="ac-err">{err}</p>;
+    return <div className="ac-tutor">
+        <div className="ac-tu-top">
+            <p className="ac-hint">Kursanten markieren in der Lektion, was sie nicht verstehen, und bekommen eine kurze Erklärung. Die Lernhilfe kennt nur die jeweilige Lektion; in Tests und Prüfung ist sie aus. Limit: {data?.limit ?? 30} Fragen pro Kursant und Tag.</p>
+            <div className="ac-seg">{[7, 30, 90].map(d => <button key={d} aria-pressed={days === d} onClick={() => setDays(d)}>{d} Tage</button>)}</div>
+        </div>
+        {!data ? <p className="ac-muted">Lädt …</p> : <>
+            <div className="ac-tu-kpi">
+                <section className="ac-card"><span>Fragen</span><b>{data.total}</b></section>
+                <section className="ac-card"><span>Kursanten</span><b>{data.learners}</b></section>
+                <section className="ac-card"><span>Außerhalb der Lektion</span><b>{data.outOfScope}</b></section>
+            </div>
+            <h2 className="ac-tu-h">Am häufigsten unklar</h2>
+            {!data.byStep.length ? <p className="ac-muted">Noch keine Fragen in diesem Zeitraum.</p> : <section className="ac-card ac-tu-list">
+                {data.byStep.map(b => <div key={b.lessonId + b.stepId} className="ac-tu-row">
+                    <span className="w"><b>{b.lesson || "Gelöschtes Thema"}</b><small>{[b.module, b.step].filter(Boolean).join(" · ")}</small></span>
+                    <span className="n"><b>{b.count}</b> {b.count === 1 ? "Frage" : "Fragen"}</span>
+                    <span className="n">{b.learners} {b.learners === 1 ? "Kursant" : "Kursanten"}</span>
+                    <span className="n">{b.checks ? `Kontrollfrage falsch: ${b.checkWrong} von ${b.checks}` : "Keine Kontrollfrage beantwortet"}</span>
+                </div>)}
+            </section>}
+            <h2 className="ac-tu-h">Letzte Fragen</h2>
+            {!data.recent.length ? <p className="ac-muted">Noch keine Fragen.</p> : <section className="ac-card ac-tu-list">
+                {data.recent.map(r => <div key={r.id} className="ac-tu-q" aria-expanded={open === r.id} role="button" tabIndex={0} onClick={() => setOpen(o => o === r.id ? null : r.id)} onKeyDown={e => e.key === "Enter" && setOpen(o => o === r.id ? null : r.id)}>
+                    <div className="hd"><span><b>{r.user.name || r.user.email || "Unbekanntes Konto"}</b> {new Date(r.at).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" })} · {r.lang.toUpperCase()}</span>
+                        <span className="w">{[r.lesson, r.step].filter(Boolean).join(" · ")}</span>
+                        {!r.inScope ? <span className="ac-st none">Außerhalb der Lektion</span> : r.checkOk === true ? <span className="ac-st ok">Kontrollfrage richtig</span> : r.checkOk === false ? <span className="ac-st warn">Kontrollfrage falsch</span> : null}</div>
+                    {r.selection && <p className="sel">„{r.selection}“</p>}
+                    {r.question && <p className="qq">{r.question}</p>}
+                    {open === r.id && <p className="an">{r.answer.replace(/\*\*/g, "")}</p>}
+                </div>)}
+            </section>}
+        </>}
     </div>;
 }
 

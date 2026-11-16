@@ -9,6 +9,7 @@ import {
     getBank, answerBank, resetBankProgress, submitBankTest,
     adminListBanks, adminGetBank, adminCreateQuestion, adminUpdateQuestion, adminDeleteQuestion,
 } from "../controllers/questionBankController";
+import { explainStep, tutorCheck, adminTutorStats } from "../controllers/tutorController";
 
 // Learning courses v2 (step lessons, 4 languages). Runs next to the old /api/courses until the switch.
 const router = express.Router();
@@ -24,6 +25,7 @@ router.delete("/admin/courses/:courseId",        protect, admin, adminDeleteCour
 router.get("/admin/courses/:courseId/access",            protect, admin, adminListAccess);
 router.put("/admin/courses/:courseId/access/:userId",    protect, admin, adminGrantAccess);
 router.delete("/admin/courses/:courseId/access/:userId", protect, admin, adminRevokeAccess);
+router.get("/admin/courses/:courseId/tutor",              protect, admin, adminTutorStats);
 
 // learner
 router.get("/my",                                         protect, getMyCourses);
@@ -31,6 +33,9 @@ router.get("/courses/:courseId",                          protect, getCourse);
 router.get("/courses/:courseId/lessons/:lessonId",        protect, getLesson);
 router.put("/courses/:courseId/lessons/:lessonId/progress", protect, saveProgress);
 router.put("/courses/:courseId/lessons/:lessonId/check",    protect, submitCheck);
+// Lernhilfe: wyjaśnienie fragmentu lekcji (limit dzienny i blokada w testach w kontrolerze)
+router.post("/courses/:courseId/lessons/:lessonId/explain", protect, explainStep);
+router.put("/courses/:courseId/tutor/:id/check",            protect, tutorCheck);
 
 // katalog pytań (nauka z odpowiedziami, osobny produkt)
 router.get("/admin/banks",                              protect, admin, adminListBanks);

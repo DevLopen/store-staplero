@@ -17,7 +17,20 @@ export interface LessonResponse {
     prevLessonId: string | null;
     nextLessonId: string | null;
     progress: { step: number; completed: boolean };
+    /** Lernhilfe: dzienny limit pytań i ile zostało */
+    tutor?: { limit: number; left: number };
 }
+
+/* ── Lernhilfe ── */
+export interface TutorAnswer {
+    id: string; inScope: boolean; paragraphs: string[]; example: string;
+    check: { q: string; options: [string, string]; correct: 0 | 1; why: string } | null;
+    followups: string[]; left: number; limit: number;
+}
+export const explainStep = (courseId: string, lessonId: string, body: { stepId: string; lang: string; selection?: string; question?: string; history?: { q: string; a: string }[] }, draft = false) =>
+    req<TutorAnswer>(`/courses/${courseId}/lessons/${lessonId}/explain${draft ? "?draft=1" : ""}`, { method: "POST", body: JSON.stringify(body) });
+export const tutorCheck = (courseId: string, id: string, ok: boolean) =>
+    req<{ ok: boolean }>(`/courses/${courseId}/tutor/${id}/check`, { method: "PUT", body: JSON.stringify({ ok }) }).catch(() => null);
 
 export interface MyCourse {
     id: string; kind?: "bank"; slug: string; coverUrl?: string; title: LText; lessonCount: number; lessonsDone: number; lastLessonId: string | null; lastStep: number; expiresAt: string | null;

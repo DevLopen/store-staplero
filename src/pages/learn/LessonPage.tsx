@@ -62,6 +62,7 @@ export default function LessonPage() {
                 onStep={i => { setStep(i); if (!draft && i > data.progress.step) save.mutate({ step: i }); }}
                 onFinish={finish}
                 onCheck={draft ? undefined : async answers => { const r = await submitCheck(courseId, lessonId, answers); outline.refetch(); return r; }}
+                tutor={data.tutor ? { courseId, lessonId, draft, ...data.tutor } : undefined}
                 finishLabel={testMode ? testsLabel[lang] : data.nextLessonId ? ui("nextTopic", lang) : ui("finish", lang)}
             />
         </LearnShell>

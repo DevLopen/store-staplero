@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Lang, Lesson, LText, tx } from "./types";
 import { ui, UIKey } from "./ui";
 import { StepView } from "./steps";
+import { TutorConfig, TutorHelpRow, TutorIntro, tutorIntroSeen, TutorPanel, TutorPop, TutorRequest } from "./Tutor";
 import "./player.css";
 
 export interface SheetSpec {
@@ -81,9 +82,11 @@ interface Props {
     onStep?: (i: number) => void;       // zapis postępu
     onFinish?: () => void;              // ostatni krok: „Weiter” na końcu tematu
     finishLabel?: string;
+    /** Lernhilfe (wyjaśnienia w lekcji); bez niej, np. w podglądzie bez kursu, nie ma przycisków pomocy. */
+    tutor?: TutorConfig;
 }
 
-export default function LessonPlayer({ lesson, lang, title, startStep = 0, onStep, onFinish, finishLabel, onCheck }: Props) {
+export default function LessonPlayer({ lesson, lang, title, startStep = 0, onStep, onFinish, finishLabel, onCheck, tutor }: Props) {
     const steps = lesson.steps;
     const [step, setStep] = useState(() => Math.min(Math.max(0, startStep), Math.max(0, steps.length - 1)));
     const [dir, setDir] = useState(1);
@@ -93,6 +96,9 @@ export default function LessonPlayer({ lesson, lang, title, startStep = 0, onSte
     const screenRef = useRef<HTMLDivElement>(null);
     const store = useRef(new Map<string, unknown>());
     const [, force] = useState(0);
+    const [tutorReq, setTutorReq] = useState<TutorRequest | null>(null);
+    const [tutorOpen, setTutorOpen] = useState(false);
+    const [introOpen, setIntroOpen] = useState(false);
 
     const closeSheet = useCallback(() => setSheetOpen(false), []);
     const go = useCallback((n: number) => {
@@ -107,7 +113,7 @@ export default function LessonPlayer({ lesson, lang, title, startStep = 0, onSte
     useEffect(() => {
         const k = (e: KeyboardEvent) => {
             if ((e.target as HTMLElement).matches("input, textarea, select")) return;
-            if (e.key === "Escape") setSheetOpen(false);
+            if (e.key === "Escape") { setSheetOpen(false); setTutorOpen(false); }
             if (e.key === "ArrowLeft" && step > 0) go(step - 1);
         };
         addEventListener("keydown", k);
@@ -139,9 +145,22 @@ export default function LessonPlayer({ lesson, lang, title, startStep = 0, onSte
         },
     };
     const last = step === steps.length - 1;
+    // test modułu i egzamin: bez pomocy (serwer i tak odmówi)
+    const testStep = !!current && ((current.type === "choice" && !!(current.data as any)?.gate) || (current.type === "sim" && (current.data as any)?.sim === "final"));
+    const helpOn = !!tutor && !!current && !testStep;
+    useEffect(() => { if (testStep) setTutorOpen(false); }, [testStep]);
+    // przy pierwszej lekcji z pomocą (nie w teście) jednorazowo pokaż, że taka funkcja jest
+    useEffect(() => { if (helpOn && !tutorIntroSeen()) setIntroOpen(true); }, [helpOn]);
+    const cardTitle = () => tx((current?.data as any)?.title, lang) || tx(lesson.title, lang);
+    const askTutor = (selection?: string) => {
+        if (!current) return;
+        setTutorReq(r => ({ n: (r?.n ?? 0) + 1, stepId: current.id, selection, cardTitle: cardTitle() }));
+        setTutorOpen(true);
+    };
 
     return (
         <Ctx.Provider value={ctx}>
+            <div className={`lp lp-stage ${tutorOpen ? "tu-open" : ""}`} lang={lang}>
             <section className={`lp lp-lesson ${sheetOpen ? "sheet-open" : ""}`} lang={lang}>
                 <div className="lp-top">
                     <div className="lp-row">
@@ -155,8 +174,10 @@ export default function LessonPlayer({ lesson, lang, title, startStep = 0, onSte
                     {current && (
                         <div key={current.id} className={`lp-in ${dir < 0 ? "rev" : ""}`}>
                             <StepView step={current} last={last} finishLabel={finishLabel} />
+                            {helpOn && <TutorHelpRow lang={lang} onAsk={() => askTutor()} />}
                         </div>
                     )}
+                    {tutor && <TutorPop screenRef={screenRef} enabled={helpOn} lang={lang} onExplain={askTutor} />}
                 </div>
                 <div className="lp-actions" ref={setActionsEl} />
                 <div className="lp-sheet-scrim" onClick={closeSheet} />
@@ -168,6 +189,12 @@ export default function LessonPlayer({ lesson, lang, title, startStep = 0, onSte
                     </>}
                 </div>
             </section>
+            {tutor && <>
+                <div className="tu-scrim" onClick={() => setTutorOpen(false)} />
+                <TutorPanel cfg={tutor} lang={lang} request={tutorReq} open={tutorOpen} onClose={() => setTutorOpen(false)} />
+                {introOpen && <TutorIntro lang={lang} onClose={() => setIntroOpen(false)} />}
+            </>}
+            </div>
         </Ctx.Provider>
     );
 }

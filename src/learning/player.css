@@ -3,7 +3,8 @@
 .lp {
   --white: #fff;
   --g50: #f9fafb; --g100: #f3f4f6; --g200: #e5e7eb; --g300: #d1d5db; --g400: #9ca3af; --g500: #6b7280; --g600: #4b5563; --g700: #374151; --g900: #111827;
-  --amber50: #fffbeb; --amber100: #fef3c7; --amber500: #f59e0b; --amber600: #d97706; --amber700: #b45309;
+  --amber50: #fffbeb; --amber100: #fef3c7; --amber200: #fde68a;
+  --tu50: #eff6ff; --tu100: #dbeafe; --tu200: #bfdbfe; --tu300: #93c5fd; --tu600: #2563eb; --tu700: #1d4ed8; --amber500: #f59e0b; --amber600: #d97706; --amber700: #b45309;
   --primary: #f97706; --primary-hover: #e56a00;
   --green: #16a34a; --green50: #f0fdf4; --green500: #22c55e; --red: #dc2626; --red50: #fef2f2;
   --lp-ease: cubic-bezier(.4, 0, .2, 1);
@@ -72,7 +73,7 @@
 .lp .kp li b { color: var(--g900); }
 .lp .kp .n { width: 22px; height: 22px; border-radius: 50%; background: var(--g900); color: #fff; display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; margin-top: 1px; }
 .lp .kp .mark { width: 8px; height: 8px; border-radius: 2px; background: var(--amber500); flex: none; margin-top: 7px; }
-.lp .merke { background: var(--amber50); border-radius: 10px; padding: 12px 14px; font-size: 15px; color: var(--g900); }
+.lp .merke { background: var(--amber100); border-radius: 10px; padding: 12px 14px; font-size: 15px; color: var(--g900); }
 .lp .merke b { display: block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--amber700); margin-bottom: 2px; }
 .lp .formula { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--g900); color: #fff; font-weight: 600; font-size: 14px; text-align: center; }
 .lp .formula span { color: var(--amber500); }
@@ -377,3 +378,97 @@
 .lp .num-box:focus-within { box-shadow: inset 0 0 0 2px #212121; }
 .lp .num-box input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 20px; font-weight: 600; color: var(--g900); font-variant-numeric: tabular-nums; }
 .lp .num-box b { font-size: 15px; color: var(--g600); }
+
+/* Lernhilfe: przycisk przy zaznaczeniu, wiersz pod kartą, panel (telefon: od dołu, szeroko: obok lekcji) */
+.lp-stage { position: relative; height: 100%; display: flex; justify-content: center; overflow: hidden; container-type: inline-size; }
+.lp-stage > .lp-lesson { flex: 1 1 auto; min-width: 0; margin: 0; }
+.lp-screen { position: relative; }
+.lp .tu-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--g50); border-radius: 12px; padding: 10px 10px 10px 14px; }
+.lp .tu-row p { font-size: 14px; color: var(--g700); display: flex; gap: 10px; align-items: flex-start; line-height: 1.4; }
+.lp .tu-row p b { color: var(--g900); }
+.lp .tu-row p .ic { width: 18px; height: 18px; color: var(--tu600); margin-top: 1px; }
+.lp .tu-btn { height: 36px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--tu50); color: var(--tu700); box-shadow: inset 0 0 0 1px var(--tu200); font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; white-space: nowrap; flex: none; }
+.lp .tu-btn:hover { background: var(--tu100); }
+.lp .tu-btn .ic { width: 16px; height: 16px; color: var(--tu600); }
+.lp .tu-pop { position: absolute; z-index: 4; transform: translate(-50%, calc(-100% - 10px)); background: var(--g900); color: #fff; border: 0; border-radius: 999px; height: 38px; padding: 0 16px 0 12px; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 20px rgba(17,24,39,.25); white-space: nowrap; animation: tu-pop .18s var(--lp-ease); }
+.lp .tu-pop.below { transform: translate(-50%, 12px); }
+.lp .tu-pop .ic { width: 16px; height: 16px; color: var(--tu300); }
+@keyframes tu-pop { from { opacity: 0; } }
+.lp-lesson ::selection { background: var(--tu200); color: var(--g900); }
+
+.lp .tu-scrim { position: absolute; inset: 0; z-index: 7; background: rgba(17,24,39,.25); opacity: 0; pointer-events: none; transition: opacity .25s; }
+.lp-stage.tu-open .tu-scrim { opacity: 1; pointer-events: auto; }
+.lp .tu-panel { position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; height: 84%; background: var(--white); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.12); transform: translateY(105%); transition: transform .32s var(--lp-ease); display: flex; flex-direction: column; }
+.lp-stage.tu-open .tu-panel { transform: none; }
+@container (min-width: 1000px) {
+  .lp .tu-scrim { display: none; }
+  .lp .tu-panel { position: relative; left: auto; right: auto; height: 100%; width: 0; flex: none; transform: none; border-radius: 0; box-shadow: none; border-left: 1px solid var(--g200); overflow: hidden; visibility: hidden; transition: width .3s var(--lp-ease), visibility 0s .3s; }
+  .lp .tu-panel > * { min-width: 380px; }
+  .lp-stage.tu-open .tu-panel { width: 380px; visibility: visible; transition: width .3s var(--lp-ease); }
+}
+.lp .tu-hd { padding: 16px 20px 12px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--g100); }
+.lp .tu-hd .t { flex: 1; min-width: 0; display: grid; }
+.lp .tu-hd b { font-size: 16px; color: var(--g900); line-height: 1.25; }
+.lp .tu-hd span { font-size: 12.5px; color: var(--g500); }
+.lp .tu-x { width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--g100); display: grid; place-items: center; color: var(--g700); flex: none; }
+.lp .tu-x:hover { background: var(--g200); }
+.lp .tu-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.lp .tu-quote { background: var(--g50); border-radius: 10px; padding: 10px 12px; font-size: 14px; color: var(--g900); }
+.lp .tu-quote small { display: block; font-size: 12px; color: var(--g500); margin-bottom: 2px; }
+.lp .tu-intro { font-size: 15px; color: var(--g700); }
+.lp .tu-me { align-self: flex-end; max-width: 85%; background: var(--g900); color: #fff; border-radius: 14px 14px 4px 14px; padding: 9px 13px; font-size: 14.5px; }
+.lp .tu-ans { display: grid; gap: 10px; font-size: 15px; color: var(--g700); }
+.lp .tu-ans > * { animation: tu-in .35s var(--lp-ease) both; }
+@keyframes tu-in { from { opacity: 0; transform: translateY(6px); } }
+.lp .tu-ans b { color: var(--g900); }
+.lp .tu-ex { background: var(--tu50); border-radius: 10px; padding: 11px 13px; color: var(--g900); font-size: 14.5px; }
+.lp .tu-ex > b:first-child { display: block; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--tu700); margin-bottom: 2px; }
+.lp .tu-check { border: 1.5px solid var(--g200); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
+.lp .tu-check > p { font-size: 14.5px; color: var(--g900); font-weight: 600; }
+.lp .tu-check .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.lp .tu-check .opts button { min-height: 44px; border: 0; border-radius: 8px; background: var(--g100); color: var(--g900); font-weight: 600; font-size: 14.5px; padding: 6px 10px; line-height: 1.3; }
+.lp .tu-check .opts button:hover:not(:disabled) { background: var(--g200); }
+.lp .tu-check .opts button:disabled { cursor: default; }
+.lp .tu-check .opts button.ok { background: var(--green); color: #fff; }
+.lp .tu-check .opts button.no { background: var(--red); color: #fff; }
+.lp .tu-fb { font-size: 14px; border-radius: 8px; padding: 9px 11px; }
+.lp .tu-fb.ok { background: var(--green50); color: var(--green); } .lp .tu-fb.no { background: var(--red50); color: var(--red); }
+.lp .tu-fb b { display: block; color: inherit; } .lp .tu-fb span { color: var(--g700); }
+.lp .tu-wait, .lp .tu-err { font-size: 14px; color: var(--g500); }
+.lp .tu-wait::after { content: ""; display: inline-block; width: 7px; height: 14px; background: var(--g400); margin-left: 4px; vertical-align: -2px; animation: tu-blink 1s steps(2) infinite; }
+@keyframes tu-blink { 50% { opacity: 0; } }
+.lp .tu-err { background: var(--g50); border-radius: 10px; padding: 10px 12px; color: var(--g700); }
+.lp .tu-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.lp .tu-chips button { border: 0; border-radius: 999px; background: var(--g100); color: var(--g900); font-size: 13.5px; font-weight: 500; padding: 7px 12px; text-align: left; }
+.lp .tu-chips button:hover { background: var(--g200); }
+.lp .tu-ft { border-top: 1px solid var(--g100); padding: 10px 16px calc(14px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 6px; }
+.lp .tu-ask { display: flex; gap: 8px; }
+.lp .tu-ask input { flex: 1; min-width: 0; height: 46px; border: 1.5px solid var(--g300); border-radius: 10px; padding: 0 12px; font: inherit; font-size: 16px; color: var(--g900); background: #fff; }
+.lp .tu-ask input:focus { border-color: var(--g900); outline: none; }
+.lp .tu-ask input:disabled { background: var(--g50); }
+.lp .tu-ask button { width: 46px; height: 46px; border: 0; border-radius: 10px; background: var(--primary); color: #fff; display: grid; place-items: center; flex: none; }
+.lp .tu-ask button:disabled { background: var(--g200); color: var(--g400); cursor: default; }
+.lp .tu-limit { font-size: 12px; color: var(--g400); display: flex; justify-content: space-between; gap: 12px; }
+.lp .tu-limit span:last-child { white-space: nowrap; }
+@media (max-width: 600px) { .lp .tu-row { flex-direction: column; align-items: stretch; padding: 12px; } .lp .tu-btn { justify-content: center; } .lp .tu-limit { flex-direction: column; gap: 2px; } }
+@media (prefers-reduced-motion: reduce) { .lp .tu-panel, .lp .tu-scrim { transition: none; } .lp .tu-ans > * { animation: none; } }
+
+/* Lernhilfe: jednorazowe przedstawienie przy pierwszej lekcji */
+.lp .tu-intro-scrim { position: absolute; inset: 0; z-index: 9; background: rgba(17,24,39,.35); display: grid; place-items: center; padding: 16px; animation: tu-pop .2s var(--lp-ease); }
+.lp .tu-intro-card { width: 100%; max-width: 440px; max-height: 100%; overflow-y: auto; background: #fff; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,.2); padding: 20px; display: grid; gap: 14px; }
+.lp .tu-intro-card h2 { font-size: 20px; font-weight: 700; line-height: 1.25; color: var(--g900); }
+.lp .tu-intro-card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 14.5px; color: var(--g700); }
+.lp .tu-intro-card li { display: flex; gap: 10px; align-items: flex-start; }
+.lp .tu-intro-card li .ic { width: 18px; height: 18px; color: var(--tu600); margin-top: 2px; }
+.lp .tu-demo { position: relative; background: var(--g50); border-radius: 12px; padding: 52px 16px 16px; overflow: hidden; }
+.lp .tu-demo p { position: relative; z-index: 0; font-size: 15px; color: var(--g900); line-height: 1.5; }
+.lp .tu-demo mark { color: inherit; background: linear-gradient(var(--tu200), var(--tu200)) no-repeat 0 0 / 0% 100%; border-radius: 2px; animation: tu-mark 5s var(--lp-ease) infinite; }
+.lp .tu-demo .pop { position: absolute; top: 10px; left: 16px; display: inline-flex; align-items: center; gap: 6px; background: var(--g900); color: #fff; border-radius: 999px; height: 32px; padding: 0 12px 0 10px; font-size: 12.5px; font-weight: 600; opacity: 0; animation: tu-demo-pop 5s var(--lp-ease) infinite; }
+.lp .tu-demo .pop .ic { width: 14px; height: 14px; color: var(--tu300); }
+.lp .tu-demo .ans { margin-top: 12px; background: #fff; border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; opacity: 0; animation: tu-demo-ans 5s var(--lp-ease) infinite; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.lp .tu-demo .ans i { display: block; height: 7px; border-radius: 4px; background: var(--g200); }
+.lp .tu-demo .ans i:nth-child(2) { width: 80%; } .lp .tu-demo .ans i:nth-child(3) { width: 55%; background: var(--tu100); }
+@keyframes tu-mark { 0%, 8% { background-size: 0% 100%; } 28%, 92% { background-size: 100% 100%; } 100% { background-size: 0% 100%; } }
+@keyframes tu-demo-pop { 0%, 28% { opacity: 0; transform: translateY(4px); } 34%, 50% { opacity: 1; transform: none; } 56%, 100% { opacity: 0; } }
+@keyframes tu-demo-ans { 0%, 52% { opacity: 0; transform: translateY(6px); } 60%, 92% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .lp .tu-demo mark { animation: none; background-size: 100% 100%; } .lp .tu-demo .pop, .lp .tu-demo .ans { animation: none; opacity: 1; } }
