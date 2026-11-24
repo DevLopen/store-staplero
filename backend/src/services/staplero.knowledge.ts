@@ -4,7 +4,7 @@
  */
 export const STAPLERO_KNOWLEDGE = `=== KONTAKT ===
 Telefon: +49 160 92490070 oraz +49 176 22067783
-Email: info@staplero.com
+Email: info@staplero.de
 Godziny kontaktu: poniedziałek do piątku, 9:00 do 17:00
 Formularz kontaktowy: sekcja #contact na stronie głównej
 Formularz zapytania ofertowego dla firm: /firmenschulung-berlin#anfrage
@@ -53,7 +53,7 @@ NIE przyjmują bonów edukacyjnych (Bildungsgutschein) ani voucherów z Jobcente
 
 === FAQ, NAJCZĘSTSZE PYTANIA ===
 P: Kiedy jest egzamin/szkolenie?
-O: Aktualne terminy są na stronie z kursami: /schulungen. Można też napisać na info@staplero.com lub zadzwonić.
+O: Aktualne terminy są na stronie z kursami: /schulungen. Można też napisać na info@staplero.de lub zadzwonić.
 
 P: Jak długo trwa kurs?
 O: 2 dni. Dzień 1: teoria i egzamin pisemny, dzień 2: praktyka i egzamin jazdy.

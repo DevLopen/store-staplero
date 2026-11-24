@@ -2,7 +2,7 @@ import { Response } from "express";
 import Certificate from "../models/Certificate";
 import { AuthRequest } from "../types";
 
-const ADMIN_EMAILS = ["info@staplero.com", "k.lopuch@satisfly.co"];
+const ADMIN_EMAILS = ["info@staplero.com", "info@staplero.de", "k.lopuch@satisfly.co"];
 
 const demoCodeFor = (userId: unknown) => `DEMO${String(userId).slice(-8).toUpperCase()}`;
 

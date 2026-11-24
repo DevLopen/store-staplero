@@ -24,6 +24,7 @@ import AdminOrders from "@/components/admin/AdminOrders";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminProducts from "@/components/admin/AdminProducts";
 import AdminInbox from "@/components/admin/AdminInbox";
+import AdminEmailTemplates from "@/components/admin/AdminEmailTemplates";
 
 const COURSE_LANGUAGE_OPTIONS = [
   { code: "de", label: "Deutsch" },
@@ -70,7 +71,7 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   // sekcja panelu z adresu (#orders, #products, …), żeby odświeżenie i link z innej strony trafiały w to samo miejsce
   const routerLocation = useLocation();
-  const SECTIONS: AdminSection[] = ["mails", "products", "courses", "content", "tests", "locations", "orders", "users", "certificates", "participants", "stats"];
+  const SECTIONS: AdminSection[] = ["mails", "vorlagen", "products", "courses", "content", "tests", "locations", "orders", "users", "certificates", "participants", "stats"];
   const sectionOf = (h: string): AdminSection => (SECTIONS.includes(h.slice(1) as AdminSection) ? (h.slice(1) as AdminSection) : "orders");
   const [section, setSection] = useState<AdminSection>(() => sectionOf(routerLocation.hash));
   useEffect(() => { setSection(sectionOf(routerLocation.hash)); }, [routerLocation.hash]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1306,6 +1307,10 @@ const Admin = () => {
               {/* Postfach */}
               <TabsContent value="mails">
                 <AdminInbox />
+              </TabsContent>
+
+              <TabsContent value="vorlagen">
+                <AdminEmailTemplates />
               </TabsContent>
 
               {/* Orders Tab */}

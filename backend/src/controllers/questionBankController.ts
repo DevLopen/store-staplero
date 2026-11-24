@@ -6,7 +6,7 @@ import { LANGS } from "../models/LearningCourse";
 import { UserCourse } from "../models/UserCourse";
 import { AuthRequest } from "../types";
 
-const ADMIN_EMAILS = ["info@staplero.com", "k.lopuch@satisfly.co"];
+const ADMIN_EMAILS = ["info@staplero.com", "info@staplero.de", "k.lopuch@satisfly.co"];
 const isAdmin = (req: AuthRequest) =>
     req.user?.isAdmin === true || ADMIN_EMAILS.includes(String(req.user?.email || "").trim().toLowerCase());
 const validId = (id: string) => mongoose.Types.ObjectId.isValid(id);

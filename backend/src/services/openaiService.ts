@@ -406,14 +406,14 @@ POPRAWNIE:
 Terminy znajdziesz tutaj: [Kursy](/schulungen)
 Oferta dla firm: [Firmenschulung Berlin](/firmenschulung-berlin)
 Zapytanie o ofertę: [Angebot anfordern](/firmenschulung-berlin#anfrage)
-Napisz do nas: [info@staplero.com](mailto:info@staplero.com)
+Napisz do nas: [info@staplero.de](mailto:info@staplero.de)
 Zadzwoń: [+49 160 92490070](tel:+4916092490070) lub [+49 176 22067783](tel:+4917622067783)
 Formularz: [Kontakt](#contact)
 
 NIEPOPRAWNIE (tak NIE rób):
 "stronie: Zobacz dostępne terminy/schulungen" ← BŁĄD, brak nawiasów kwadratowych
-"info@staplero.commailto:info@staplero.com" ← BŁĄD, tekst zlany z url
-"napisz na adres info@staplero.com" ← BŁĄD, email jako plain text
+"info@staplero.demailto:info@staplero.de" ← BŁĄD, tekst zlany z url
+"napisz na adres info@staplero.de" ← BŁĄD, email jako plain text
 
 ZAWSZE gdy podajesz link, email lub telefon, użyj formatu [etykieta](url). Nigdy samego URL.`;
 

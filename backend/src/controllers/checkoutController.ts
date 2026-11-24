@@ -56,6 +56,7 @@ interface CheckoutRequest {
     // Produkt z panelu (Produkty). To on jest źródłem prawdy dla ceny — cena przysłana
     // z przeglądarki (`price`, `practicalCourse.basePrice`) jest tylko WERYFIKOWANA.
     productId?: string;
+    language?: string; // język strony (de/en/uk/pl) — język maili po zakupie
 
     // Cena netto widoczna dla klienta w chwili wejścia do checkoutu (do weryfikacji).
     price?: number;
@@ -134,9 +135,6 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
             if (ba.isCompany) {
                 if (!ba.company?.trim()) {
                     return res.status(400).json({ message: "Firmenname ist erforderlich" });
-                }
-                if (!ba.vatId?.trim()) {
-                    return res.status(400).json({ message: "USt-IdNr. ist für Firmenkunden erforderlich" });
                 }
             } else if (!ba.name?.trim()) {
                 return res.status(400).json({ message: "Name ist für die Rechnungsadresse erforderlich" });
@@ -367,6 +365,8 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
         // Create order
         const order = await orderService.createOrder({
             userId: user._id.toString(),
+            productId: data.productId && /^[a-f0-9]{24}$/i.test(String(data.productId)) ? String(data.productId) : undefined,
+            language: ["de", "en", "uk", "pl"].includes(String(data.language)) ? String(data.language) : undefined,
             type: data.type,
             items,
             totalAmount,

@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 const sections_de = [
   {
     heading: "1. Verantwortlicher",
-    text: `Verantwortlicher im Sinne der DSGVO ist:\n\nSTAPLERO – Inh. Bohdan Kutko\nJakobstr. 13, 02826 Görlitz, Deutschland\nE-Mail: info@staplero.com`,
+    text: `Verantwortlicher im Sinne der DSGVO ist:\n\nSTAPLERO – Inh. Bohdan Kutko\nJakobstr. 13, 02826 Görlitz, Deutschland\nE-Mail: info@staplero.de`,
   },
   {
     heading: "2. Erhobene Daten",
@@ -29,7 +29,7 @@ const sections_de = [
   },
   {
     heading: "7. Ihre Rechte",
-    text: `Sie haben folgende Rechte:\n• Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17)\n• Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20)\n• Widerspruch (Art. 21), Widerruf einer Einwilligung (Art. 7 Abs. 3)\n\nKontakt: info@staplero.com\n\nSie haben das Recht, Beschwerde bei der zuständigen Datenschutzaufsichtsbehörde einzureichen.`,
+    text: `Sie haben folgende Rechte:\n• Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17)\n• Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20)\n• Widerspruch (Art. 21), Widerruf einer Einwilligung (Art. 7 Abs. 3)\n\nKontakt: info@staplero.de\n\nSie haben das Recht, Beschwerde bei der zuständigen Datenschutzaufsichtsbehörde einzureichen.`,
   },
   {
     heading: "8. Datensicherheit",
@@ -40,7 +40,7 @@ const sections_de = [
 const sections_en = [
   {
     heading: "1. Data Controller",
-    text: `The data controller under GDPR is:\n\nSTAPLERO – Owner: Bohdan Kutko\nJakobstr. 13, 02826 Görlitz, Germany\nEmail: info@staplero.com`,
+    text: `The data controller under GDPR is:\n\nSTAPLERO – Owner: Bohdan Kutko\nJakobstr. 13, 02826 Görlitz, Germany\nEmail: info@staplero.de`,
   },
   {
     heading: "2. Data Collected",
@@ -64,7 +64,7 @@ const sections_en = [
   },
   {
     heading: "7. Your Rights",
-    text: `You have the right to: access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction (Art. 18), data portability (Art. 20), objection (Art. 21), and withdrawal of consent (Art. 7(3)).\n\nContact: info@staplero.com\n\nYou also have the right to lodge a complaint with the competent supervisory authority.`,
+    text: `You have the right to: access (Art. 15), rectification (Art. 16), erasure (Art. 17), restriction (Art. 18), data portability (Art. 20), objection (Art. 21), and withdrawal of consent (Art. 7(3)).\n\nContact: info@staplero.de\n\nYou also have the right to lodge a complaint with the competent supervisory authority.`,
   },
   {
     heading: "8. Data Security",
@@ -75,7 +75,7 @@ const sections_en = [
 const sections_uk = [
   {
     heading: "1. Відповідальна особа",
-    text: `Відповідальна особа відповідно до GDPR:\n\nSTAPLERO – Власник: Богдан Кутко\nJakobstr. 13, 02826 Görlitz, Німеччина\nEmail: info@staplero.com`,
+    text: `Відповідальна особа відповідно до GDPR:\n\nSTAPLERO – Власник: Богдан Кутко\nJakobstr. 13, 02826 Görlitz, Німеччина\nEmail: info@staplero.de`,
   },
   {
     heading: "2. Зібрані дані",
@@ -99,7 +99,7 @@ const sections_uk = [
   },
   {
     heading: "7. Ваші права",
-    text: `Ви маєте право на: доступ (ст. 15), виправлення (ст. 16), видалення (ст. 17), обмеження (ст. 18), перенесення даних (ст. 20), заперечення (ст. 21), відкликання згоди (ст. 7(3)).\n\nКонтакт: info@staplero.com`,
+    text: `Ви маєте право на: доступ (ст. 15), виправлення (ст. 16), видалення (ст. 17), обмеження (ст. 18), перенесення даних (ст. 20), заперечення (ст. 21), відкликання згоди (ст. 7(3)).\n\nКонтакт: info@staplero.de`,
   },
   {
     heading: "8. Безпека даних",
@@ -110,7 +110,7 @@ const sections_uk = [
 const sections_pl = [
   {
     heading: "1. Administrator danych",
-    text: `Administratorem danych zgodnie z RODO jest:\n\nSTAPLERO – Właściciel: Bohdan Kutko\nJakobstr. 13, 02826 Görlitz, Niemcy\nE-mail: info@staplero.com`,
+    text: `Administratorem danych zgodnie z RODO jest:\n\nSTAPLERO – Właściciel: Bohdan Kutko\nJakobstr. 13, 02826 Görlitz, Niemcy\nE-mail: info@staplero.de`,
   },
   {
     heading: "2. Gromadzone dane",
@@ -134,7 +134,7 @@ const sections_pl = [
   },
   {
     heading: "7. Twoje prawa",
-    text: `Przysługuje Ci prawo do: dostępu (art. 15), sprostowania (art. 16), usunięcia (art. 17), ograniczenia (art. 18), przenoszenia (art. 20), sprzeciwu (art. 21), cofnięcia zgody (art. 7 ust. 3).\n\nKontakt: info@staplero.com\n\nPrzysługuje Ci prawo do wniesienia skargi do organu nadzorczego.`,
+    text: `Przysługuje Ci prawo do: dostępu (art. 15), sprostowania (art. 16), usunięcia (art. 17), ograniczenia (art. 18), przenoszenia (art. 20), sprzeciwu (art. 21), cofnięcia zgody (art. 7 ust. 3).\n\nKontakt: info@staplero.de\n\nPrzysługuje Ci prawo do wniesienia skargi do organu nadzorczego.`,
   },
   {
     heading: "8. Bezpieczeństwo danych",

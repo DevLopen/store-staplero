@@ -35,6 +35,8 @@ const ownAddresses = (): string[] => {
     const list = [
         process.env.FROM_EMAIL || "noreply@staplero.com",
         INBOX_FROM,
+        "info@staplero.com",
+        "info@staplero.de",
         ...(process.env.INBOX_IGNORE_FROM || "").split(","),
     ];
     return list.map(a => (a.match(/<([^>]+)>/)?.[1] || a).trim().toLowerCase()).filter(Boolean);
@@ -491,7 +493,7 @@ export const applyAiResult = async (id: string, r: AiResult) => {
 const SIGNATURE_TEXT = `--
 STAPLERO
 +49 160 92490070 · +49 176 22067783
-info@staplero.com · https://staplero.de`;
+info@staplero.de · https://staplero.de`;
 
 const textToHtml = (text: string) =>
     text.trim().split(/\n{2,}/).map(par => `<p style="margin:0 0 14px">${escapeHtml(par).replace(/\n/g, "<br>")}</p>`).join("");
@@ -505,7 +507,7 @@ const buildBodies = (reply: string, quoted?: InboxMessage) => {
     const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#111">` +
         textToHtml(reply) +
         `<p style="margin:22px 0 0;font-size:13px;color:#555">STAPLERO<br>+49 160 92490070 · +49 176 22067783<br>` +
-        `<a href="mailto:info@staplero.com" style="color:#555">info@staplero.com</a> · <a href="https://staplero.de" style="color:#555">staplero.de</a></p>` +
+        `<a href="mailto:info@staplero.de" style="color:#555">info@staplero.de</a> · <a href="https://staplero.de" style="color:#555">staplero.de</a></p>` +
         (quoted
             ? `<p style="margin:24px 0 6px;font-size:13px;color:#777">${escapeHtml(quoteHeader)}</p>` +
               `<blockquote style="margin:0;padding:0 0 0 12px;border-left:3px solid #ddd;color:#555;font-size:14px">${textToHtml(quoted.text)}</blockquote>`

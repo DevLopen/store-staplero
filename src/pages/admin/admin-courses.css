@@ -158,6 +158,19 @@
 .ac-found small { margin-left: auto; color: var(--mute2); font-weight: 400; }
 .ac-found p { padding: 10px 12px; margin: 0; font-weight: 400; font-size: 13px; }
 .ac-learners { display: grid; }
+.ac-usage { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.ac-tile { display: grid; gap: 2px; padding: 14px 16px; border: 0; text-align: left; font: inherit; cursor: pointer; color: var(--ink); }
+.ac-tile b { font-size: 26px; letter-spacing: -.6px; line-height: 1.1; }
+.ac-tile span { font-size: 13px; font-weight: 600; }
+.ac-tile small { color: var(--mute); font-size: 12px; }
+.ac-tile[aria-pressed="true"] { box-shadow: 0 0 0 2px #f97316; }
+.ac-tile.warn b { color: #c25e00; }
+.ac-lrow .res { display: grid; gap: 3px; }
+.ac-lrow .res small { color: var(--mute); font-size: 12px; }
+.ac-prog { display: block; height: 5px; border-radius: 3px; background: rgba(118,118,128,.16); overflow: hidden; }
+.ac-prog i { display: block; height: 100%; background: #f97316; }
+.ac-warn-t { color: #c25e00 !important; font-weight: 600; }
+@media (max-width: 900px) { .ac-usage { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .ac-lrow { display: grid; grid-template-columns: minmax(180px, 1.4fr) minmax(120px, 1fr) minmax(120px, 1fr) 96px 140px 170px; gap: 12px; align-items: center; padding: 11px 18px; font-size: 13px; }
 .ac-lrow + .ac-lrow { border-top: .5px solid rgba(0,0,0,.08); }
 .ac-lrow .who b { display: block; font-size: 14px; letter-spacing: -.2px; overflow-wrap: anywhere; }

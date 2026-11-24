@@ -44,6 +44,7 @@ export interface Product {
   includesOnlineAccess: boolean;
   linkedCourseId?: string;
   onlineAccessDays?: number | null;
+  emailTemplate?: string | null;
   /** Długość szkolenia w dniach (opcjonalnie), panel podpowiada z niej koniec terminu */
   durationDays?: number | null;
 

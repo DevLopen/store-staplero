@@ -4,13 +4,14 @@ import LearningCourse, { CourseContent, LANGS, Lang } from "../models/LearningCo
 import LessonProgress from "../models/LessonProgress";
 import { UserCourse } from "../models/UserCourse";
 import User from "../models/User";
+import Order from "../models/Order";
 import { AuthRequest } from "../types";
 import { myBanks } from "./questionBankController";
 import { tutorLeft } from "./tutorController";
 import { TUTOR_DAILY_LIMIT } from "../services/courseTutor.service";
 import { emptyContent, findLesson, newId, outline, translationStatus, validateContent } from "../utils/learningContent";
 
-const ADMIN_EMAILS = ["info@staplero.com", "k.lopuch@satisfly.co"];
+const ADMIN_EMAILS = ["info@staplero.com", "info@staplero.de", "k.lopuch@satisfly.co"];
 export const isAdmin = (req: AuthRequest) =>
     req.user?.isAdmin === true || ADMIN_EMAILS.includes(String(req.user?.email || "").trim().toLowerCase());
 export const validId = (id: string) => mongoose.Types.ObjectId.isValid(id);
@@ -325,21 +326,38 @@ export const adminListAccess = async (req: AuthRequest, res: Response) => {
     if (!c) return res.status(404).json({ message: "Kurs nicht gefunden" });
     const rows = await UserCourse.find({ courseId }).sort({ expiresAt: -1 }).lean();
     const validUsers = rows.map(r => r.userId).filter(validId);
-    const [users, passed] = await Promise.all([
+    const [users, progress, orders] = await Promise.all([
         User.find({ _id: { $in: validUsers } }).select("name email").lean(),
-        LessonProgress.find({ courseId, userId: { $in: rows.map(r => r.userId) }, passed: true }).select("userId lessonId").lean(),
+        LessonProgress.find({ courseId, userId: { $in: rows.map(r => r.userId) } }).select("userId lessonId passed completed updatedAt").lean(),
+        // Pakiet (kurs na miejscu + teoria online): termin kursu, żeby widzieć, kto nie zaczął, a kurs jest blisko
+        Order.find({ orderNumber: { $in: rows.map(r => r.orderNumber).filter(o => o && o !== MANUAL_ORDER) } })
+            .select("orderNumber practicalCourseDetails.startDate practicalCourseDetails.locationName").lean(),
     ]);
-    const gateIds = new Set((c.published ?? c.draft).chapters.flatMap(ch => ch.lessons.filter(l => gateStep(l)).map(l => l.id)));
+    const content = c.published ?? c.draft;
+    const gateIds = new Set(content.chapters.flatMap(ch => ch.lessons.filter(l => gateStep(l)).map(l => l.id)));
+    const lessonIds = new Set(content.chapters.flatMap(ch => ch.lessons.map(l => l.id)));
     const byId = new Map(users.map(u => [String(u._id), u]));
+    const orderBy = new Map(orders.map(o => [o.orderNumber, o]));
     const now = new Date();
     res.json({
         testsTotal: gateIds.size,
-        rows: rows.map(r => ({
-            userId: r.userId, name: byId.get(r.userId)?.name ?? "", email: byId.get(r.userId)?.email ?? "",
-            expiresAt: r.expiresAt, expired: r.status === "expired" || new Date(r.expiresAt) < now,
-            manual: r.orderNumber === MANUAL_ORDER, orderNumber: r.orderNumber,
-            testsPassed: passed.filter(p => p.userId === r.userId && gateIds.has(p.lessonId)).length,
-        })),
+        lessonsTotal: lessonIds.size,
+        rows: rows.map(r => {
+            const mine = progress.filter(p => p.userId === r.userId);
+            const last = mine.reduce<Date | null>((m, p) => (p.updatedAt && (!m || p.updatedAt > m) ? p.updatedAt : m), null);
+            const pc = orderBy.get(r.orderNumber)?.practicalCourseDetails;
+            return {
+                userId: r.userId, name: byId.get(r.userId)?.name ?? "", email: byId.get(r.userId)?.email ?? "",
+                expiresAt: r.expiresAt, expired: r.status === "expired" || new Date(r.expiresAt) < now,
+                purchasedAt: r.purchaseDate,
+                manual: r.orderNumber === MANUAL_ORDER, orderNumber: r.orderNumber,
+                testsPassed: mine.filter(p => p.passed && gateIds.has(p.lessonId)).length,
+                lessonsDone: mine.filter(p => p.completed && lessonIds.has(p.lessonId)).length,
+                lastActivity: last,
+                courseDate: pc?.startDate || null,
+                courseLocation: pc?.locationName || null,
+            };
+        }),
     });
 };
 

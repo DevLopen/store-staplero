@@ -22,6 +22,8 @@ import {
     heroButton,
     steps,
 } from "./emailTemplates";
+import { Content, MailLang, MAIL_LOCALES } from "./mailTemplateCatalog";
+import { defaultContent, fmt, fmtPlain, getTemplate, pickLanguage, resolveBookingTemplateKey, resolveContent } from "./mailTemplates.service";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || "STAPLERO <noreply@staplero.com>";
@@ -189,7 +191,7 @@ export const sendPasswordChangedEmail = async (to: string, name: string): Promis
       ${p(`Hallo ${strong(escapeHtml(name))},`)}
       ${p("das Passwort für Ihr STAPLERO Konto wurde soeben geändert. Sie können sich ab sofort mit dem neuen Passwort anmelden.")}
       ${button(`${FRONTEND_URL}/login`, "Zum Login")}
-      ${callout(`${strong("Das waren nicht Sie?")} Setzen Sie Ihr Passwort bitte sofort erneut zurück oder schreiben Sie uns an <a href="mailto:info@staplero.com" style="color:#111111;">info@staplero.com</a>.`)}
+      ${callout(`${strong("Das waren nicht Sie?")} Setzen Sie Ihr Passwort bitte sofort erneut zurück oder schreiben Sie uns an <a href="mailto:info@staplero.de" style="color:#111111;">info@staplero.de</a>.`)}
       ${p(strong("Ihr STAPLERO Team"))}
     `;
 
@@ -209,63 +211,20 @@ export const sendPasswordChangedEmail = async (to: string, name: string): Promis
 
 // ─── Bestellungen und Kurse ────────────────────────────────────────────────────
 
-export const sendOnlineCoursePurchaseEmail = async (
-    to: string,
-    name: string,
-    courseName: string,
-    orderNumber: string,
-    expiresAt: Date
-): Promise<void> => {
-    const bodyHtml = `
-      ${p(`Hallo ${strong(escapeHtml(name))},`)}
-      ${p("vielen Dank für Ihren Kauf! Sie haben nun Zugang zu:")}
-      ${infoTable([
-          ["Kurs", escapeHtml(courseName)],
-          ["Bestellnummer", escapeHtml(orderNumber)],
-          ["Zugang gültig bis", `<span style="color:#F97706;">${deDate(expiresAt)}</span>`],
-      ])}
-      ${button(`${FRONTEND_URL}/dashboard`, "Zum Kurs")}
-      ${p(`${strong("Viel Erfolg!")}<br>Ihr STAPLERO Team`)}
-    `;
-
-    await sendMail({
-        from: FROM_EMAIL,
-        to,
-        subject: `Ihr Online-Kurs: ${courseName} - Zugang freigeschaltet!`,
-        html: layout({
-            title: "Zahlung erfolgreich",
-            preheader: `Ihr Zugang zu "${courseName}" ist freigeschaltet.`,
-            eyebrow: "Bestellung bestätigt",
-            headline: "Zahlung erfolgreich!",
-            bodyHtml,
-        }),
-    });
-};
-
-interface PracticalCourseBookingEmailOptions {
-    to: string;
-    name: string;
-    orderNumber: string;
-    locationName: string; // miasto, np. "Berlin"
-    locationAddress: string;
-    startDate: Date | string; // 1. dzień (teoria); praktyka jest dzień później
-    endDate?: Date | string; // ostatni dzień; 3 dni = Intensivausbildung z dniem na Schubmaststapler
-    participants?: string[]; // pierwsza osoba to zamawiający
-    language?: "de" | "en" | "uk" | "pl"; // język maila (na razie używany tylko w mailu Stufe 2)
-    // Pakiet z teorią online: dostęp do kursu (nadany przy zapłacie) — sekcja w mailu
-    onlineAccess?: { courseName: string; expiresAt: Date | string; days?: number };
-    time?: string; // godziny z terminu, np. "09:00 - 17:30" (używane w mailu jednodniowym)
-}
+// ─── Maile z szablonów (teksty edytowane w panelu: Admin → E-Mail-Vorlagen) ───
 
 const BERLIN_TZ = "Europe/Berlin";
 const COURSE_HOURS = { from: "09:00", to: "17:00" };
+const PHONE_1 = { href: "tel:+4916092490070", label: "+49 160 92490070" };
+const PHONE_2 = { href: "tel:+4917622067783", label: "+49 176 22067783" };
+const WHATSAPP_URL = "https://wa.me/4917622067783";
 
-// Zdjęcia kolejnych kroków dojazdu do NLND Berlin (public/)
-const berlinArrivalSteps = [
-    { image: "anfahrt-berlin-1.jpg", alt: "Neuköllnische Allee", title: "Über die Neuköllnische Allee", text: "Fahren Sie bis zur Hausnummer 80." },
-    { image: "anfahrt-berlin-2.jpg", alt: "Gebäude NLND Berlin", title: "Zum Haupteingang NLND Berlin", text: "Das Gebäude mit dem NLND-Schriftzug." },
-    { image: "anfahrt-berlin-3.jpg", alt: "Tor mit Hausnummer 80", title: "An der Wache melden", text: "Am Tor mit der Nummer 80 bzw. am Empfang." },
-    { image: "anfahrt-berlin-4.jpg", alt: "Wartebereich am Eingang", title: "Im Eingangsbereich warten", text: `Ein Ausbilder holt Sie ab. Verspätet? Rufen Sie uns an: <a href="tel:+4916092490070" style="color:#111111;font-weight:700;">+49 160 92490070</a> oder <a href="tel:+4917622067783" style="color:#111111;font-weight:700;">+49 176 22067783</a>` },
+// Zdjęcia kolejnych kroków dojazdu do NLND Berlin (public/); teksty w szablonie „gemeinsame Texte”
+const berlinArrivalImages = [
+    { image: "anfahrt-berlin-1.jpg", alt: "Neuköllnische Allee" },
+    { image: "anfahrt-berlin-2.jpg", alt: "Gebäude NLND Berlin" },
+    { image: "anfahrt-berlin-3.jpg", alt: "Tor mit Hausnummer 80" },
+    { image: "anfahrt-berlin-4.jpg", alt: "Wartebereich am Eingang" },
 ];
 
 const addDays = (d: Date, days: number) => {
@@ -281,396 +240,193 @@ const berlinDate = (d: Date, opts: Intl.DateTimeFormatOptions) =>
 const calendarDay = (d: Date) =>
     new Intl.DateTimeFormat("en-CA", { timeZone: BERLIN_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d).replace(/-/g, "");
 
+/** Formatery dat w języku maila */
+const dateFmt = (lang: MailLang) => {
+    const f = (d: Date, o: Intl.DateTimeFormatOptions) => d.toLocaleDateString(MAIL_LOCALES[lang], { timeZone: BERLIN_TZ, ...o });
+    const long = (d: Date) => f(d, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    const short = (d: Date) => f(d, { weekday: "short", day: "numeric", month: "short" });
+    // krótka data do tematu: "12.11." (de/pl/uk) albo "12 Nov" (en)
+    const tiny = (d: Date) => (lang === "en" ? f(d, { day: "numeric", month: "short" }) : berlinDate(d, { day: "2-digit", month: "2-digit" }));
+    const range = (a: Date, b: Date) => {
+        if (calendarDay(a) === calendarDay(b)) return tiny(a);
+        if (lang === "en") return `${f(a, { day: "numeric" })}–${tiny(b)}`;
+        return berlinDate(a, { month: "2-digit" }) === berlinDate(b, { month: "2-digit" })
+            ? `${berlinDate(a, { day: "2-digit" })}.–${tiny(b)}`
+            : `${tiny(a)}–${tiny(b)}`;
+    };
+    return { long, short, tiny, range };
+};
+
+const cityOf = (locationName: string) => locationName.split(/[(\-–]/)[0].trim() || locationName;
+const smallLabel = (text: string, color: string) =>
+    `<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${color};">${text}</span>`;
+const helpBox = (title: string, whatsapp: string) => callout(
+    `${smallLabel(escapeHtml(title), "#c25e00")}<br>${strong(`<a href="${PHONE_1.href}" style="color:#111111;text-decoration:none;">${PHONE_1.label}</a>`)}<br>${strong(`<a href="${PHONE_2.href}" style="color:#111111;text-decoration:none;">${PHONE_2.label}</a>`)}<br><a href="${WHATSAPP_URL}" target="_blank" style="color:#111111;font-weight:700;">${escapeHtml(whatsapp)}</a>`,
+    "orange",
+);
+
+// ─── Potwierdzenie rezerwacji kursu na miejscu ───────────────────────────────
+
+export interface PracticalCourseBookingEmailOptions {
+    to: string;
+    name: string;
+    orderNumber: string;
+    locationName: string; // nazwa terminu/miejsca, np. "Berlin (auf Englisch) Stufe 2 - Schubmaststapler"
+    locationAddress: string;
+    startDate: Date | string; // pierwszy dzień
+    endDate?: Date | string; // ostatni dzień
+    participants?: string[]; // pierwsza osoba to zamawiający
+    language?: string; // język strony przy zakupie (de/en/uk/pl)
+    productId?: string; // produkt → wybrany w panelu szablon
+    locationId?: string; // gdy brak productId: produkt z terminu
+    dateId?: string;
+    templateKey?: string; // wymuszony szablon (podgląd/test)
+    // Pakiet z teorią online: dostęp do kursu (nadany przy zapłacie) — krótki dopisek, szczegóły w osobnym mailu
+    onlineAccess?: { courseName: string; expiresAt: Date | string; days?: number };
+    time?: string; // godziny z terminu, np. "09:00 - 17:30"
+}
+
+type BookingData = Omit<PracticalCourseBookingEmailOptions, "language" | "productId" | "locationId" | "dateId" | "templateKey">;
+
+/** Renderuje potwierdzenie rezerwacji z tekstów szablonu (C) i tekstów wspólnych (K) */
+export const renderBookingEmail = (C: Content, K: Content, lang: MailLang, o: BookingData): { subject: string; html: string } => {
+    const D = dateFmt(lang);
+    const start = new Date(o.startDate);
+    const end = o.endDate ? new Date(o.endDate) : start;
+    const spanDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+    const ticket: Array<{ day: number; label: string }> = Array.isArray(C.ticket) ? C.ticket : [];
+    const schedule: any[] = Array.isArray(C.schedule) ? C.schedule : [];
+    const courseDays = Math.max(spanDays, ...ticket.map((t) => Number(t.day) || 1), ...schedule.map((s) => Number(s.day) || 1));
+    const dayDate = (n: number) => addDays(start, Math.max(0, (Number(n) || 1) - 1));
+    const lastDay = dayDate(courseDays);
+
+    const m = (o.time || "").match(/(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/);
+    const from = m ? m[1].padStart(5, "0") : COURSE_HOURS.from;
+    const to = m ? m[2].padStart(5, "0") : COURSE_HOURS.to;
+
+    const people = o.participants?.length ? o.participants : [o.name];
+    const city = cityOf(o.locationName);
+    const isBerlin = /berlin/i.test(o.locationName) || /neuk[öo]llnische\s+allee/i.test(o.locationAddress);
+    const access = o.onlineAccess;
+    const vars: Record<string, string | number | undefined> = {
+        name: o.name, course: C.courseName, city, location: o.locationName, address: o.locationAddress,
+        dateRange: D.range(start, lastDay), startDate: D.long(start), endDate: D.long(lastDay),
+        from, to, orderNumber: o.orderNumber, cancelUntil: D.long(addDays(start, -7)), count: people.length,
+        days: access?.days, expires: access ? D.long(new Date(access.expiresAt)) : undefined,
+    };
+    const F = (t: unknown, extra: Record<string, any> = {}) => fmt(t, { ...vars, ...extra });
+    const hours = fmtPlain(K.hours, vars);
+
+    const calendarUrl = "https://calendar.google.com/calendar/render?action=TEMPLATE"
+        + `&text=${encodeURIComponent(`STAPLERO ${fmtPlain(C.courseName)}`)}`
+        + `&dates=${calendarDay(start)}T${from.replace(":", "")}00/${calendarDay(start)}T${to.replace(":", "")}00`
+        + `&ctz=${encodeURIComponent(BERLIN_TZ)}`
+        + (courseDays > 1 ? `&recur=${encodeURIComponent(`RRULE:FREQ=DAILY;COUNT=${courseDays}`)}` : "")
+        + `&location=${encodeURIComponent(o.locationAddress)}`
+        + `&details=${encodeURIComponent(`${o.orderNumber}`)}`;
+    const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.locationAddress)}`;
+
+    const heroHtml = `
+      ${heroText(F(C.intro).replace(/<strong>/g, '<strong style="color:#ffffff;">'))}
+      ${heroTicket(
+          (ticket.length ? ticket : [{ day: 1, label: "" }]).map((t) => ({ label: F(t.label), title: D.short(dayDate(t.day)), note: escapeHtml(hours) })),
+          `<strong style="color:#ffffff;">${escapeHtml(o.locationName)}</strong> &middot; ${escapeHtml(o.locationAddress)}<br><span style="color:#b5b5b5;">${F(K.ticketFooter)}</span>`,
+      )}
+      ${heroButtons({ href: calendarUrl, label: escapeHtml(K.calendarButton) }, { href: routeUrl, label: escapeHtml(K.routeButton) })}
+    `;
+
+    const arrivalSteps: any[] = Array.isArray(K.arrivalSteps) ? K.arrivalSteps : [];
+    const arrivalHtml = isBerlin
+        ? `
+      ${sectionTitle(F(K.findUsTitle), F(K.findUsText))}
+      ${photoSteps(berlinArrivalImages.map((img, i) => ({
+          imageUrl: `${EMAIL_ASSETS_URL}/${img.image}`, alt: img.alt,
+          title: F(arrivalSteps[i]?.title), text: F(arrivalSteps[i]?.text),
+      })), escapeHtml(K.stepLabel || "Schritt"))}`
+        : `
+      ${sectionTitle(F(K.arrivalTitle))}
+      ${p(F(K.arrivalText))}`;
+
+    const participantsHtml = people.length > 1
+        ? `
+      ${sectionTitle(F(K.participantsTitle))}
+      ${numberedList(people.map((n, i) => i === 0 ? `${escapeHtml(n)} <span style="font-weight:400;color:#707072;font-size:13px;">&middot; ${escapeHtml(K.buyer)}</span>` : escapeHtml(n)))}
+      ${p(F(K.forwardNote), { small: true, muted: true })}`
+        : "";
+
+    const onlineHtml = access && String(C.onlineNote || "").trim()
+        ? callout(`${smallLabel(escapeHtml(K.onlineTitle), "#c25e00")}<br>${F(C.onlineNote)}`, "orange")
+        : "";
+
+    const seenDays = new Set<number>();
+    const timelineHtml = schedule.map((s, i) => {
+        const day = Number(s.day) || 1;
+        const firstOfLaterDay = day > 1 && !seenDays.has(day);
+        seenDays.add(day);
+        const meta = String(s.meta || "").trim() ? F(s.meta, { date: D.short(dayDate(day)) }) : `${D.short(dayDate(day))} &middot; ${from}–${to}`;
+        const text = F(s.text) + (isBerlin && firstOfLaterDay && K.berlinMeetAgain ? ` ${F(K.berlinMeetAgain)}` : "");
+        return timelineItem({
+            title: F(s.title), meta, text,
+            extraHtml: String(s.exam || "").trim() ? labeledPill(escapeHtml(K.examLabel), F(s.exam), s.highlight ? "orange" : "gray") : undefined,
+            accent: s.highlight ? "orange" : undefined,
+            last: i === schedule.length - 1,
+        });
+    }).join("");
+
+    const bring: any[] = Array.isArray(C.bring) ? C.bring : [];
+    const cancellation = String(C.cancellation || "").trim();
+    const help = helpBox(K.helpTitle, K.whatsapp);
+
+    const bodyHtml = `
+      ${String(C.requirement || "").trim() ? callout(F(C.requirement).replace(/^<strong>(.+?)<\/strong>(<br>)?/, (_m, t) => `${smallLabel(t, "#c25e00")}<br>`), "orange") : ""}
+
+      ${sectionTitle(F(K.bringTitle), undefined, { first: !String(C.requirement || "").trim() })}
+      ${checklist(bring.map((b) => ({ title: F(b.title), note: String(b.note || "").trim() ? F(b.note) : undefined, tag: b.required ? escapeHtml(K.required) : undefined, strong: !!b.required })))}
+
+      ${onlineHtml}
+
+      ${arrivalHtml}
+
+      ${participantsHtml}
+
+      ${sectionTitle(F(C.scheduleTitle), String(C.scheduleLead || "").trim() ? F(C.scheduleLead) : undefined)}
+      ${timelineHtml}
+      ${String(C.afterSchedule || "").trim() ? p(F(C.afterSchedule), { small: true, muted: true }) : ""}
+
+      ${cancellation
+          ? twoColumns(callout(`${smallLabel(escapeHtml(K.cancellationTitle), "#707072")}<br>${F(cancellation)}`, "gray"), help)
+          : help}
+
+      ${p(F(C.closing))}
+    `;
+
+    return {
+        subject: fmtPlain(C.subject, vars),
+        html: layout({
+            title: fmtPlain(K.docTitle),
+            preheader: fmtPlain(C.preheader, vars),
+            eyebrow: escapeHtml(K.eyebrow),
+            eyebrowTone: "success",
+            headline: escapeHtml(fmtPlain(C.headline, vars)),
+            heroHtml,
+            bodyHtml,
+            lang,
+        }),
+    };
+};
+
 export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBookingEmailOptions): Promise<void> => {
-    const { to, name, orderNumber, locationName, locationAddress, participants = [] } = opts;
-
-    const theory = new Date(opts.startDate);
-    const practice = addDays(theory, 1);
-    const cancelUntil = addDays(theory, -7);
-    // Liczba dni z terminu (start–koniec włącznie); 3 dni = Frontstapler + Schubmaststapler
-    const spanDays = opts.endDate
-        ? Math.round((new Date(opts.endDate).getTime() - theory.getTime()) / 86_400_000) + 1
-        : 2;
-    // Kurs jednodniowy = Schubmaststapler Stufe 2 (osobny mail: inny przebieg, wymagany Staplerschein Stufe 1)
-    if (spanDays <= 1) return sendReachTruckBookingEmail(opts);
-    const isThreeDay = spanDays >= 3;
-    const reach = addDays(theory, 2); // 3. dzień (tylko przy isThreeDay)
-    const lastDay = isThreeDay ? reach : practice;
-    const courseDays = isThreeDay ? 3 : 2;
-    const allDays = isThreeDay ? "allen drei Tagen" : "beiden Tagen";
-
-    const longDate = (d: Date) => berlinDate(d, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-    const shortDate = (d: Date) => berlinDate(d, { weekday: "short", day: "numeric", month: "short" });
-    const numericDate = (d: Date) => berlinDate(d, { day: "2-digit", month: "2-digit" }); // "12.10."
-    // "12.–13.10." albo "31.10.–01.11." przy zmianie miesiąca
-    const dateRange = berlinDate(theory, { month: "2-digit" }) === berlinDate(lastDay, { month: "2-digit" })
-        ? `${berlinDate(theory, { day: "2-digit" })}.–${numericDate(lastDay)}`
-        : `${numericDate(theory)}–${numericDate(lastDay)}`;
-    const hours = `${COURSE_HOURS.from} – ca. ${COURSE_HOURS.to} Uhr`;
-
-    const loc = escapeHtml(locationName);
-    const addr = escapeHtml(locationAddress);
-    // Zdjęcia dojazdu dotyczą ośrodka przy Neuköllnische Allee — rozpoznajemy po nazwie albo adresie
-    const isBerlin = /berlin/i.test(locationName) || /neuk[öo]llnische\s+allee/i.test(locationAddress);
-
-    // Wszystkie dni kursu jako wydarzenie powtarzane codziennie
-    const from = COURSE_HOURS.from.replace(":", "") + "00";
-    const until = COURSE_HOURS.to.replace(":", "") + "00";
-    const calendarUrl = "https://calendar.google.com/calendar/render?action=TEMPLATE"
-        + `&text=${encodeURIComponent("STAPLERO Gabelstaplerausbildung")}`
-        + `&dates=${calendarDay(theory)}T${from}/${calendarDay(theory)}T${until}`
-        + `&ctz=${encodeURIComponent(BERLIN_TZ)}`
-        + `&recur=${encodeURIComponent(`RRULE:FREQ=DAILY;COUNT=${courseDays}`)}`
-        + `&location=${encodeURIComponent(locationAddress)}`
-        + `&details=${encodeURIComponent(`Bestellnummer ${orderNumber}`)}`;
-    const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(locationAddress)}`;
-
-    const people = participants.length ? participants : [name];
-    const courseTitle = isThreeDay
-        ? "3-Tage-Intensivausbildung Frontstapler &amp; Schubmaststapler"
-        : "Gabelstaplerausbildung Stufe&nbsp;1";
-
-    const heroHtml = `
-      ${heroText(`Hallo ${escapeHtml(name)}, wir freuen uns auf Sie. Hier finden Sie alles, was Sie für die <strong style="color:#ffffff;">${courseTitle}</strong> brauchen.`)}
-      ${heroTicket(
-          [
-              { label: "Tag 1 &middot; Theorie", title: shortDate(theory), note: hours },
-              { label: isThreeDay ? "Tag 2 &middot; Praxis" : "Tag 2 &middot; Praxis &amp; Prüfung", title: shortDate(practice), note: hours },
-              ...(isThreeDay ? [{ label: "Tag 3 &middot; Schubmast", title: shortDate(reach), note: hours }] : []),
-          ],
-          `<strong style="color:#ffffff;">${loc}</strong> &middot; ${addr}<br><span style="color:#b5b5b5;">${people.length} Teilnehmer &middot; Bitte 10 bis 15 Minuten vor Kursbeginn da sein</span>`,
-      )}
-      ${heroButtons({ href: calendarUrl, label: "In den Kalender eintragen" }, { href: routeUrl, label: "Route planen" })}
-    `;
-
-    const arrivalHtml = isBerlin
-        ? `
-      ${sectionTitle("So finden Sie uns", `Bitte betreten Sie das Betriebsgelände nicht selbstständig. Ein STAPLERO-Ausbilder holt Sie am Eingang ab, an ${allDays}.`)}
-      ${photoSteps(berlinArrivalSteps.map((s) => ({ imageUrl: `${EMAIL_ASSETS_URL}/${s.image}`, alt: s.alt, title: s.title, text: s.text })))}`
-        : `
-      ${sectionTitle("Anreise &amp; Treffpunkt")}
-      ${p(`Bitte erscheinen Sie ${strong("10 bis 15 Minuten vor Kursbeginn")} am Schulungsort. Ein STAPLERO-Ausbilder empfängt Sie dort und begleitet Sie zum Schulungsraum.`)}`;
-
-    const participantsHtml = people.length > 1
-        ? `
-      ${sectionTitle("Angemeldete Teilnehmer")}
-      ${numberedList(people.map((n, i) => i === 0 ? `${escapeHtml(n)} <span style="font-weight:400;color:#707072;font-size:13px;">&middot; Besteller</span>` : escapeHtml(n)))}
-      ${p("Bitte leiten Sie diese E-Mail an alle Teilnehmer weiter. Jede Person braucht einen eigenen Ausweis und Sicherheitsschuhe.", { small: true, muted: true })}`
-        : "";
-
-    // Szczegóły dostępu online idą osobnym mailem (sendOnlineTheoryAccessEmail) — tu tylko krótki odnośnik
-    const access = opts.onlineAccess;
-    const onlineAccessHtml = access
-        ? `
-      ${callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c25e00;">Online-Theorie inklusive</span><br>Ihr Online-Kurs ist bereits freigeschaltet${access.days ? ` (${access.days} Tage, bis ${strong(longDate(new Date(access.expiresAt)))})` : ""}. Den Zugang und alle Schritte zum Start haben wir Ihnen in einer ${strong("separaten E-Mail")} geschickt.`, "orange")}`
-        : "";
-
-    const bodyHtml = `
-      ${sectionTitle("Bitte mitbringen", undefined, { first: true })}
-      ${checklist([
-          { title: "Personalausweis oder Reisepass", note: `an ${allDays}`, tag: "Pflicht", strong: true },
-          { title: "Arbeitssicherheitsschuhe", note: isThreeDay ? "an allen drei Tagen, an den Praxistagen Pflicht" : "an beiden Tagen, am Praxistag Pflicht", tag: "Pflicht", strong: true },
-          { title: "Geeignete Arbeitskleidung", note: `${isThreeDay ? "an den Praxistagen" : "am Praxistag"}, lange Hose empfohlen. Hallentemperatur ca. 18 bis 22 °C` },
-      ])}
-
-      ${onlineAccessHtml}
-
-      ${arrivalHtml}
-
-      ${participantsHtml}
-
-      ${sectionTitle("Ablauf der Ausbildung", "Nach DGUV Grundsatz 308-001 und DGUV Vorschrift 68.")}
-      ${timelineItem({
-          title: "Tag 1 &middot; Theorie",
-          meta: `${shortDate(theory)} &middot; ${COURSE_HOURS.from}–${COURSE_HOURS.to}`,
-          text: "Rechtliche Grundlagen, Rechte und Pflichten, Aufbau des Staplers, Standsicherheit und Tragfähigkeit, Lastdiagramme, tägliche Kontrolle, Verkehrsregeln im Betrieb, Verhalten in Gefahrensituationen.",
-          extraHtml: labeledPill("Prüfung", "Schriftlicher Test am Ende des Tages"),
-      })}
-      ${timelineItem({
-          title: isThreeDay ? "Tag 2 &middot; Praxis Frontstapler" : "Tag 2 &middot; Praxis",
-          meta: `${shortDate(practice)} &middot; ${COURSE_HOURS.from}–${COURSE_HOURS.to}`,
-          text: `Fahrzeugkontrolle, Einweisung am Gabelstapler, Anfahren, Lenken und Bremsen, Lasten aufnehmen und transportieren, Rangieren auf engem Raum, Stapeln und Einlagern.${isBerlin ? " Treffpunkt wie am ersten Tag, bitte erneut an der Wache melden." : ""}`,
-          extraHtml: labeledPill("Prüfung", "Fahrprüfung, danach Ihr Staplerschein", "orange"),
-          accent: "orange",
-          last: !isThreeDay,
-      })}
-      ${isThreeDay ? timelineItem({
-          title: "Tag 3 &middot; Schubmaststapler",
-          meta: `${shortDate(reach)} &middot; ${COURSE_HOURS.from}–${COURSE_HOURS.to}`,
-          text: `Ca. 2 Stunden Theorie zum Schubmaststapler: Aufbau, Bedienung und Besonderheiten im Vergleich zum Frontstapler. Anschließend praktische Fahrübungen am Schubmaststapler: Ein- und Auslagern im Regal, Rangieren in engen Gängen.${isBerlin ? " Treffpunkt wie an den Vortagen, bitte erneut an der Wache melden." : ""}`,
-          accent: "orange",
-          last: true,
-      }) : ""}
-
-      ${twoColumns(
-          callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#707072;">Stornierung</span><br>Kostenfrei bis<br>${strong(longDate(cancelUntil))}<br><span style="font-size:13px;color:#707072;">Danach fällt eine Stornogebühr von 100&nbsp;% an.</span>`, "gray"),
-          callout(`<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c25e00;">Fragen? Wir helfen</span><br>${strong(`<a href="tel:+4916092490070" style="color:#111111;text-decoration:none;">+49 160 92490070</a>`)}<br>${strong(`<a href="tel:+4917622067783" style="color:#111111;text-decoration:none;">+49 176 22067783</a>`)}<br><a href="https://wa.me/4917622067783" target="_blank" style="color:#111111;font-weight:700;">Per WhatsApp schreiben</a>`, "orange"),
-      )}
-
-      ${p(`Bis bald in ${loc}!<br>${strong("Ihr STAPLERO Team")}`)}
-    `;
-
-    await sendMail({
-        from: FROM_EMAIL,
-        to,
-        subject: `Platz reserviert: Staplerschein ${dateRange} in ${locationName}`,
-        html: layout({
-            title: "Anmeldebestätigung",
-            preheader: `Ihr Platz ist reserviert: ${longDate(theory)} bis ${longDate(lastDay)}, ${locationName}. Bitte Ausweis und Sicherheitsschuhe mitbringen.`,
-            eyebrow: "Anmeldung bestätigt",
-            eyebrowTone: "success",
-            headline: "Ihr Platz ist reserviert",
-            heroHtml,
-            bodyHtml,
-        }),
-    });
-};
-
-const reachTruckTexts = {
-    de: {
-        locale: "de-DE",
-        hours: (a: string, b: string) => `${a} – ca. ${b} Uhr`,
-        calTitle: "STAPLERO Schubmaststapler-Ausbildung (Stufe 2)",
-        calDetails: (o: string) => `Bestellnummer ${o}. Bitte mitbringen: Ausweis, Staplerschein Stufe 1, Sicherheitsschuhe.`,
-        heroIntro: (n: string) => `Hallo ${n}, wir freuen uns auf Sie. Hier finden Sie alles, was Sie für die <strong style="color:#ffffff;">Schubmaststapler-Ausbildung (Stufe&nbsp;2)</strong> brauchen.`,
-        ticketDay: "Schulungstag &middot; Stufe 2",
-        ticketWhat: "Theorie, Praxis &amp; Prüfung",
-        ticketLen: "1 Tag",
-        ticketTruck: "Schubmaststapler",
-        ticketFooter: (n: number) => `${n} Teilnehmer &middot; Bitte 10 bis 15 Minuten vor Kursbeginn da sein`,
-        calBtn: "In den Kalender eintragen",
-        routeBtn: "Route planen",
-        findUs: "So finden Sie uns",
-        findUsNote: "Bitte betreten Sie das Betriebsgelände nicht selbstständig. Ein STAPLERO-Ausbilder holt Sie am Eingang ab.",
-        arrival: "Anreise &amp; Treffpunkt",
-        arrivalText: `Bitte erscheinen Sie <strong>10 bis 15 Minuten vor Kursbeginn</strong> am Schulungsort. Ein STAPLERO-Ausbilder empfängt Sie dort und begleitet Sie zum Schulungsraum.`,
-        steps: [
-            { title: "Über die Neuköllnische Allee", text: "Fahren Sie bis zur Hausnummer 80." },
-            { title: "Zum Haupteingang NLND Berlin", text: "Das Gebäude mit dem NLND-Schriftzug." },
-            { title: "An der Wache melden", text: "Am Tor mit der Nummer 80 bzw. am Empfang." },
-            { title: "Im Eingangsbereich warten", text: "Ein Ausbilder holt Sie ab. Verspätet? Rufen Sie uns an:" },
-        ],
-        or: "oder",
-        step: "Schritt",
-        participants: "Angemeldete Teilnehmer",
-        buyer: "Besteller",
-        forward: "Bitte leiten Sie diese E-Mail an alle Teilnehmer weiter. Jede Person braucht einen eigenen Ausweis, einen eigenen Staplerschein der Stufe 1 und Sicherheitsschuhe.",
-        reqLabel: "Wichtig: Voraussetzung",
-        reqText: `Die Ausbildung zum Schubmaststapler ist eine <strong>Zusatzqualifikation</strong>. Teilnehmen kann nur, wer bereits einen <strong>deutschen Staplerschein der Stufe&nbsp;1</strong> (Frontstapler) besitzt. Bitte bringen Sie den Nachweis unbedingt mit. Ohne Nachweis ist eine Teilnahme leider nicht möglich.`,
-        bring: "Bitte mitbringen",
-        required: "Pflicht",
-        items: [
-            { title: "Personalausweis oder Reisepass" },
-            { title: "Deutscher Staplerschein Stufe 1", note: "Original, Fahrausweis oder Zertifikat (auch digital)" },
-            { title: "Arbeitssicherheitsschuhe", note: "für den Praxisteil Pflicht" },
-            { title: "Geeignete Arbeitskleidung", note: "lange Hose empfohlen. Hallentemperatur ca. 18 bis 22 °C" },
-        ],
-        flow: "Ablauf des Schulungstages",
-        flowNote: "Nach DGUV Grundsatz 308-001 und DGUV Vorschrift 68.",
-        morning: "Vormittag &middot; Theorie",
-        from: (h: string) => `ab ${h}`,
-        morningText: "Aufbau und Funktion des Schubmaststaplers, Unterschiede zum Frontstapler, Tragfähigkeit und Lastschwerpunkt, Standsicherheit beim Arbeiten in der Höhe, Sicherheitsvorschriften und Unfallverhütung.",
-        exam: "Prüfung",
-        writtenTest: "Schriftlicher Test",
-        afternoon: "Nachmittag &middot; Praxis",
-        until: (h: string) => `bis ca. ${h}`,
-        afternoonText: "Tägliche Sichtprüfung, Bedienung des Schubmasts, sicheres Fahren und Rangieren in engen Gängen, Lastaufnahme und Lastabsetzung, Ein- und Auslagern im Regal.",
-        practicalTest: "Praktische Prüfung, danach Ihre Stufe-2-Qualifikation",
-        afterExam: `Nach bestandener Prüfung erhalten Sie Ihr <strong>Zertifikat für die Stufe-2-Qualifikation</strong> und die <strong>Staplero ProCard</strong>.`,
-        help: "Fragen? Wir helfen",
-        whatsapp: "Per WhatsApp schreiben",
-        bye: (c: string) => `Bis bald in ${c}!<br><strong>Ihr STAPLERO Team</strong>`,
-        subject: (d: string, c: string) => `Platz reserviert: Schubmaststapler (Stufe 2) am ${d} in ${c}`,
-        preheader: (d: string, c: string) => `Ihr Platz ist reserviert: ${d}, ${c}. Bitte Ausweis, Staplerschein Stufe 1 und Sicherheitsschuhe mitbringen.`,
-        title: "Anmeldebestätigung",
-        eyebrow: "Anmeldung bestätigt",
-        headline: "Ihr Platz ist reserviert",
-    },
-    en: {
-        locale: "en-GB",
-        hours: (a: string, b: string) => `${a} – approx. ${b}`,
-        calTitle: "STAPLERO Reach Truck Training (Level 2)",
-        calDetails: (o: string) => `Order number ${o}. Please bring: ID, German forklift licence Level 1, safety shoes.`,
-        heroIntro: (n: string) => `Hello ${n}, we look forward to seeing you. Here is everything you need for the <strong style="color:#ffffff;">Reach Truck Training (Level&nbsp;2)</strong>.`,
-        ticketDay: "Training day &middot; Level 2",
-        ticketWhat: "Theory, practice &amp; exam",
-        ticketLen: "1 day",
-        ticketTruck: "Reach truck",
-        ticketFooter: (n: number) => `${n} ${n === 1 ? "participant" : "participants"} &middot; Please arrive 10 to 15 minutes before the start`,
-        calBtn: "Add to calendar",
-        routeBtn: "Plan route",
-        findUs: "How to find us",
-        findUsNote: "Please do not enter the company premises on your own. A STAPLERO instructor will pick you up at the entrance.",
-        arrival: "Arrival &amp; meeting point",
-        arrivalText: `Please arrive at the training location <strong>10 to 15 minutes before the start</strong>. A STAPLERO instructor will welcome you and take you to the training room.`,
-        steps: [
-            { title: "Via Neuköllnische Allee", text: "Go to house number 80." },
-            { title: "To the main entrance of NLND Berlin", text: "The building with the NLND sign." },
-            { title: "Report to the security gate", text: "At the gate with number 80 or at the reception." },
-            { title: "Wait in the entrance area", text: "An instructor will pick you up. Running late? Call us:" },
-        ],
-        or: "or",
-        step: "Step",
-        participants: "Registered participants",
-        buyer: "Booked by",
-        forward: "Please forward this email to all participants. Each person needs their own ID, their own Level 1 forklift licence and safety shoes.",
-        reqLabel: "Important: requirement",
-        reqText: `The reach truck training is an <strong>additional qualification</strong>. You can only take part if you already hold a <strong>German forklift licence (Staplerschein) Level&nbsp;1</strong> (counterbalance forklift). Please make sure to bring proof of it. Without proof, participation is unfortunately not possible.`,
-        bring: "Please bring",
-        required: "Required",
-        items: [
-            { title: "ID card or passport" },
-            { title: "German forklift licence Level 1", note: "original licence card or certificate (digital is fine)" },
-            { title: "Safety shoes", note: "required for the practical part" },
-            { title: "Suitable work clothes", note: "long trousers recommended. Hall temperature approx. 18 to 22 °C" },
-        ],
-        flow: "Schedule of the training day",
-        flowNote: "According to DGUV Principle 308-001 and DGUV Regulation 68.",
-        morning: "Morning &middot; Theory",
-        from: (h: string) => `from ${h}`,
-        morningText: "Design and function of the reach truck, differences from the counterbalance forklift, load capacity and load centre, stability when working at height, safety regulations and accident prevention.",
-        exam: "Exam",
-        writtenTest: "Written test",
-        afternoon: "Afternoon &middot; Practice",
-        until: (h: string) => `until approx. ${h}`,
-        afternoonText: "Daily visual inspection, operating the reach mast, safe driving and manoeuvring in narrow aisles, picking up and setting down loads, storing and retrieving in racks.",
-        practicalTest: "Practical exam, then your Level 2 qualification",
-        afterExam: `After passing the exam you receive your <strong>Level 2 qualification certificate</strong> and the <strong>Staplero ProCard</strong>.`,
-        help: "Questions? We are here to help",
-        whatsapp: "Message us on WhatsApp",
-        bye: (c: string) => `See you soon in ${c}!<br><strong>Your STAPLERO Team</strong>`,
-        subject: (d: string, c: string) => `Place reserved: Reach Truck Training (Level 2) on ${d} in ${c}`,
-        preheader: (d: string, c: string) => `Your place is reserved: ${d}, ${c}. Please bring your ID, Level 1 forklift licence and safety shoes.`,
-        title: "Booking confirmation",
-        eyebrow: "Booking confirmed",
-        headline: "Your place is reserved",
-    },
-};
-
-/**
- * Potwierdzenie rezerwacji kursu jednodniowego: Schubmaststapler-Ausbildung Stufe 2 (DE/EN).
- * Warunek udziału: niemiecki Staplerschein Stufe 1 — mocno to podkreślamy.
- * Język: opts.language, a bez niego angielski dla terminów „auf Englisch”, inaczej niemiecki.
- */
-const sendReachTruckBookingEmail = async (opts: PracticalCourseBookingEmailOptions): Promise<void> => {
-    const { to, name, orderNumber, locationName, locationAddress, participants = [] } = opts;
-    const lang = opts.language === "en" || (!opts.language && /englisch|english/i.test(locationName)) ? "en" : "de";
-    const T = reachTruckTexts[lang];
-
-    const day = new Date(opts.startDate);
-
-    // Godziny z terminu ("09:00 - 17:30"), inaczej domyślne
-    const m = (opts.time || "").match(/(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/);
-    const hFrom = m ? m[1].padStart(5, "0") : COURSE_HOURS.from;
-    const hTo = m ? m[2].padStart(5, "0") : COURSE_HOURS.to;
-    const hours = T.hours(hFrom, hTo);
-
-    const fmt = (o: Intl.DateTimeFormatOptions) => day.toLocaleDateString(T.locale, { timeZone: BERLIN_TZ, ...o });
-    const longDate = fmt({ weekday: "long", year: "numeric", month: "long", day: "numeric" });
-    const shortDate = fmt({ weekday: "short", day: "numeric", month: "short" });
-    const numericDate = lang === "en" ? fmt({ day: "numeric", month: "short" }) : berlinDate(day, { day: "2-digit", month: "2-digit" });
-
-    const loc = escapeHtml(locationName);
-    const addr = escapeHtml(locationAddress);
-    const isBerlin = /berlin/i.test(locationName) || /neuk[öo]llnische\s+allee/i.test(locationAddress);
-    // "Berlin (auf Englisch) Stufe 2 - Schubmaststapler" → "Berlin" do tematu i pożegnania
-    const city = locationName.split(/[(\-–]/)[0].trim() || locationName;
-
-    const calendarUrl = "https://calendar.google.com/calendar/render?action=TEMPLATE"
-        + `&text=${encodeURIComponent(T.calTitle)}`
-        + `&dates=${calendarDay(day)}T${hFrom.replace(":", "")}00/${calendarDay(day)}T${hTo.replace(":", "")}00`
-        + `&ctz=${encodeURIComponent(BERLIN_TZ)}`
-        + `&location=${encodeURIComponent(locationAddress)}`
-        + `&details=${encodeURIComponent(T.calDetails(orderNumber))}`;
-    const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(locationAddress)}`;
-
-    const people = participants.length ? participants : [name];
-    const phones = `<a href="tel:+4916092490070" style="color:#111111;font-weight:700;">+49 160 92490070</a> ${T.or} <a href="tel:+4917622067783" style="color:#111111;font-weight:700;">+49 176 22067783</a>`;
-    const label = (text: string, color: string) => `<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${color};">${text}</span>`;
-
-    const heroHtml = `
-      ${heroText(T.heroIntro(escapeHtml(name)))}
-      ${heroTicket(
-          [
-              { label: T.ticketDay, title: shortDate, note: hours },
-              { label: T.ticketWhat, title: T.ticketLen, note: T.ticketTruck },
-          ],
-          `<strong style="color:#ffffff;">${loc}</strong> &middot; ${addr}<br><span style="color:#b5b5b5;">${T.ticketFooter(people.length)}</span>`,
-      )}
-      ${heroButtons({ href: calendarUrl, label: T.calBtn }, { href: routeUrl, label: T.routeBtn })}
-    `;
-
-    const arrivalHtml = isBerlin
-        ? `
-      ${sectionTitle(T.findUs, T.findUsNote)}
-      ${photoSteps(berlinArrivalSteps.map((s, i) => ({
-          imageUrl: `${EMAIL_ASSETS_URL}/${s.image}`,
-          alt: s.alt,
-          title: T.steps[i].title,
-          text: i === 3 ? `${T.steps[i].text} ${phones}` : T.steps[i].text,
-      })), T.step)}`
-        : `
-      ${sectionTitle(T.arrival)}
-      ${p(T.arrivalText)}`;
-
-    const participantsHtml = people.length > 1
-        ? `
-      ${sectionTitle(T.participants)}
-      ${numberedList(people.map((n, i) => i === 0 ? `${escapeHtml(n)} <span style="font-weight:400;color:#707072;font-size:13px;">&middot; ${T.buyer}</span>` : escapeHtml(n)))}
-      ${p(T.forward, { small: true, muted: true })}`
-        : "";
-
-    const bodyHtml = `
-      ${callout(`${label(T.reqLabel, "#c25e00")}<br>${T.reqText}`, "orange")}
-
-      ${sectionTitle(T.bring)}
-      ${checklist(T.items.map((it, i) => i < 3 ? { ...it, tag: T.required, strong: true } : it))}
-
-      ${arrivalHtml}
-
-      ${participantsHtml}
-
-      ${sectionTitle(T.flow, T.flowNote)}
-      ${timelineItem({
-          title: T.morning,
-          meta: `${shortDate} &middot; ${T.from(hFrom)}`,
-          text: T.morningText,
-          extraHtml: labeledPill(T.exam, T.writtenTest),
-      })}
-      ${timelineItem({
-          title: T.afternoon,
-          meta: T.until(hTo),
-          text: T.afternoonText,
-          extraHtml: labeledPill(T.exam, T.practicalTest, "orange"),
-          accent: "orange",
-          last: true,
-      })}
-      ${p(T.afterExam, { small: true, muted: true })}
-
-      ${callout(`${label(T.help, "#c25e00")}<br>${strong(`<a href="tel:+4916092490070" style="color:#111111;text-decoration:none;">+49 160 92490070</a>`)}<br>${strong(`<a href="tel:+4917622067783" style="color:#111111;text-decoration:none;">+49 176 22067783</a>`)}<br><a href="https://wa.me/4917622067783" target="_blank" style="color:#111111;font-weight:700;">${T.whatsapp}</a>`, "orange")}
-
-      ${p(T.bye(escapeHtml(city)))}
-    `;
-
-    await sendMail({
-        from: FROM_EMAIL,
-        to,
-        subject: T.subject(numericDate, city),
-        html: layout({
-            title: T.title,
-            preheader: T.preheader(longDate, city),
-            eyebrow: T.eyebrow,
-            eyebrowTone: "success",
-            headline: T.headline,
-            heroHtml,
-            bodyHtml,
-        }),
-    });
+    const key = opts.templateKey || await resolveBookingTemplateKey(opts);
+    const lang = pickLanguage(opts.language, opts.locationName);
+    const [C, K] = await Promise.all([resolveContent(key, lang), resolveContent("booking-common", lang)]);
+    const { subject, html } = renderBookingEmail(C, K, lang, opts);
+    console.log(`✉️  Buchung [${key}/${lang}] → ${opts.to}`);
+    await sendMail({ from: FROM_EMAIL, to: opts.to, subject, html });
 };
 
 // ─── Pakiet: dostęp do teorii online przed kursem (osobny mail) ───────────────
 
-interface OnlineTheoryAccessEmailOptions {
+export interface OnlineTheoryAccessEmailOptions {
     to: string;
     name: string;
     courseName: string; // kurs online, np. "Staplerschein Theorie"
@@ -679,167 +435,173 @@ interface OnlineTheoryAccessEmailOptions {
     courseStart: Date | string; // pierwszy dzień kursu praktycznego
     locationName: string;
     participantsCount?: number;
-    language?: "de" | "en";
+    language?: string;
 }
 
-const onlineTheoryTexts = {
-    de: {
-        locale: "de-DE",
-        subject: (d: string) => `Online-Theorie freigeschaltet: Jetzt vor Ihrem Kurs am ${d} lernen`,
-        preheader: (days: string, exp: string) => `${days} Zugang, gültig bis ${exp}. So gehen Sie gut vorbereitet in Theorie und Prüfung.`,
-        title: "Online-Zugang freigeschaltet",
-        eyebrow: "Online-Zugang freigeschaltet",
-        headline: "Lernen Sie die Theorie schon vor dem Kurs",
-        heroIntro: (n: string) => `Hallo ${n}, in Ihrer Buchung ist der Online-Theoriekurs enthalten. Er ist ab sofort freigeschaltet. Nutzen Sie die Zeit bis zum Kurs, um die Grundlagen in Ruhe zu lernen.`,
-        days: (d?: number) => (d ? `${d} Tage` : "Online"),
-        accessLabel: "Ihr Online-Zugang",
-        validUntil: (d: string) => `gültig bis ${d}`,
-        courseLabel: "Ihr Kurs beginnt",
-        device: "Am Handy, Tablet oder Computer",
-        cta: "Jetzt mit dem Lernen starten",
-        startTitle: "So starten Sie",
-        steps: (email: string) => [
-            { title: "Anmelden", text: `Mit Ihrer E-Mail-Adresse ${strong(email)} und dem Passwort, das Sie bei der Bestellung gewählt haben.` },
-            { title: "Kurs öffnen", text: "Im Kundenbereich ist Ihr Online-Kurs bereits freigeschaltet. Ein Klick genügt." },
-            { title: "In Ihrem Tempo lernen", text: "Arbeiten Sie die Module nacheinander durch und prüfen Sie Ihr Wissen mit den Übungstests. Ihr Fortschritt wird gespeichert." },
-        ],
-        forgot: (url: string) => `Passwort vergessen? <a href="${url}" style="color:#111111;font-weight:700;">Hier neues Passwort festlegen</a>`,
-        pathTitle: "Ihr Weg zum Staplerschein",
-        pathLead: "Die Online-Theorie bereitet Sie gezielt auf den Kurs vor Ort vor.",
-        nowTitle: "Ab heute &middot; Online lernen",
-        nowMeta: (d: string) => `bis ${d}`,
-        nowText: "Rechtliche Grundlagen, Aufbau des Staplers, Standsicherheit und Tragfähigkeit, Lastdiagramme und Verkehrsregeln im Betrieb: in kurzen Lektionen, so oft Sie möchten.",
-        courseTitle: "Kurs vor Ort",
-        courseText: "Theorie und Praxis mit Ihrem Ausbilder. Mit Vorwissen folgen Sie dem Unterricht leichter und gehen sicherer in die Prüfung.",
-        exam: "Prüfung",
-        examText: "Schriftlicher Test und Fahrprüfung",
-        endsBefore: (exp: string, start: string) => `${strong("Hinweis:")} Ihr Online-Zugang endet am ${strong(exp)}, also vor Ihrem Kurs am ${strong(start)}. Planen Sie Ihre Lernzeit am besten gleich ein.`,
-        goodToKnow: "Gut zu wissen",
-        notes: (exp: string, multi: boolean) => `Der Zugang endet automatisch am ${strong(exp)}. Es entstehen keine weiteren Kosten.${multi ? " Der Online-Zugang gilt für das Konto des Bestellers." : ""}<br>Treffpunkt, Uhrzeiten und Checkliste stehen in Ihrer separaten Buchungsbestätigung.`,
-        help: "Fragen zum Online-Kurs?",
-        whatsapp: "Per WhatsApp schreiben",
-        bye: `Viel Erfolg beim Lernen!<br>${strong("Ihr STAPLERO Team")}`,
-    },
-    en: {
-        locale: "en-GB",
-        subject: (d: string) => `Online theory unlocked: start learning before your course on ${d}`,
-        preheader: (days: string, exp: string) => `${days} of access, valid until ${exp}. Go into the theory day and exam well prepared.`,
-        title: "Online access unlocked",
-        eyebrow: "Online access unlocked",
-        headline: "Learn the theory before your course",
-        heroIntro: (n: string) => `Hello ${n}, your booking includes the online theory course. It is unlocked now. Use the time before your course to learn the basics at your own pace.`,
-        days: (d?: number) => (d ? `${d} days` : "Online"),
-        accessLabel: "Your online access",
-        validUntil: (d: string) => `valid until ${d}`,
-        courseLabel: "Your course starts",
-        device: "On your phone, tablet or computer",
-        cta: "Start learning now",
-        startTitle: "How to start",
-        steps: (email: string) => [
-            { title: "Log in", text: `With your email address ${strong(email)} and the password you chose when ordering.` },
-            { title: "Open the course", text: "Your online course is already unlocked in your customer area. One click is all it takes." },
-            { title: "Learn at your own pace", text: "Work through the modules one by one and check your knowledge with the practice tests. Your progress is saved." },
-        ],
-        forgot: (url: string) => `Forgot your password? <a href="${url}" style="color:#111111;font-weight:700;">Set a new password here</a>`,
-        pathTitle: "Your way to the forklift licence",
-        pathLead: "The online theory prepares you for the course on site.",
-        nowTitle: "From today &middot; Learn online",
-        nowMeta: (d: string) => `until ${d}`,
-        nowText: "Legal basics, design of the forklift, stability and load capacity, load charts and traffic rules on site: in short lessons, as often as you like.",
-        courseTitle: "Course on site",
-        courseText: "Theory and practice with your instructor. With prior knowledge you follow the lessons more easily and go into the exam with more confidence.",
-        exam: "Exam",
-        examText: "Written test and driving test",
-        endsBefore: (exp: string, start: string) => `${strong("Please note:")} your online access ends on ${strong(exp)}, before your course on ${strong(start)}. Plan your learning time now.`,
-        goodToKnow: "Good to know",
-        notes: (exp: string, multi: boolean) => `Access ends automatically on ${strong(exp)}. There are no further costs.${multi ? " The online access applies to the account of the person who booked." : ""}<br>Meeting point, times and checklist are in your separate booking confirmation.`,
-        help: "Questions about the online course?",
-        whatsapp: "Message us on WhatsApp",
-        bye: `Good luck with your studies!<br>${strong("Your STAPLERO Team")}`,
-    },
+export const renderOnlineTheoryAccessEmail = (T: Content, lang: MailLang, o: Omit<OnlineTheoryAccessEmailOptions, "language">): { subject: string; html: string } => {
+    const D = dateFmt(lang);
+    const expires = new Date(o.expiresAt);
+    const start = new Date(o.courseStart);
+    const city = cityOf(o.locationName);
+    const multi = (o.participantsCount || 1) > 1;
+    const dashboardUrl = `${FRONTEND_URL}/dashboard`;
+    const vars = {
+        name: o.name, email: o.to, course: o.courseName, days: o.days ?? "",
+        expires: D.long(expires), expiresShort: D.short(expires), start: D.long(start), startShort: D.short(start),
+        date: D.tiny(start), city, resetUrl: `${FRONTEND_URL}/forgot-password`,
+    };
+    const F = (t: unknown) => fmt(t, vars);
+    const quoted = lang === "de" ? `„${escapeHtml(o.courseName)}“` : `“${escapeHtml(o.courseName)}”`;
+    const stepsList: any[] = Array.isArray(T.steps) ? T.steps : [];
+
+    const heroHtml = `
+      ${heroText(F(T.intro).replace(/<strong>/g, '<strong style="color:#ffffff;">'))}
+      ${heroTicket(
+          [
+              { label: F(T.accessLabel), title: o.days ? F(T.daysValue) : "Online", note: F(T.validUntil) },
+              { label: F(T.courseLabel), title: D.short(start), note: escapeHtml(city) },
+          ],
+          `<strong style="color:#ffffff;">${quoted}</strong><br><span style="color:#b5b5b5;">${F(T.device)}</span>`,
+      )}
+      ${heroButton(dashboardUrl, F(T.cta))}
+    `;
+
+    const bodyHtml = `
+      ${expires < start ? callout(F(T.endsBefore), "orange") : ""}
+
+      ${sectionTitle(F(T.startTitle), undefined, { first: expires >= start })}
+      ${steps(stepsList.map((s) => ({ title: F(s.title), text: F(s.text) })))}
+      ${p(F(T.forgot), { small: true, muted: true })}
+
+      ${sectionTitle(F(T.pathTitle), F(T.pathLead))}
+      ${timelineItem({ title: F(T.nowTitle), meta: F(T.nowMeta), text: F(T.nowText), accent: "orange" })}
+      ${timelineItem({
+          title: F(T.courseTitle),
+          meta: `${D.short(start)} &middot; ${escapeHtml(city)}`,
+          text: F(T.courseText),
+          extraHtml: labeledPill(lang === "de" ? "Prüfung" : lang === "en" ? "Exam" : lang === "uk" ? "Іспит" : "Egzamin", F(T.examText)),
+          last: true,
+      })}
+
+      <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
+      ${button(dashboardUrl, F(T.cta))}
+
+      ${twoColumns(
+          callout(`${smallLabel(F(T.goodToKnowTitle), "#707072")}<br>${F(T.notes)}${multi && T.notesMulti ? `<br>${F(T.notesMulti)}` : ""}`, "gray"),
+          helpBox(fmtPlain(T.helpTitle), lang === "de" ? "Per WhatsApp schreiben" : lang === "en" ? "Message us on WhatsApp" : lang === "uk" ? "Написати у WhatsApp" : "Napisz na WhatsApp"),
+      )}
+
+      ${p(F(T.closing))}
+    `;
+
+    return {
+        subject: fmtPlain(T.subject, vars),
+        html: layout({
+            title: fmtPlain(T.eyebrow),
+            preheader: fmtPlain(T.preheader, vars),
+            eyebrow: F(T.eyebrow),
+            eyebrowTone: "success",
+            headline: F(T.headline),
+            heroHtml,
+            bodyHtml,
+            lang,
+        }),
+    };
 };
 
 /**
  * Osobny mail do pakietu „kurs + teoria online”: dostęp do kursu online jest aktywny od razu,
  * żeby kursant uczył się jeszcze przed terminem. Wysyłany zaraz po potwierdzeniu rezerwacji.
- * Język jak w mailu Stufe 2: opts.language, inaczej angielski dla terminów „auf Englisch”.
  */
 export const sendOnlineTheoryAccessEmail = async (opts: OnlineTheoryAccessEmailOptions): Promise<void> => {
-    const { to, name, courseName, locationName } = opts;
-    const lang = opts.language === "en" || (!opts.language && /englisch|english/i.test(locationName)) ? "en" : "de";
-    const T = onlineTheoryTexts[lang];
+    const lang = pickLanguage(opts.language, opts.locationName);
+    const T = await resolveContent("online-access", lang);
+    const { subject, html } = renderOnlineTheoryAccessEmail(T, lang, opts);
+    await sendMail({ from: FROM_EMAIL, to: opts.to, subject, html });
+};
 
-    const expires = new Date(opts.expiresAt);
-    const start = new Date(opts.courseStart);
-    const fmt = (d: Date, o: Intl.DateTimeFormatOptions) => d.toLocaleDateString(T.locale, { timeZone: BERLIN_TZ, ...o });
-    const longDate = (d: Date) => fmt(d, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    const shortDate = (d: Date) => fmt(d, { weekday: "short", day: "numeric", month: "short" });
-    const subjectDate = lang === "en" ? fmt(start, { day: "numeric", month: "short" }) : berlinDate(start, { day: "2-digit", month: "2-digit" });
-    const city = escapeHtml(locationName.split(/[(\-–]/)[0].trim() || locationName);
-    const daysLabel = T.days(opts.days);
-    const multi = (opts.participantsCount || 1) > 1;
-    const dashboardUrl = `${FRONTEND_URL}/dashboard`;
-    const label = (text: string, color: string) => `<span style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${color};">${text}</span>`;
+// ─── Zakup kursu online (niemiecki + angielski w jednym mailu) ───────────────
 
-    const heroHtml = `
-      ${heroText(T.heroIntro(escapeHtml(name)))}
-      ${heroTicket(
-          [
-              { label: T.accessLabel, title: daysLabel, note: T.validUntil(shortDate(expires)) },
-              { label: T.courseLabel, title: shortDate(start), note: city },
-          ],
-          `<strong style="color:#ffffff;">${lang === "en" ? `“${escapeHtml(courseName)}”` : `„${escapeHtml(courseName)}“`}</strong><br><span style="color:#b5b5b5;">${T.device}</span>`,
-      )}
-      ${heroButton(dashboardUrl, T.cta)}
-    `;
-
-    const bodyHtml = `
-      ${expires < start ? callout(T.endsBefore(longDate(expires), longDate(start)), "orange") : ""}
-
-      ${sectionTitle(T.startTitle, undefined, { first: expires >= start })}
-      ${steps(T.steps(escapeHtml(to)))}
-      ${p(T.forgot(`${FRONTEND_URL}/forgot-password`), { small: true, muted: true })}
-
-      ${sectionTitle(T.pathTitle, T.pathLead)}
-      ${timelineItem({
-          title: T.nowTitle,
-          meta: T.nowMeta(shortDate(expires)),
-          text: T.nowText,
-          accent: "orange",
-      })}
-      ${timelineItem({
-          title: T.courseTitle,
-          meta: `${shortDate(start)} &middot; ${city}`,
-          text: T.courseText,
-          extraHtml: labeledPill(T.exam, T.examText),
-          last: true,
-      })}
-
-      <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
-      ${button(dashboardUrl, T.cta)}
-
-      ${twoColumns(
-          callout(`${label(T.goodToKnow, "#707072")}<br>${T.notes(longDate(expires), multi)}`, "gray"),
-          callout(`${label(T.help, "#c25e00")}<br>${strong(`<a href="tel:+4916092490070" style="color:#111111;text-decoration:none;">+49 160 92490070</a>`)}<br>${strong(`<a href="tel:+4917622067783" style="color:#111111;text-decoration:none;">+49 176 22067783</a>`)}<br><a href="https://wa.me/4917622067783" target="_blank" style="color:#111111;font-weight:700;">${T.whatsapp}</a>`, "orange"),
-      )}
-
-      ${p(T.bye)}
-    `;
-
-    await sendMail({
-        from: FROM_EMAIL,
-        to,
-        subject: T.subject(subjectDate),
+export const renderOnlinePurchaseEmail = (DE: Content, EN: Content, o: { name: string; courseName: string; orderNumber: string; expiresAt: Date | string }): { subject: string; html: string } => {
+    const exp = new Date(o.expiresAt);
+    const block = (T: Content, lang: MailLang) => {
+        const vars = { name: o.name, course: o.courseName, orderNumber: o.orderNumber, expires: dateFmt(lang).long(exp) };
+        const F = (t: unknown) => fmt(t, vars);
+        return `
+      ${sectionLabel(F(T.sectionLabel))}
+      ${p(F(T.intro))}
+      ${infoTable([
+          [F(T.courseLabel), escapeHtml(o.courseName)],
+          [F(T.orderLabel), escapeHtml(o.orderNumber)],
+          [F(T.validLabel), `<span style="color:#F97706;">${escapeHtml(dateFmt(lang).long(exp))}</span>`],
+      ])}
+      ${button(`${FRONTEND_URL}/dashboard`, F(T.button))}
+      ${p(F(T.closing))}`;
+    };
+    const vars = { name: o.name, course: o.courseName, orderNumber: o.orderNumber, expires: dateFmt("de").long(exp) };
+    return {
+        subject: fmtPlain(DE.subject, vars),
         html: layout({
-            title: T.title,
-            preheader: T.preheader(daysLabel, longDate(expires)),
-            eyebrow: T.eyebrow,
-            eyebrowTone: "success",
-            headline: T.headline,
-            heroHtml,
-            bodyHtml,
+            title: fmtPlain(DE.headline, vars),
+            preheader: fmtPlain(DE.preheader, vars),
+            eyebrow: fmt(DE.eyebrow, vars),
+            headline: fmt(DE.headline, vars),
+            bodyHtml: `${block(DE, "de")}<div style="height:1px;background:#e5e5e5;margin:28px 0;"></div>${block(EN, "en")}`,
         }),
+    };
+};
+
+export const sendOnlineCoursePurchaseEmail = async (
+    to: string,
+    name: string,
+    courseName: string,
+    orderNumber: string,
+    expiresAt: Date
+): Promise<void> => {
+    const [DE, EN] = await Promise.all([resolveContent("online-purchase", "de"), resolveContent("online-purchase", "en")]);
+    const { subject, html } = renderOnlinePurchaseEmail(DE, EN, { name, courseName, orderNumber, expiresAt });
+    await sendMail({ from: FROM_EMAIL, to, subject, html });
+};
+
+// ─── Podgląd i test z panelu ─────────────────────────────────────────────────
+
+/** Przykładowe dane do podglądu szablonu; `content` = niezapisane teksty z edytora */
+export const renderTemplatePreview = async (key: string, lang: MailLang, content?: Content, to = "max.muster@example.com"): Promise<{ subject: string; html: string }> => {
+    const t = await getTemplate(key);
+    if (!t) throw new Error("Vorlage nicht gefunden");
+    const l = t.languages.includes(lang) ? lang : "de";
+    const merged = async (k: string, ll: MailLang) => (k === key && ll === l && content ? { ...defaultContent(t, ll), ...content } : resolveContent(k, ll));
+    const start = addDays(new Date(), 14);
+    start.setHours(12, 0, 0, 0);
+    const sample = {
+        to, name: "Max Muster", orderNumber: "ORD-VORSCHAU-1", locationName: "Berlin", locationAddress: "Neuköllnische Allee 80",
+        participants: ["Max Muster"], time: "09:00 - 17:00",
+    };
+    if (t.kind === "booking" || t.kind === "common") {
+        const bookingKey = t.kind === "common" ? "booking-stufe1" : key;
+        const C = await merged(bookingKey, l);
+        const K = await merged("booking-common", l);
+        const days = Math.max(1, ...((C.ticket || []) as any[]).map((x) => Number(x.day) || 1), ...((C.schedule || []) as any[]).map((x) => Number(x.day) || 1));
+        return renderBookingEmail(C, K, l, {
+            ...sample, startDate: start, endDate: addDays(start, days - 1),
+            onlineAccess: String(C.onlineNote || "").trim() ? { courseName: "Staplerschein Theorie", expiresAt: addDays(new Date(), 14), days: 14 } : undefined,
+        });
+    }
+    if (t.kind === "online-access") {
+        return renderOnlineTheoryAccessEmail(await merged(key, l), l, {
+            to, name: sample.name, courseName: "Staplerschein Theorie", expiresAt: addDays(new Date(), 14), days: 14,
+            courseStart: start, locationName: "Berlin", participantsCount: 1,
+        });
+    }
+    return renderOnlinePurchaseEmail(await merged(key, "de"), await merged(key, "en"), {
+        name: sample.name, courseName: "Staplerschein Theorie", orderNumber: sample.orderNumber, expiresAt: addDays(new Date(), 30),
     });
+};
+
+export const sendTemplateTest = async (key: string, lang: MailLang, to: string, content?: Content): Promise<string> => {
+    const { subject, html } = await renderTemplatePreview(key, lang, content, to);
+    await sendMail({ from: FROM_EMAIL, to, subject: `[TEST] ${subject}`, html });
+    return subject;
 };
 
 // ─── Nowy termin (lista oczekujących "Benachrichtigen") ────────────────────────
@@ -931,7 +693,7 @@ export const sendInvoiceEmail = async (
           ["Ausstellungsdatum", new Date().toLocaleDateString("de-DE")],
       ])}
       ${p("Im Anhang dieser E-Mail finden Sie Ihre Rechnung als PDF-Dokument.")}
-      ${p(`Bei Fragen kontaktieren Sie uns bitte unter ${strong("info@staplero.com")}.`, { muted: true })}
+      ${p(`Bei Fragen kontaktieren Sie uns bitte unter ${strong("info@staplero.de")}.`, { muted: true })}
       ${p(`Mit freundlichen Grüßen,<br>${strong("Ihr STAPLERO Team")}`)}
     `;
 
@@ -981,7 +743,7 @@ export const sendContactFormEmail = async (
 
     await sendMail({
         from: FROM_EMAIL,
-        to: "info@staplero.com",
+        to: "info@staplero.de",
         replyTo: email,
         subject: `Neue Kontaktanfrage von ${name}`,
         html: layout({
@@ -1032,6 +794,8 @@ export default {
     sendOnlineCoursePurchaseEmail,
     sendPracticalCourseBookingEmail,
     sendOnlineTheoryAccessEmail,
+    sendTemplateTest,
+    renderTemplatePreview,
     sendExpiryReminderEmail,
     sendNewCourseDatesEmail,
     sendInvoiceEmail,

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
 
-const ADMIN_EMAILS = ["info@staplero.com", "k.lopuch@satisfly.co"];
+const ADMIN_EMAILS = ["info@staplero.com", "info@staplero.de", "k.lopuch@satisfly.co"];
 const JWT_SECRET = process.env.JWT_SECRET || "secret";
 
 interface AuthRequest extends Request {

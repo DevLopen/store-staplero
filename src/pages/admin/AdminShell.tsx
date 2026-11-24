@@ -7,7 +7,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import "./admin-theme.css";
 
-export type AdminSection = "mails" | "kurse" | "products" | "courses" | "content" | "tests" | "fragen" | "locations" | "orders" | "users" | "certificates" | "participants" | "stats";
+export type AdminSection = "mails" | "vorlagen" | "kurse" | "products" | "courses" | "content" | "tests" | "fragen" | "locations" | "orders" | "users" | "certificates" | "participants" | "stats";
 
 const I: Record<string, string> = {
     bag: "M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2",
@@ -24,12 +24,14 @@ const I: Record<string, string> = {
     menu: "M4 7h16M4 12h16M4 17h16",
     out: "M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3",
     mail: "M4 6h16a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a1 1 0 0 1 1-1zM3.5 7l8.5 6.5L20.5 7",
+    tpl: "M6 3h9l4 4v14H6zM15 3v4h4M9 11h7M9 15h7M9 19h4",
     web: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M3.6 9h16.8M3.6 15h16.8M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18",
 };
 type NavItem = { id: AdminSection; label: string; icon: string; color: string };
 const GROUPS: { title?: string; archive?: boolean; items: NavItem[] }[] = [
     { title: "Kommunikation", items: [
         { id: "mails", label: "E-Mails", icon: I.mail, color: "orange" },
+        { id: "vorlagen", label: "E-Mail-Vorlagen", icon: I.tpl, color: "teal" },
     ] },
     { title: "Verkauf", items: [
         { id: "orders", label: "Bestellungen", icon: I.bag, color: "blue" },

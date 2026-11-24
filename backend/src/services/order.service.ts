@@ -112,6 +112,10 @@ export const sendOrderConfirmationEmail = async (
         endDate: details.endDate,
         time: details.time,
         onlineAccess,
+        language: order.language,
+        productId: order.productId,
+        locationId: details.locationId,
+        dateId: details.dateId,
         participants: [user.name, ...(details.additionalParticipants || []).map((p) => p.name)],
       });
       // Pakiet z teorią online: osobny mail z dostępem, żeby kursant zaczął się uczyć przed kursem
@@ -125,6 +129,7 @@ export const sendOrderConfirmationEmail = async (
           days: onlineAccess.days,
           courseStart: details.startDate,
           locationName: details.locationName,
+          language: order.language,
           participantsCount: 1 + (details.additionalParticipants || []).length,
         });
       }

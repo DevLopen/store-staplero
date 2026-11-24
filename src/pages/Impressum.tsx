@@ -21,8 +21,8 @@ const content = {
         lines: [
           "Telefon: +49 160 92490070",
           "Telefon: +49 176 22067783",
-          "E-Mail: info@staplero.com",
-          "Web: www.staplero.com",
+          "E-Mail: info@staplero.de",
+          "Web: www.staplero.de",
         ],
       },
       {
@@ -87,8 +87,8 @@ const content = {
         lines: [
           "Phone: +49 160 92490070",
           "Phone: +49 176 22067783",
-          "Email: info@staplero.com",
-          "Web: www.staplero.com",
+          "Email: info@staplero.de",
+          "Web: www.staplero.de",
         ],
       },
       {
@@ -153,8 +153,8 @@ const content = {
         lines: [
           "Телефон: +49 160 92490070",
           "Телефон: +49 176 22067783",
-          "Електронна пошта: info@staplero.com",
-          "Веб: www.staplero.com",
+          "Електронна пошта: info@staplero.de",
+          "Веб: www.staplero.de",
         ],
       },
       {
@@ -219,8 +219,8 @@ const content = {
         lines: [
           "Telefon: +49 160 92490070",
           "Telefon: +49 176 22067783",
-          "E-mail: info@staplero.com",
-          "Web: www.staplero.com",
+          "E-mail: info@staplero.de",
+          "Web: www.staplero.de",
         ],
       },
       {

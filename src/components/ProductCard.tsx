@@ -6,6 +6,7 @@ import {
   Product, localize, localizeList, currentPrice, formatCourseDate, grossOf, formatEuro,
 } from "@/types/product.types";
 import CourseLanguageFlags from "@/components/CourseLanguageFlags";
+import { renderInline } from "@/components/RichText";
 
 interface ProductCardProps {
   product: Product;
@@ -51,14 +52,21 @@ const ProductCard = ({ product, className }: ProductCardProps) => {
         </h3>
       </div>
 
-      {shortDescription && <p className="text-muted-foreground">{shortDescription}</p>}
+      {shortDescription && <p className="text-muted-foreground">{renderInline(shortDescription)}</p>}
+
+      {product.includesOnlineAccess && (
+        <p className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-semibold text-foreground">
+          <MonitorPlay className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          {t("products.onlineBeforeShort")}
+        </p>
+      )}
 
       {benefits.length > 0 && (
         <ul className="space-y-2">
           {benefits.map((benefit, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-foreground">
               <Check className="w-4 h-4 mt-0.5 text-success shrink-0" />
-              <span>{benefit}</span>
+              <span>{renderInline(benefit)}</span>
             </li>
           ))}
         </ul>

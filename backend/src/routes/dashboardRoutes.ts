@@ -4,7 +4,7 @@ import { protect } from "../middleware/authMiddleware";
 import Course from "../models/Course";
 
 const router = express.Router();
-const ADMIN_EMAILS = ["info@staplero.com", "k.lopuch@satisfly.co"];
+const ADMIN_EMAILS = ["info@staplero.com", "info@staplero.de", "k.lopuch@satisfly.co"];
 
 // Main dashboard endpoint
 router.get("/", protect, getDashboard);

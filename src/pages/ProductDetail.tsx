@@ -2,8 +2,9 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Loader2, MapPin, CalendarDays, Clock, CreditCard, Award,
-  CheckCircle, ArrowLeft, Check, BellRing, Mail, Plus, Minus, ChevronDown, ShieldCheck,
+  CheckCircle, ArrowLeft, Check, BellRing, Mail, Plus, Minus, ChevronDown, ShieldCheck, MonitorPlay,
 } from "lucide-react";
+import RichText, { renderInline } from "@/components/RichText";
 import { Blob } from "@/components/SectionDecor";
 import CourseLanguageFlags from "@/components/CourseLanguageFlags";
 import { Input } from "@/components/ui/input";
@@ -122,7 +123,7 @@ const NotifyForm = ({ slug, locationId, locationCity }: NotifyFormProps) => {
 /** Opis kursu: na start kilka linijek, reszta po kliknięciu „Mehr lesen” */
 const ExpandableText = ({ text, expanded, onToggle }: { text: string; expanded: boolean; onToggle: () => void }) => {
   const { t } = useLanguage();
-  const ref = useRef<HTMLParagraphElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const [overflows, setOverflows] = useState(false);
 
   useLayoutEffect(() => {
@@ -132,9 +133,9 @@ const ExpandableText = ({ text, expanded, onToggle }: { text: string; expanded: 
 
   return (
     <div>
-      <p ref={ref} className={cn("text-muted-foreground whitespace-pre-line", !expanded && "line-clamp-4")}>
-        {text}
-      </p>
+      <div ref={ref} className={cn("text-muted-foreground", !expanded && "max-h-36 overflow-hidden [mask-image:linear-gradient(to_bottom,black_60%,transparent)]")}>
+        <RichText text={text} />
+      </div>
       {(overflows || expanded) && (
         <button
           type="button"
@@ -465,7 +466,20 @@ const ProductDetail = () => {
               </p>
               <h1 className="font-display text-2xl md:text-4xl font-bold leading-tight text-foreground [text-wrap:balance]">{title}</h1>
               {shortDescription && (
-                <p className="mt-3 text-muted-foreground md:text-lg">{shortDescription}</p>
+                <p className="mt-3 text-muted-foreground md:text-lg">{renderInline(shortDescription)}</p>
+              )}
+              {product.includesOnlineAccess && (
+                <div className="mt-4 flex items-start gap-3 rounded-xl border-2 border-primary/30 bg-primary/5 p-3.5 md:p-4">
+                  <MonitorPlay className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <div className="text-sm md:text-base">
+                    <p className="font-semibold text-foreground">{t("products.onlineBeforeTitle")}</p>
+                    <p className="mt-0.5 text-muted-foreground">
+                      {product.onlineAccessDays
+                        ? t("products.onlineBeforeDays").replace("{days}", String(product.onlineAccessDays))
+                        : t("products.onlineBefore")}
+                    </p>
+                  </div>
+                </div>
               )}
               {!isOnline && multiplePlaces && (
                 <p className="mt-4 flex items-center gap-1.5 text-sm text-foreground">
@@ -482,7 +496,7 @@ const ProductDetail = () => {
                       {benefits.slice(0, 3).map((benefit, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                           <Check className="w-4 h-4 mt-0.5 text-success shrink-0" />
-                          {benefit}
+                          <span>{renderInline(benefit)}</span>
                         </li>
                       ))}
                     </ul>
@@ -778,7 +792,7 @@ const ProductDetail = () => {
                         <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-success">
                           <Check className="w-2.5 h-2.5 text-success-foreground" />
                         </span>
-                        {benefit}
+                        <span>{renderInline(benefit)}</span>
                       </li>
                     ))}
                   </ul>

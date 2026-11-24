@@ -44,7 +44,7 @@ export interface BillingAddress {
     isCompany?: boolean;
     name?: string;          // Privatperson: pełne imię i nazwisko / Firma: osoba kontaktowa (opcjonalnie)
     company?: string;      // wymagane, gdy isCompany === true
-    vatId?: string;        // USt-IdNr. — wymagane, gdy isCompany === true
+    vatId?: string;        // USt-IdNr. — opcjonalne (pole usunięte z checkoutu)
     address: string;
     city: string;
     postalCode: string;
@@ -63,6 +63,8 @@ export interface OrderDoc extends Document {
     billingAddressDifferent?: boolean;
     billingAddress?: BillingAddress;
     practicalCourseDetails?: PracticalCourseDetails;
+    productId?: string; // produkt z panelu (wybór szablonu maila)
+    language?: string; // język strony przy zakupie (de/en/uk/pl) — język maili
     confirmationEmailSentAt?: Date; // mail z informacjami o kursie (termin / dostęp online)
     confirmationEmailError?: string; // ostatni błąd wysyłki tego maila
     createdAt: Date;
@@ -150,6 +152,8 @@ const OrderSchema = new Schema<OrderDoc>(
         expiresAt: Date,
         confirmationEmailSentAt: Date,
         confirmationEmailError: String,
+        productId: String,
+        language: String,
     },
     { timestamps: true }
 );

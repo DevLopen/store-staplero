@@ -75,6 +75,7 @@ type ProductForm = {
   includesOnlineAccess: boolean;
   linkedCourseId: string;
   onlineAccessDays: string;
+  emailTemplate: string;
   durationDays: string;
 };
 
@@ -97,6 +98,7 @@ const emptyForm = (): ProductForm => ({
   includesOnlineAccess: false,
   linkedCourseId: "",
   onlineAccessDays: "14",
+  emailTemplate: "",
   durationDays: "",
 });
 
@@ -119,6 +121,7 @@ const productToForm = (p: Product): ProductForm => ({
   includesOnlineAccess: p.includesOnlineAccess,
   linkedCourseId: p.linkedCourseId || "",
   onlineAccessDays: p.onlineAccessDays ? String(p.onlineAccessDays) : "",
+  emailTemplate: p.emailTemplate || "",
   durationDays: p.durationDays ? String(p.durationDays) : "",
 });
 
@@ -157,6 +160,7 @@ const AdminProducts = () => {
   const [loading, setLoading] = useState(true);
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [mailTemplates, setMailTemplates] = useState<Array<{ key: string; name: string }>>([]);
   const [notifyRequests, setNotifyRequests] = useState<NotifyRequestItem[]>([]);
   const [notifyLoading, setNotifyLoading] = useState(true);
   const [notifyTab, setNotifyTab] = useState<"waiting" | "notified">("waiting");
@@ -220,6 +224,12 @@ const AdminProducts = () => {
       adminBanks().then((list) => list.map((b) => ({ _id: b.id, title: `Fragenkatalog: ${b.title.de ?? b.slug}` }))).catch(() => []),
       adminLearningCourses().then((list) => list.map((c) => ({ _id: c.id, title: `Online-Kurs (neu): ${c.title?.de ?? c.id}${c.status === "draft" ? " (nicht veröffentlicht)" : ""}` }))).catch(() => []),
     ]).then(([a, b, c]) => setCourses([...c, ...a, ...b]));
+
+    // Szablony maili z potwierdzeniem rezerwacji (Admin → E-Mail-Vorlagen)
+    fetch(`${API_URL}/admin/email-templates`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } })
+      .then((r) => r.json())
+      .then((d) => setMailTemplates((d.templates || []).filter((t: any) => t.kind === "booking").map((t: any) => ({ key: t.key, name: t.name }))))
+      .catch(() => setMailTemplates([]));
   }, []);
 
   const loadNotifyRequests = useCallback(async () => {
@@ -357,6 +367,7 @@ const AdminProducts = () => {
         locationIds: form.type === "normal" ? form.locationIds : [],
         includesOnlineAccess: form.type === "normal" ? form.includesOnlineAccess : false,
         linkedCourseId: form.type === "normal" && form.includesOnlineAccess ? form.linkedCourseId : undefined,
+        emailTemplate: form.type === "normal" ? form.emailTemplate || null : null,
         onlineAccessDays: form.type === "normal" && form.includesOnlineAccess && Number(form.onlineAccessDays) > 0 ? Number(form.onlineAccessDays) : null,
         durationDays: form.type === "normal" && Number(form.durationDays) > 0 ? Number(form.durationDays) : null,
       } as any;
@@ -803,6 +814,18 @@ const AdminProducts = () => {
                   <Input type="number" min={1} max={30} className="max-w-[160px]" value={form.durationDays} placeholder="z. B. 2"
                     onChange={(e) => setForm((p) => ({ ...p, durationDays: e.target.value }))} />
                   <p className="text-xs text-muted-foreground">Optional. Beim Anlegen eines Termins wird das Enddatum daraus berechnet.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>E-Mail-Vorlage (Buchungsbestätigung)</Label>
+                  <Select value={form.emailTemplate || "auto"} onValueChange={(v) => setForm((p) => ({ ...p, emailTemplate: v === "auto" ? "" : v }))}>
+                    <SelectTrigger className="max-w-md"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Automatisch nach Kursdauer</SelectItem>
+                      {mailTemplates.map((t) => <SelectItem key={t.key} value={t.key}>{t.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Texte bearbeiten unter „E-Mail-Vorlagen“. Die E-Mail geht in der Sprache, in der der Kunde gebucht hat.</p>
                 </div>
 
                 <div className="space-y-2">

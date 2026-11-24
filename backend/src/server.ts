@@ -20,6 +20,7 @@ import locationRoutes    from "./routes/location.routes";
 import contactRoutes     from "./routes/contact.routes";
 import chatRoutes        from "./routes/chatRoutes";
 import practicalCourseRoutes from "./routes/practicalcourseRoutes";
+import emailTemplateRoutes from "./routes/emailTemplate.routes";
 import certificateRoutes from "./routes/certificateRoutes";
 import uploadRoutes      from "./routes/uploadRoutes";
 import productRoutes     from "./routes/productRoutes";
@@ -84,6 +85,7 @@ app.use("/api/locations",              locationRoutes);
 app.use("/api",                        contactRoutes);
 app.use("/api/chat",                   chatRoutes);
 app.use("/api/admin/practical-courses", practicalCourseRoutes);
+app.use("/api/admin/email-templates",  emailTemplateRoutes);
 app.use("/api/certificates",           certificateRoutes);
 app.use("/api/upload",                 uploadRoutes);
 app.use("/api/products",               productRoutes);
@@ -113,11 +115,7 @@ cron.schedule("0 0 * * *", async () => {
   catch (err) { console.error("❌ Expiration check failed:", err); }
 });
 
-cron.schedule("0 9 * * *", async () => {
-  console.log("📧 Sending expiry reminders...");
-  try { await orderService.sendExpiryReminders(); }
-  catch (err) { console.error("❌ Reminders failed:", err); }
-});
+// Przypomnienie „kurs wygasa za 3 dni” wyłączone (niepotrzebne).
 
 // Postfach: nowe maile z info@ co 2 minuty (gdy ustawione dane IMAP/SMTP w .env)
 if (imapEnabled()) {

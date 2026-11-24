@@ -49,6 +49,8 @@ export interface ProductDoc extends Document {
   linkedCourseId?: string;
   /** Ile dni trwa dostęp do kursu online z pakietu (liczone od zapłaty). Brak = 30. */
   onlineAccessDays?: number;
+  /** Szablon maila z potwierdzeniem rezerwacji (Admin → E-Mail-Vorlagen); brak = wg liczby dni terminu */
+  emailTemplate?: string;
   /** Długość szkolenia w dniach (opcjonalnie): panel podpowiada z niej datę końca terminu. */
   durationDays?: number;
 
@@ -106,6 +108,7 @@ const ProductSchema = new Schema<ProductDoc>(
     includesOnlineAccess: { type: Boolean, default: false },
     linkedCourseId: String,
     onlineAccessDays: { type: Number, min: 1, max: 365 },
+    emailTemplate: String,
     durationDays: { type: Number, min: 1, max: 30 },
   },
   { timestamps: true }

@@ -405,14 +405,28 @@ function TestPanel({ chapter, chIndex, lesson, onClose, onSave }: { chapter: Cha
 }
 
 /* ═════════════ kursanci: ręczne nadawanie dostępu ═════════════ */
-interface AccessRow { userId: string; name: string; email: string; expiresAt: string; expired: boolean; manual: boolean; orderNumber: string; testsPassed: number }
+interface AccessRow {
+    userId: string; name: string; email: string; expiresAt: string; expired: boolean; manual: boolean; orderNumber: string; testsPassed: number;
+    lessonsDone: number; lastActivity: string | null; purchasedAt?: string; courseDate: string | null; courseLocation: string | null;
+}
+interface AccessData { testsTotal: number; lessonsTotal: number; rows: AccessRow[] }
+const DAY = 86_400_000;
+const daysAgo = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / DAY);
+const agoLabel = (iso: string | null) => {
+    if (!iso) return "Noch nie geöffnet";
+    const d = daysAgo(iso);
+    return d <= 0 ? "Heute aktiv" : d === 1 ? "Gestern aktiv" : `Vor ${d} Tagen aktiv`;
+};
+// Kurs na miejscu za ≤ 7 dni, a kursant jeszcze nie zaczął teorii
+const needsNudge = (r: AccessRow) => !r.expired && !r.lastActivity && !!r.courseDate && (new Date(r.courseDate).getTime() - Date.now()) / DAY <= 7 && new Date(r.courseDate).getTime() > Date.now() - DAY;
 interface FoundUser { id: string; name: string; email: string }
 const dateInput = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const inDays = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return dateInput(d); };
 
 function AccessTab({ courseId, published, onChange }: { courseId: string; published: boolean; onChange: () => void }) {
     const { toast } = useToast();
-    const [data, setData] = useState<{ testsTotal: number; rows: AccessRow[] } | null>(null);
+    const [data, setData] = useState<AccessData | null>(null);
+    const [filter, setFilter] = useState<"all" | "active" | "idle" | "nudge">("all");
     const [err, setErr] = useState("");
     const [q, setQ] = useState("");
     const [found, setFound] = useState<FoundUser[] | null>(null);
@@ -421,7 +435,7 @@ function AccessTab({ courseId, published, onChange }: { courseId: string; publis
     const [busy, setBusy] = useState(false);
     const [confirm, setConfirm] = useState("");
 
-    const load = useCallback(() => req<{ testsTotal: number; rows: AccessRow[] }>(`/admin/courses/${courseId}/access`).then(setData).catch(e => setErr(e.message)), [courseId]);
+    const load = useCallback(() => req<AccessData>(`/admin/courses/${courseId}/access`).then(setData).catch(e => setErr(e.message)), [courseId]);
     useEffect(() => { load(); }, [load]);
 
     useEffect(() => {
@@ -471,10 +485,34 @@ function AccessTab({ courseId, published, onChange }: { courseId: string; publis
         </section>
         <p className="ac-hint">Jedes Modul wird erst frei, wenn der Test des vorherigen Moduls bestanden ist. Bestehende Zugänge lassen sich über das Datum verlängern.</p>
 
+        {data && data.rows.length > 0 && (() => {
+            const active = data.rows.filter(r => !r.expired);
+            const started = active.filter(r => r.lastActivity);
+            const week = active.filter(r => r.lastActivity && daysAgo(r.lastActivity) < 7);
+            const nudge = data.rows.filter(needsNudge);
+            const pct = (n: number) => (active.length ? Math.round((n / active.length) * 100) : 0);
+            const tiles: Array<{ k: typeof filter; v: number; l: string; s?: string; warn?: boolean }> = [
+                { k: "all", v: active.length, l: "Aktive Zugänge", s: `${data.rows.length - active.length} abgelaufen` },
+                { k: "active", v: started.length, l: "Haben begonnen", s: `${pct(started.length)} % der aktiven` },
+                { k: "active", v: week.length, l: "Aktiv in 7 Tagen", s: `${pct(week.length)} % der aktiven` },
+                { k: "idle", v: active.length - started.length, l: "Noch nicht begonnen", s: "Zugang nie geöffnet" },
+                { k: "nudge", v: nudge.length, l: "Kurs in ≤ 7 Tagen, nicht begonnen", s: "jetzt erinnern", warn: nudge.length > 0 },
+            ];
+            return <section className="ac-usage">{tiles.map((t, i) => <button key={i} type="button" aria-pressed={filter === t.k && t.k !== "all"} className={`ac-card ac-tile${t.warn ? " warn" : ""}`} onClick={() => setFilter(filter === t.k ? "all" : t.k)}>
+                <b>{t.v}</b><span>{t.l}</span>{t.s && <small>{t.s}</small>}</button>)}</section>;
+        })()}
+
         {!data ? <p className="ac-muted">Lädt …</p> : !data.rows.length ? <p className="ac-muted">Noch keine Kursanten mit Zugang.</p> : <section className="ac-card ac-learners">
-            {data.rows.map(r => <div key={r.userId} className="ac-lrow">
+            {[...data.rows]
+                .filter(r => filter === "all" || (filter === "active" ? !r.expired && !!r.lastActivity : filter === "idle" ? !r.expired && !r.lastActivity : needsNudge(r)))
+                .sort((a, b) => Number(a.expired) - Number(b.expired) || (b.lastActivity ? +new Date(b.lastActivity) : 0) - (a.lastActivity ? +new Date(a.lastActivity) : 0))
+                .map(r => <div key={r.userId} className="ac-lrow">
                 <span className="who"><b>{r.name || "Unbekanntes Konto"}</b><small>{r.email}</small></span>
-                <span className="res">{r.testsPassed} von {data.testsTotal} Tests bestanden</span>
+                <span className="res">
+                    <span className="ac-prog" aria-label={`${r.lessonsDone} von ${data.lessonsTotal} Themen`}><i style={{ width: `${data.lessonsTotal ? Math.min(100, (r.lessonsDone / data.lessonsTotal) * 100) : 0}%` }} /></span>
+                    <span>{r.lessonsDone}/{data.lessonsTotal} Themen · {r.testsPassed}/{data.testsTotal} Tests</span>
+                    <small className={needsNudge(r) ? "ac-warn-t" : undefined}>{agoLabel(r.lastActivity)}{r.courseDate ? ` · Kurs am ${new Date(r.courseDate).toLocaleDateString("de-DE")}` : ""}</small>
+                </span>
                 <span className="src">{r.manual ? "Manuell freigeschaltet" : `Bestellung ${r.orderNumber}`}</span>
                 <span className={`ac-st ${r.expired ? "bad" : "ok"}`}>{r.expired ? "Abgelaufen" : "Aktiv"}</span>
                 <input type="date" aria-label={`Zugang bis für ${r.email}`} min={inDays(0)} defaultValue={dateInput(new Date(r.expiresAt))} key={r.expiresAt} disabled={busy}

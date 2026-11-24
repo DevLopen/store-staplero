@@ -18,16 +18,7 @@ export const setupCronJobs = () => {
         }
     });
 
-    // 2. Send expiry reminders - runs every day at 9:00 AM
-    cron.schedule("0 9 * * *", async () => {
-        console.log("📧 Sending course expiry reminders...");
-        try {
-            await orderService.sendExpiryReminders();
-            console.log("✅ Expiry reminders sent");
-        } catch (err) {
-            console.error("❌ Failed to send expiry reminders:", err);
-        }
-    });
+    // 2. Expiry reminders disabled (not needed)
 
     // 3. Send practical course reminders - runs every day at 8:00 AM
     // This sends reminder 1 day before the practical course

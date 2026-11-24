@@ -69,6 +69,9 @@ const AppContent = () => {
       location.pathname.startsWith("/course") ||
       location.pathname.startsWith("/lernen");
 
+  // Na kasie czat zasłania formularz i dolny pasek z ceną (zwłaszcza na mobile)
+  const hideChat = isPanelArea || location.pathname === "/checkout";
+
   return (
       <>
         <ScrollToTop />
@@ -123,7 +126,7 @@ const AppContent = () => {
         </Routes>
         {!isPanelArea && <CookieBanner />}
         {/* Renderuj czat tylko jeśli NIE jesteśmy w panelu */}
-        {!isPanelArea && <ChatWidget />}
+        {!hideChat && <ChatWidget />}
       </>
   );
 };

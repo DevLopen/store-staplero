@@ -76,10 +76,10 @@ const CheckoutCancel = () => {
                 Brauchen Sie Hilfe?
               </p>
               <a
-                href="mailto:info@staplero.com"
+                href="mailto:info@staplero.de"
                 className="text-sm text-primary hover:underline"
               >
-                Kontaktieren Sie uns: info@staplero.com
+                Kontaktieren Sie uns: info@staplero.de
               </a>
             </div>
           </div>
