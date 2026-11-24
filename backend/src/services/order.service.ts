@@ -4,6 +4,9 @@ import { UserCourse } from "../models/UserCourse";
 import emailService from "./email.service";
 import lexwareService from "./lexware.service";
 import practicalCourseService from "./practicalCourse.service";
+import { ensureOrderSeats, buyerParticipates, practicalParticipantCount, practicalPeople, seatMailBlock } from "./orderSeat.service";
+import { assignCourseToUser } from "./courseAccess.service";
+import { sendPendingInvites } from "./seatInvite.service";
 
 export const createOrder = async (orderData: Partial<OrderDoc>): Promise<OrderDoc> => {
   if (!orderData.orderNumber) {
@@ -85,6 +88,8 @@ export const sendOrderConfirmationEmail = async (
   try {
     const user = await User.findById(order.userId);
     if (!user) throw new Error(`User ${order.userId} not found`);
+    // Blok „Ihre Plätze”: kto ma miejsce, kto dostaje zaproszenie, co jest jeszcze wolne
+    const seatBlock = await seatMailBlock(order);
 
     if (order.type === "practical" && order.practicalCourseDetails) {
       const details = order.practicalCourseDetails;
@@ -92,7 +97,8 @@ export const sendOrderConfirmationEmail = async (
       // Pakiet z teorią online: data końca dostępu z nadanego UserCourse
       const onlineItem = order.items.find((i) => i.courseId);
       let onlineAccess: { courseName: string; expiresAt: Date; days?: number } | undefined;
-      if (onlineItem) {
+      // Kupujący, który nie uczestniczy, nie dostaje dostępu — więc i maila z dostępem
+      if (onlineItem && buyerParticipates(order)) {
         const uc = await UserCourse.findOne({ userId: String(order.userId), courseId: onlineItem.courseId }).lean();
         if (uc?.expiresAt) {
           onlineAccess = {
@@ -116,7 +122,9 @@ export const sendOrderConfirmationEmail = async (
         productId: order.productId,
         locationId: details.locationId,
         dateId: details.dateId,
-        participants: [user.name, ...(details.additionalParticipants || []).map((p) => p.name)],
+        participants: practicalPeople(order, { firstName: order.userDetails?.firstName || user.firstName, lastName: order.userDetails?.lastName || user.lastName, name: order.userDetails?.name || user.name }).map((p) => p.name),
+        buyerParticipates: buyerParticipates(order),
+        seatBlock,
       });
       // Pakiet z teorią online: osobny mail z dostępem, żeby kursant zaczął się uczyć przed kursem
       if (onlineAccess) {
@@ -130,16 +138,25 @@ export const sendOrderConfirmationEmail = async (
           courseStart: details.startDate,
           locationName: details.locationName,
           language: order.language,
-          participantsCount: 1 + (details.additionalParticipants || []).length,
+          participantsCount: practicalParticipantCount(order),
+          seatBlock,
         });
       }
     } else if (order.type === "online") {
+      // Kupujący z własnym dostępem: „Sie haben Zugang” (+ blok miejsc przy kilku dostępach).
+      // Kupujący bez własnego dostępu: wariant dla zamawiającego z blokiem miejsc.
       const expiresAt = order.expiresAt || claimed.expiresAt;
       for (const item of order.items) {
         if (item.courseId && expiresAt) {
-          await emailService.sendOnlineCoursePurchaseEmail(
-            user.email, user.name, item.courseName, order.orderNumber, expiresAt
-          );
+          await emailService.sendOnlineCoursePurchaseEmail(user.email, {
+            name: user.name,
+            courseName: item.courseName,
+            orderNumber: order.orderNumber,
+            expiresAt,
+            buyerParticipates: buyerParticipates(order),
+            count: Math.max(1, item.quantity || 1),
+            seatBlock,
+          }, order.language);
         }
       }
     }
@@ -179,6 +196,12 @@ export const markOrderAsPaid = async (
     if (order.type === "practical") {
       await registerPracticalParticipants(order);
     }
+    try {
+      await ensureOrderSeats(order);
+      await sendPendingInvites(order);
+    } catch (err: any) {
+      console.error(`❌ Seats for ${orderNumber} failed:`, err.message);
+    }
     if (!order.confirmationEmailSentAt) {
       await sendOrderConfirmationEmail(order);
     }
@@ -193,17 +216,19 @@ export const markOrderAsPaid = async (
   // Uwaga: nadajemy dostęp do kursu online zawsze, gdy w pozycjach zamówienia
   // znajduje się courseId — niezależnie od order.type. Dzięki temu pakiety
   // (kurs praktyczny + dołączony dostęp online) też poprawnie nadają dostęp.
+  // Kupujący dostaje dostęp tylko, gdy sam uczestniczy („Ich nehme selbst teil”). Przy kilku
+  // dostępach (quantity > 1) kupujący zajmuje jedno miejsce; pozostałe miejsca są w OrderSeat.
   const courseItems = order.items.filter(i => !!i.courseId);
-  if (courseItems.length > 0) {
-    // Długość dostępu: z pozycji (pakiet, np. 14 dni), domyślnie 30 dni
-    const expiryFor = (item: { accessDays?: number }) => {
-      const d = new Date();
-      d.setDate(d.getDate() + (item.accessDays || 30));
-      return d;
-    };
-    if (order.type === "online") {
-      order.expiresAt = expiryFor(courseItems[0]);
-    }
+  // Długość dostępu: z pozycji (pakiet, np. 14 dni), domyślnie 30 dni — liczona od płatności
+  const expiryFor = (item: { accessDays?: number }) => {
+    const d = new Date(order.paidAt as Date);
+    d.setDate(d.getDate() + (item.accessDays || 30));
+    return d;
+  };
+  if (order.type === "online" && courseItems.length > 0) {
+    order.expiresAt = expiryFor(courseItems[0]);
+  }
+  if (courseItems.length > 0 && buyerParticipates(order)) {
 
     const granted: Array<{ courseId: string; expiresAt: Date }> = [];
     for (const item of courseItems) {
@@ -239,6 +264,13 @@ export const markOrderAsPaid = async (
     }
   }
 
+  // ── Miejsca (OrderSeat): po zapisie uczestników, żeby połączyć je z PracticalCourseParticipant ──
+  try {
+    await ensureOrderSeats(order);
+  } catch (err: any) {
+    console.error(`❌ Seats for ${orderNumber} failed:`, err.message);
+  }
+
   // ── Mail z informacjami (przed fakturą — to najważniejszy mail dla klienta) ──
   let confirmationError: any;
   try {
@@ -246,6 +278,13 @@ export const markOrderAsPaid = async (
   } catch (err: any) {
     confirmationError = err;
     console.error(`❌ Bestätigungs-E-Mail für ${orderNumber} fehlgeschlagen:`, err.message);
+  }
+
+  // ── Zaproszenia dla osób, których e-mail podano w checkoucie (po mailu kupującego) ──
+  try {
+    await sendPendingInvites(order);
+  } catch (err: any) {
+    console.error(`❌ Einladungen für ${orderNumber} fehlgeschlagen:`, err.message);
   }
 
   // ── Invoice generation ────────────────────────────────────────────────────
@@ -298,28 +337,7 @@ export const markOrderAsPaid = async (
   if (confirmationError) throw confirmationError;
 };
 
-export const assignCourseToUser = async (
-  userId: string,
-  courseId: string,
-  orderNumber: string,
-  expiresAt: Date
-): Promise<Date> => {
-  const existing = await UserCourse.findOne({ userId, courseId });
-  if (existing) {
-    // Nie skracamy dostępu, który jest jeszcze aktywny i dłuższy (np. 30 dni z wcześniejszego zakupu)
-    if (existing.status === "active" && existing.expiresAt && existing.expiresAt > expiresAt) {
-      expiresAt = existing.expiresAt;
-    }
-    existing.expiresAt = expiresAt;
-    existing.status = "active";
-    existing.purchaseDate = new Date();
-    existing.orderNumber = orderNumber;
-    await existing.save();
-  } else {
-    await UserCourse.create({ userId, courseId, purchaseDate: new Date(), expiresAt, status: "active", orderNumber });
-  }
-  return expiresAt;
-};
+export { assignCourseToUser };
 
 export const expireOldCourses = async (): Promise<void> => {
   const now = new Date();

@@ -112,6 +112,12 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
                         {t('nav.login')}
                       </Button>
                     </Link>
+                    {/* od lg: na tabletach (md) brakuje miejsca; rejestracja jest też w linku na /login */}
+                    <Link to="/register" className="hidden lg:block">
+                      <Button variant="default" size="sm">
+                        {t('nav.register')}
+                      </Button>
+                    </Link>
                   </>
               )}
             </div>
@@ -166,13 +172,18 @@ const Navbar = ({ isLoggedIn: propLoggedIn, isAdmin: propAdmin, onLogout: propLo
                         </Button>
                       </>
                   ) : (
-                      <>
+                      <div className="grid grid-cols-2 gap-3 pt-1">
                         <Link to="/login" onClick={() => setIsOpen(false)}>
-                          <Button variant="ghost" className="w-full">
+                          <Button variant="outline" className="w-full h-11">
                             {t('nav.login')}
                           </Button>
                         </Link>
-                      </>
+                        <Link to="/register" onClick={() => setIsOpen(false)}>
+                          <Button variant="default" className="w-full h-11">
+                            {t('nav.register')}
+                          </Button>
+                        </Link>
+                      </div>
                   )}
                 </div>
               </div>

@@ -7,6 +7,8 @@ export interface UserCourseDoc extends Document {
     expiresAt: Date;
     status: "active" | "expired";
     orderNumber: string;
+    seatId?: string; // miejsce (OrderSeat), z którego pochodzi dostęp; brak = dostęp sprzed modelu miejsc
+    revokedAt?: Date; // dostęp odebrany przez admina (Zugang entziehen / Platz freigeben); status = "expired"
     createdAt: Date;
 }
 
@@ -22,6 +24,8 @@ const UserCourseSchema = new Schema<UserCourseDoc>(
             default: "active",
         },
         orderNumber: { type: String, required: true },
+        seatId: { type: String },
+        revokedAt: { type: Date },
     },
     { timestamps: true }
 );

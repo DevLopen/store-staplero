@@ -1,3 +1,4 @@
+import { practicalPeople } from "./orderSeat.service";
 import PracticalCourseParticipant, { PracticalCourseParticipantDoc } from "../models/PracticalCourseParticipant";
 import Location from "../models/Location";
 import { OrderDoc } from "../models/Order";
@@ -26,16 +27,10 @@ export const addParticipantsToCourse = async (
     const orderId = order._id.toString();
     const dateId = details.dateId || generateDateId(details.startDate, details.endDate);
 
-    // Lista osób: kupujący + dodatkowi. Dodatkowi nie mają własnego e-maila ani konta —
-    // dostają dane kontaktowe kupującego (certyfikat trafi na jego adres).
-    const buyerNames = resolveName({ firstName: buyer.firstName, lastName: buyer.lastName, name: buyer.name });
-    const people = [
-        { seatIndex: 0, ...buyerNames },
-        ...(details.additionalParticipants || []).map((p, i) => ({
-            seatIndex: i + 1,
-            ...resolveName({ firstName: p.firstName, lastName: p.lastName, name: p.name }),
-        })),
-    ];
+    // Lista osób: kupujący (seatIndex 0, gdy sam uczestniczy) + pozostali. Gdy kupujący nie
+    // uczestniczy („Ich nehme selbst teil” odznaczone), seatIndex 0 = pierwsza wpisana osoba.
+    // Pozostali nie mają własnego e-maila ani konta — dostają dane kontaktowe kupującego.
+    const people = practicalPeople(order, { firstName: buyer.firstName, lastName: buyer.lastName, name: buyer.name });
 
     const existing = await PracticalCourseParticipant.find({ orderId });
     const existingSeats = new Set(existing.map((p) => p.seatIndex ?? 0));

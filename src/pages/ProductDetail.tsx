@@ -22,6 +22,8 @@ import {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_ADDITIONAL_PARTICIPANTS = 5;
+// Kurs online: maks. tyle dostępów w jednym zamówieniu (decyzja właściciela, jak w kursie praktycznym)
+const MAX_ONLINE_QUANTITY = 6;
 /** Kod pod flagą; Ukraina jako UA, żeby nie myliło się z Wielką Brytanią */
 const LANGUAGE_CODE_LABEL: Record<CourseLanguage, string> = {
   de: "DE", en: "EN", pl: "PL", uk: "UA", ru: "RU", ro: "RO",
@@ -311,9 +313,12 @@ const ProductDetail = () => {
   const filterPlace = places.find((p) => p.key === locationFilter);
 
   // Maksymalna liczba uczestników łącznie: mniejsza z (1 + limit 5) i (dostępnych miejsc)
-  const maxTotalParticipants = selected
-    ? Math.max(1, Math.min(1 + MAX_ADDITIONAL_PARTICIPANTS, selected.date.availableSpots))
-    : 1;
+  // Kurs online: limit 6 dostępów (backend sprawdza to samo)
+  const maxTotalParticipants = isOnline
+    ? MAX_ONLINE_QUANTITY
+    : selected
+      ? Math.max(1, Math.min(1 + MAX_ADDITIONAL_PARTICIPANTS, selected.date.availableSpots))
+      : 1;
   const total = Math.round(grossPrice * participantCount * 100) / 100;
 
   const handleDateSelect = (option: DateOption) => {
@@ -339,8 +344,10 @@ const ProductDetail = () => {
         productId: product._id,
         courseId: product.courseId,
         courseName: title,
-        price: grossPrice,
+        price: total,
+        unitPrice: grossPrice,
         netPrice,
+        quantity: participantCount,
       },
     });
   };
@@ -363,6 +370,7 @@ const ProductDetail = () => {
         type: "practical",
         productId: product._id,
         courseName: title,
+        includesOnlineAccess: !!product.includesOnlineAccess,
         price: total,
         practicalCourse: {
           locationId: location._id,
@@ -689,19 +697,19 @@ const ProductDetail = () => {
                   </section>
                 )}
 
-                {selected && (
-                  <div className="space-y-2 pt-4 border-t border-border">
+                {(isOnline || selected) && (
+                  <div className={cn("space-y-2", !isOnline && "pt-4 border-t border-border")}>
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-foreground">{t("products.participants")}</p>
-                        <p className="text-xs text-muted-foreground">{t("practical.participantsCountDesc")}</p>
+                        <p className="text-xs text-muted-foreground">{t(isOnline ? "products.onlineQuantityDesc" : "practical.participantsCountDesc")}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <Button
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="h-9 w-9"
+                          className="h-11 w-11 sm:h-9 sm:w-9"
                           onClick={() => setParticipantCount((c) => Math.max(1, c - 1))}
                           disabled={participantCount <= 1}
                           aria-label="-"
@@ -715,7 +723,7 @@ const ProductDetail = () => {
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="h-9 w-9"
+                          className="h-11 w-11 sm:h-9 sm:w-9"
                           onClick={() => setParticipantCount((c) => Math.min(maxTotalParticipants, c + 1))}
                           disabled={participantCount >= maxTotalParticipants}
                           aria-label="+"
@@ -820,10 +828,12 @@ const ProductDetail = () => {
           <div className="container mx-auto flex items-center justify-between gap-3 px-0 sm:px-4">
             <div className="min-w-0">
               <p className="font-display text-xl font-bold leading-none text-foreground">
-                {formatEuro(selected ? total : grossPrice)}
+                {formatEuro(selected || isOnline ? total : grossPrice)}
               </p>
               <p className="mt-1 truncate text-xs text-muted-foreground">
-                {selected
+                {isOnline && participantCount > 1
+                  ? `${participantCount} × ${formatEuro(grossPrice)}`
+                  : selected
                   ? `${formatCourseDate(selected.date.startDate, selected.date.endDate, language)}${multiplePlaces ? ` · ${placeOf(selected.location)}` : ""}`
                   : t("products.perPersonGross")}
               </p>

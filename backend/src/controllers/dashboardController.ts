@@ -5,9 +5,8 @@ import QuizResult from "../models/QuizResult";
 import Order from "../models/Order";
 import { UserCourse } from "../models/UserCourse";
 import Certificate from "../models/Certificate";
+import PracticalCourseParticipant from "../models/PracticalCourseParticipant";
 import { AuthRequest } from "../types";
-
-const ADMIN_EMAILS = ["info@staplero.com", "info@staplero.de", "k.lopuch@satisfly.co"];
 
 export const getDashboard = async (req: AuthRequest, res: Response) => {
   try {
@@ -16,10 +15,8 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
     const userId = req.user._id;
     const userEmail = String(req.user.email || "").trim().toLowerCase();
 
-    // Triple-check admin status: email list, isAdmin field, or decoded JWT
-    const isSuperAdmin =
-        ADMIN_EMAILS.includes(userEmail) ||
-        req.user.isAdmin === true;
+    // Admin wyłącznie z flagi isAdmin w bazie
+    const isSuperAdmin = req.user.isAdmin === true;
 
     console.log(`[Dashboard] userId=${userId} email=${userEmail} isAdmin=${req.user.isAdmin} isSuperAdmin=${isSuperAdmin}`);
 
@@ -129,7 +126,27 @@ export const getDashboard = async (req: AuthRequest, res: Response) => {
       };
     });
 
+    // Kurs praktyczny z miejsca, które ktoś inny kupił i przypisał tej osobie (zaproszenie):
+    // w formacie zamówienia, żeby panel pokazał termin tak samo jak przy własnym zakupie.
+    const ownOrderIds = new Set(orders.map((o: any) => String(o._id)));
+    const seatParticipants = await PracticalCourseParticipant.find({ userId: String(userId), status: { $ne: "cancelled" } }).lean();
+    const seatBookings = seatParticipants
+      .filter((p: any) => !ownOrderIds.has(String(p.orderId)))
+      .map((p: any) => ({
+        _id: `seat-${p._id}`,
+        orderNumber: p.orderNumber,
+        type: "practical",
+        status: "paid",
+        buyerParticipates: false,
+        practicalCourseDetails: {
+          startDate: p.startDate, endDate: p.endDate, time: p.time,
+          locationName: p.locationName, locationAddress: p.locationAddress,
+          additionalParticipants: [{ name: p.userName }],
+        },
+      }));
+
     res.json({
+      seatBookings,
       user: {
         name: req.user.name,
         email: req.user.email,

@@ -1,12 +1,12 @@
 import express from "express";
 import { register, login, me, getAllUsers, forgotPassword, validateResetToken, resetPassword } from "../controllers/authController";
-import { forgotPasswordRateLimiter, resetPasswordRateLimiter } from "../middleware/rateLimiter";
+import { forgotPasswordRateLimiter, resetPasswordRateLimiter, loginRateLimiter, registerRateLimiter } from "../middleware/rateLimiter";
 import { protect, admin } from "../middleware/authMiddleware";
 
 const router = express.Router();
 
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register", registerRateLimiter, register);
+router.post("/login", loginRateLimiter, login);
 router.get("/me", me);
 
 // Reset hasła (publiczne, z limitami)

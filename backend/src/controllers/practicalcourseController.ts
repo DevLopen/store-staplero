@@ -11,6 +11,7 @@ import fs from "fs";
 import { AuthRequest } from "../types";
 import User from "../models/User";
 import { resolveName } from "../utils/name";
+import { findUserByEmail } from "../utils/email";
 
 // ─── existing controllers (keep as-is) ────────────────────────────────────────
 
@@ -342,7 +343,7 @@ export const addManualParticipant = async (req: AuthRequest, res: Response) => {
         }
 
         // Jeśli kursant ma konto w sklepie — podepnij wpis pod jego konto
-        const existingUser = await User.findOne({ email: userEmail });
+        const existingUser = await findUserByEmail(userEmail);
         const orderNumber = `MANUAL-${Date.now()}`;
 
         const participant = await PracticalCourseParticipant.create({

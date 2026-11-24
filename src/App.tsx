@@ -33,6 +33,7 @@ import AdminBank from "./pages/admin/AdminBank";
 import AdminCourses from "./pages/admin/AdminCourses";
 import Checkout from "./pages/Checkout";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
+import Invitation from "./pages/Invitation";
 import CheckoutCancel from "./pages/CheckoutCancel";
 import ScrollToTop from "@/components/ScrollToTop";
 import ChatWidget from "./components/ChatWidget";
@@ -93,6 +94,7 @@ const AppContent = () => {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/checkout/success" element={<CheckoutSuccess />} />
           <Route path="/checkout/cancel" element={<CheckoutCancel />} />
+          <Route path="/einladung/:token" element={<Invitation />} />
 
           {/* --- PANEL UŻYTKOWNIKA --- */}
           <Route path="/dashboard" element={<Panel />} />

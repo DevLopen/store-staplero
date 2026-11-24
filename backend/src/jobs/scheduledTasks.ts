@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import orderService from "../services/order.service";
+import { runSeatReminders } from "../services/seatReminder.service";
 
 /**
  * Setup all scheduled cron jobs
@@ -31,6 +32,18 @@ export const setupCronJobs = () => {
             console.error("❌ Failed to send practical course reminders:", err);
         }
     });
+
+    // 4. Przypomnienia o miejscach: kupujący (wolne miejsca) i zaproszone osoby — codziennie 09:00 czasu berlińskiego.
+    // Idempotentne (flagi ustawiane atomowo przed wysyłką), pomija anulowane/zwrócone zamówienia i zajęte miejsca.
+    cron.schedule("0 9 * * *", async () => {
+        console.log("🔔 Running seat reminders...");
+        try {
+            const r = await runSeatReminders();
+            console.log(`✅ Seat reminders: Käufer ${r.buyers.sent.length}, Einladungen ${r.invites.sent}`);
+        } catch (err) {
+            console.error("❌ Seat reminders failed:", err);
+        }
+    }, { timezone: "Europe/Berlin" });
 
     console.log("✅ Cron jobs scheduled successfully");
 };
@@ -133,4 +146,5 @@ export const manualTriggers = {
     sendPracticalReminders: async () => {
         await sendPracticalCourseReminders();
     },
+    seatReminders: async () => runSeatReminders(),
 };

@@ -140,7 +140,7 @@ const OrdersTable = ({ orders, limit }: { orders: any[]; limit?: number }) => {
                 <tbody>
                     {rows.map((o) => {
                         const d = o.practicalCourseDetails;
-                        const persons = d ? 1 + (d.additionalParticipants?.length || 0) : null;
+                        const persons = d ? (o.buyerParticipates === false ? 0 : 1) + (d.additionalParticipants?.length || 0) : null;
                         return (
                             <tr key={o._id} className="border-b border-[#f0f0f0] align-top">
                                 <td className="py-3 pr-3"><span className="font-mono text-xs">{o.orderNumber}</span><small className="block text-xs text-muted-foreground">{fmtDate(o.createdAt, language)}</small></td>

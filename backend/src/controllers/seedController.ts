@@ -2,14 +2,12 @@ import { Response } from "express";
 import Certificate from "../models/Certificate";
 import { AuthRequest } from "../types";
 
-const ADMIN_EMAILS = ["info@staplero.com", "info@staplero.de", "k.lopuch@satisfly.co"];
-
 const demoCodeFor = (userId: unknown) => `DEMO${String(userId).slice(-8).toUpperCase()}`;
 
 /**
  * POST /api/certificates/admin/seed-demo
  * Creates a demo certificate for the admin user so they can preview the UI.
- * Only callable by admin email accounts.
+ * Only callable by admins (isAdmin flag in DB).
  * Safe to call multiple times — returns existing if already created.
  */
 export const seedDemoCertificate = async (req: AuthRequest, res: Response) => {
@@ -17,8 +15,7 @@ export const seedDemoCertificate = async (req: AuthRequest, res: Response) => {
         const user = req.user;
         if (!user) return res.status(401).json({ message: "Nicht autorisiert" });
 
-        const userEmail = String(user.email || "").trim().toLowerCase();
-        const isAdmin = ADMIN_EMAILS.includes(userEmail) || user.isAdmin === true;
+        const isAdmin = user.isAdmin === true;
         if (!isAdmin) return res.status(403).json({ message: "Nur für Admins" });
 
         // Numer demo unikalny dla każdego admina (verificationCode ma indeks unique,
@@ -81,8 +78,7 @@ export const deleteDemoCertificates = async (req: AuthRequest, res: Response) =>
         const user = req.user;
         if (!user) return res.status(401).json({ message: "Nicht autorisiert" });
 
-        const userEmail = String(user.email || "").trim().toLowerCase();
-        const isAdmin = ADMIN_EMAILS.includes(userEmail) || user.isAdmin === true;
+        const isAdmin = user.isAdmin === true;
         if (!isAdmin) return res.status(403).json({ message: "Nur für Admins" });
 
         await Certificate.deleteMany({

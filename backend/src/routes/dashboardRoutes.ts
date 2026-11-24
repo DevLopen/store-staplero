@@ -4,7 +4,6 @@ import { protect } from "../middleware/authMiddleware";
 import Course from "../models/Course";
 
 const router = express.Router();
-const ADMIN_EMAILS = ["info@staplero.com", "info@staplero.de", "k.lopuch@satisfly.co"];
 
 // Main dashboard endpoint
 router.get("/", protect, getDashboard);
@@ -12,15 +11,13 @@ router.get("/", protect, getDashboard);
 // Diagnostic endpoint - GET /api/dashboard/debug
 router.get("/debug", protect, async (req: any, res) => {
     try {
-        const userEmail = String(req.user?.email || "").trim().toLowerCase();
-        const isSuperAdmin = ADMIN_EMAILS.includes(userEmail) || req.user?.isAdmin === true;
+        const isSuperAdmin = req.user?.isAdmin === true;
         const totalCourses = await Course.countDocuments();
 
         res.json({
             userId: req.user?._id?.toString(),
             email: req.user?.email,
             isAdminInDB: req.user?.isAdmin,
-            isOnAdminEmailList: ADMIN_EMAILS.includes(userEmail),
             isSuperAdmin,
             totalCoursesInDB: totalCourses,
             status: isSuperAdmin

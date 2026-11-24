@@ -11,6 +11,7 @@ import logo from "@/assets/staplero-white-cropped.svg";
 import { MyCourse, useMyCourses } from "@/learning/api";
 import { Lang, tx } from "@/learning/types";
 import WalletCard from "@/components/dashboard/WalletCard";
+import OrderSeats from "@/components/dashboard/OrderSeats";
 import "@/learning/panel.css";
 
 // Panel kursanta v2 według zaakceptowanej makiety: Übersicht, Meine Kurse, Zertifikate, Bestellungen, Profil.
@@ -151,7 +152,8 @@ export default function Panel() {
         return () => removeEventListener("mousedown", close);
     }, []);
 
-    const bookings: Booking[] = useMemo(() => (data ? bookingsFromOrders(data.orders, data.user.name) : []), [data]);
+    // własne zamówienia + miejsca na kursie praktycznym z zaproszenia (kupił ktoś inny)
+    const bookings: Booking[] = useMemo(() => (data ? bookingsFromOrders([...data.orders, ...(((data as any).seatBookings as any[]) || [])], data.user.name) : []), [data]);
     if (loading) return <div className="pn" style={{ display: "grid", placeItems: "center" }}><p className="pn-muted">{t("panel.loading")}</p></div>;
     if (!data) return <div className="pn" style={{ display: "grid", placeItems: "center" }}><p className="pn-muted">{t("panel.loadError")}</p></div>;
 
@@ -178,6 +180,12 @@ export default function Panel() {
     const subtitle = practicalCert ? t("panel.subCert")
         : nextBooking ? (nextBooking.daysLeft > 1 ? fill(t("panel.subDays"), { n: nextBooking.daysLeft }) : nextBooking.daysLeft === 1 ? t("panel.subTomorrow") : t("panel.subToday"))
             : t("panel.subDefault");
+    // Zamówienia z kilkoma miejscami (albo kupujący bez udziału): lista miejsc w „Bestellungen”
+    const seatCount = (o: any) => o.type === "online"
+        ? Math.max(1, (o.items || []).find((it: any) => it.courseId)?.quantity || 1)
+        : (o.buyerParticipates === false ? 0 : 1) + (o.practicalCourseDetails?.additionalParticipants?.length || 0);
+    const seatOrders = orders.filter((o: any) => o.status === "paid" && (seatCount(o) > 1 || o.buyerParticipates === false));
+    const showToast = (title: string, error?: boolean) => toast({ title, variant: error ? "destructive" : undefined });
     const statusPill = (s: string) => (s === "paid" ? "ok" : s === "pending" ? "warn" : "draft");
     const orderTitle = (o: any) => (o.items || []).filter((it: any) => it.type !== "practical-addon").map((it: any) => it.courseName).join(", ") || "—";
 
@@ -241,7 +249,7 @@ export default function Panel() {
             <tbody>{(limit ? orders.slice(0, limit) : orders).map((o: any) => (
                 <tr key={o._id}>
                     <td><b style={{ color: "var(--g900)" }}>{o.orderNumber}</b><div className="pn-muted" style={{ fontSize: 12.5 }}>{fmtDate(o.createdAt, language as Language)}</div></td>
-                    <td>{orderTitle(o)}{o.practicalCourseDetails && <div className="pn-muted" style={{ fontSize: 12.5 }}>{fill(t("panel.participants"), { n: 1 + (o.practicalCourseDetails.additionalParticipants?.length || 0) })} · {o.practicalCourseDetails.locationName}</div>}</td>
+                    <td>{orderTitle(o)}{o.practicalCourseDetails && <div className="pn-muted" style={{ fontSize: 12.5 }}>{fill(t("panel.participants"), { n: (o.buyerParticipates === false ? 0 : 1) + (o.practicalCourseDetails.additionalParticipants?.length || 0) })} · {o.practicalCourseDetails.locationName}</div>}</td>
                     <td><span className={`pn-pill ${statusPill(o.status)}`}>{t(`panel.status_${o.status}`)}</span></td>
                     <td className="num">{fmtMoney(o.totalAmount, language as Language)}</td>
                     <td className="num">{o.invoicePdfUrl && <a className="pn-btn o s" href={o.invoicePdfUrl} target="_blank" rel="noopener noreferrer">{p("invoice")}</a>}</td>
@@ -428,6 +436,7 @@ export default function Panel() {
                 {tab === "best" && <>
                     <div className="pn-hello"><h1>{p("orders")}</h1><p>{t("panel.ordersSub")}</p></div>
                     <section className="pn-card">{orders.length ? <Orders /> : <div className="pn-empty"><b>{t("panel.noOrdersTitle")}</b><p className="pn-muted">{t("panel.noOrdersText")}</p></div>}</section>
+                    {seatOrders.map((o: any) => <OrderSeats key={o._id} orderId={o._id} title={orderTitle(o)} orderNumber={o.orderNumber} onToast={showToast} />)}
                 </>}
 
                 {tab === "profil" && <>

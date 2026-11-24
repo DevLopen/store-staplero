@@ -25,7 +25,10 @@ const req = async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
 
 type Lang = "de" | "en" | "uk" | "pl";
 const LANG_LABEL: Record<Lang, string> = { de: "Deutsch", en: "Englisch", uk: "Ukrainisch", pl: "Polnisch" };
-const KIND_LABEL: Record<string, string> = { booking: "Buchung", "online-access": "Online-Zugang", "online-purchase": "Online-Kauf", common: "Gemeinsam" };
+const KIND_LABEL: Record<string, string> = {
+    booking: "Buchung", "online-access": "Online-Zugang", "online-purchase": "Online-Kauf", "account-welcome": "Konto",
+    "seat-invite": "Einladung", "seat-block": "Plätze", "seats-reminder": "Erinnerungen", "seat-invite-reminder": "Erinnerungen", common: "Gemeinsam",
+};
 
 interface TemplateRow {
     key: string; name: string; kind: string; description: string; languages: Lang[]; custom: boolean;
@@ -154,9 +157,14 @@ export default function AdminEmailTemplates() {
     };
 
     const groups = useMemo(() => {
-        const order = ["booking", "online-access", "online-purchase", "common"];
+        // Erinnerungen (Käufer + Einladung) in einer Gruppe
+        const order: Array<[string, string[]]> = [
+            ["booking", ["booking"]], ["online-access", ["online-access"]], ["online-purchase", ["online-purchase"]],
+            ["account-welcome", ["account-welcome"]], ["seat-invite", ["seat-invite"]], ["seat-block", ["seat-block"]],
+            ["seats-reminder", ["seats-reminder", "seat-invite-reminder"]], ["common", ["common"]],
+        ];
         const t = list?.templates ?? [];
-        return order.map((k) => ({ kind: k, items: t.filter((x) => x.kind === k) })).filter((g) => g.items.length);
+        return order.map(([k, kinds]) => ({ kind: k, items: t.filter((x) => kinds.includes(x.kind)) })).filter((g) => g.items.length);
     }, [list]);
 
     if (!list) return <div className="tpl-empty"><Loader2 className="w-5 h-5 animate-spin" /> Lädt …</div>;
@@ -193,8 +201,11 @@ export default function AdminEmailTemplates() {
                             <h2>{t.name} {t.custom && <Badge variant="secondary">Eigene Vorlage</Badge>}</h2>
                             <p>{t.description}</p>
                             {t.kind === "booking" && <p className="tpl-used">{t.products.length ? <>Verwendet von: {t.products.map((p) => <span key={p._id} className="chip">{p.title}{p.status !== "active" ? " (Entwurf)" : ""}</span>)}</> : "Noch keinem Produkt zugewiesen. Auswahl unter Produkte → Bearbeiten → E-Mail-Vorlage."}</p>}
-                            {t.kind === "online-purchase" && <p className="tpl-used">Diese E-Mail enthält immer Deutsch und Englisch. Betreff und Überschrift werden auf der deutschen Seite gepflegt.</p>}
-                            {t.kind === "common" && <p className="tpl-used">Gilt für alle Buchungsbestätigungen. Die Vorschau zeigt die Vorlage „Stufe 1“.</p>}
+                            {t.kind === "online-purchase" && <p className="tpl-used">Geht in der Sprache der Bestellung raus. Die Vorschau zeigt einen Kauf mit drei Zugängen; die Texte „Käufer nimmt nicht teil“ gelten, wenn der Käufer selbst keinen Zugang nutzt.</p>}
+                            {t.kind === "common" && <p className="tpl-used">Gilt für alle Buchungsbestätigungen. Die Vorschau zeigt die Vorlage „Stufe 1“ in der Variante „Käufer nimmt nicht teil“.</p>}
+                            {t.kind === "seat-block" && <p className="tpl-used">Erscheint in Buchungsbestätigung, Online-Kauf, Online-Zugang und Erinnerung, sobald es mehrere Plätze gibt oder der Käufer nicht selbst teilnimmt. Die Vorschau zeigt eine Buchung ohne eigene Teilnahme.</p>}
+                            {t.kind === "seats-reminder" && <p className="tpl-used">Höchstens zwei pro Bestellung: 2 Tage nach dem Kauf und 7 Tage vor Ablauf bzw. vor dem Kurstag, nur solange Plätze ohne E-Mail-Adresse sind.</p>}
+                            {t.kind === "seat-invite-reminder" && <p className="tpl-used">Einmal pro Einladung, 5 Tage nach dem Versand, solange der Platz nicht aktiviert ist. Enthält immer einen neuen Link; der alte funktioniert danach nicht mehr.</p>}
                         </div>
                         <div className="tpl-head-act">
                             {t.kind === "booking" && <Button variant="outline" size="sm" onClick={() => { setDupName(`${t.name} (Kopie)`); setDupOpen(true); }}><Copy className="w-4 h-4 mr-1" />Kopieren</Button>}

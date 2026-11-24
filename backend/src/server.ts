@@ -9,6 +9,7 @@ import cron from "node-cron";
 
 import authRoutes        from "./routes/auth";
 import orderRoutes       from "./routes/orderRoutes";
+import invitationRoutes  from "./routes/invitationRoutes";
 import progressRoutes    from "./routes/progressRoutes";
 import courseRoutes      from "./routes/courseRoutes";
 import dashboardRoutes   from "./routes/dashboardRoutes";
@@ -31,6 +32,12 @@ import orderService from "./services/order.service";
 import { pollInbox, imapEnabled } from "./services/inboxImap.service";
 
 const app = express();
+
+// Za reverse proxy (nginx itp.) req.ip musi być adresem klienta z X-Forwarded-For, inaczej limity
+// per IP liczą wszystkich razem. Domyślnie "loopback": ufamy nagłówkowi tylko, gdy połączenie
+// przychodzi z tej samej maszyny (nginx na tym serwerze). Inny proxy/PaaS: TRUST_PROXY=1 (liczba skoków) lub lista IP.
+const trustProxy = process.env.TRUST_PROXY?.trim() || "loopback";
+app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "false" ? false : trustProxy);
 
 // ── Webhooks need raw body ────────────────────────────────────────────────────
 app.use("/api/webhooks", webhookRoutes);
@@ -78,6 +85,7 @@ app.use("/api/auth",                   authRoutes);
 app.use("/api/dashboard",              dashboardRoutes);
 app.use("/api/courses",                courseRoutes);
 app.use("/api/orders",                 orderRoutes);
+app.use("/api/invitations",            invitationRoutes);
 app.use("/api/progress",               progressRoutes);
 app.use("/api/ai",                     aiRoutes);
 app.use("/api/checkout",               checkoutRoutes);

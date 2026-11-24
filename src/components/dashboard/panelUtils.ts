@@ -94,7 +94,7 @@ export const bookingsFromOrders = (orders: any[], userName: string): Booking[] =
                 end,
                 city: d.locationName,
                 address: d.locationAddress,
-                participants: [userName, ...(d.additionalParticipants || []).map((p: any) => p.name)].filter(Boolean),
+                participants: [...(o.buyerParticipates === false ? [] : [userName]), ...(d.additionalParticipants || []).map((p: any) => p.name)].filter(Boolean),
                 daysLeft: left,
                 finished: daysUntil(end) < 0,
             };

@@ -6,9 +6,8 @@ import { LANGS } from "../models/LearningCourse";
 import { UserCourse } from "../models/UserCourse";
 import { AuthRequest } from "../types";
 
-const ADMIN_EMAILS = ["info@staplero.com", "info@staplero.de", "k.lopuch@satisfly.co"];
-const isAdmin = (req: AuthRequest) =>
-    req.user?.isAdmin === true || ADMIN_EMAILS.includes(String(req.user?.email || "").trim().toLowerCase());
+// Admin wyłącznie z flagi isAdmin w bazie (req.user pochodzi z `protect`).
+const isAdmin = (req: AuthRequest) => req.user?.isAdmin === true;
 const validId = (id: string) => mongoose.Types.ObjectId.isValid(id);
 
 /** Dostęp jak do kursu: aktywny, niewygasły zakup (UserCourse z courseId = id katalogu). Admin zawsze.

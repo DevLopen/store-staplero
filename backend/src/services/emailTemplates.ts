@@ -105,8 +105,8 @@ export const sectionTitle = (text: string, lead?: string, opts: { first?: boolea
 ${lead ? `<p style="margin:0 0 18px;font-family:${BODY_FONT};font-size:15px;line-height:1.6;color:${C.muted};">${lead}</p>` : ""}`;
 
 /** Mała etykieta w kształcie pigułki (np. „Pflicht”) */
-export const badge = (text: string, tone: "orange" | "gray" = "orange"): string => {
-    const t = tone === "orange" ? { bg: "#fde7cf", color: "#9a4a00" } : { bg: "#e9e9e9", color: C.body };
+export const badge = (text: string, tone: "orange" | "gray" | "green" = "orange"): string => {
+    const t = tone === "orange" ? { bg: "#fde7cf", color: "#9a4a00" } : tone === "green" ? { bg: "#dcfce7", color: "#166534" } : { bg: "#e9e9e9", color: C.body };
     return `<span style="display:inline-block;background:${t.bg};color:${t.color};font-family:${BODY_FONT};font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:4px 9px;border-radius:12px;white-space:nowrap;">${text}</span>`;
 };
 
@@ -123,6 +123,22 @@ export const checklist = (items: Array<{ title: string; note?: string; tag?: str
     <td width="44" valign="top" style="padding:16px 0 16px 18px;${line}"><div style="width:22px;height:22px;text-align:center;font-family:Arial,sans-serif;font-size:13px;font-weight:700;border-radius:4px;${box}">&#10003;</div></td>
     <td valign="top" style="padding:16px 12px 16px 6px;${line}font-family:${BODY_FONT};font-size:15px;line-height:1.5;color:${C.ink};"><strong>${item.title}</strong>${item.note ? `<br><span style="color:${C.muted};font-size:13px;">${item.note}</span>` : ""}</td>
     <td align="right" valign="top" style="padding:16px 18px 16px 0;${line}">${item.tag ? badge(item.tag) : ""}</td>
+  </tr>`;
+  }).join("")}
+</table>`;
+
+/** Lista miejsc (Plätze): etykieta „Platz n”, imię i nazwisko, e-mail i status po prawej */
+export const seatList = (rows: Array<{ label: string; name?: string; email?: string; status: string; tone: "orange" | "gray" | "green" }>): string => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border:1px solid ${C.hairline};border-radius:6px;">
+  ${rows.map((r, i) => {
+      const line = i < rows.length - 1 ? `border-bottom:1px solid ${C.hairline};` : "";
+      return `
+  <tr>
+    <td valign="top" style="padding:14px 12px 14px 18px;${line}font-family:${BODY_FONT};font-size:15px;line-height:1.45;color:${C.ink};">
+      <span style="font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${C.muted};">${r.label}</span><br>
+      ${r.name ? `<strong>${r.name}</strong><br>` : ""}<span style="color:${C.muted};font-size:14px;word-break:break-all;">${r.email || ""}</span>
+    </td>
+    <td align="right" valign="middle" style="padding:14px 18px 14px 0;${line}">${badge(r.status, r.tone)}</td>
   </tr>`;
   }).join("")}
 </table>`;

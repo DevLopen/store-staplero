@@ -1,55 +1,91 @@
 import { Request, Response } from "express";
 import User from "../models/User";
 import { hashPassword } from "../utils/hash";
-import jwt from "jsonwebtoken";
+import { signAuthToken, verifyAuthToken } from "../config/jwt";
 import crypto from "crypto";
 import emailService from "../services/email.service";
+import { normalizeEmail, findUserByEmail } from "../utils/email";
 
-const ADMIN_EMAILS = ["info@staplero.com", "info@staplero.de", "k.lopuch@satisfly.co"];
-const JWT_SECRET = process.env.JWT_SECRET || "secret";
+// Jeden komunikat dla nieznanego konta i złego hasła: nie zdradzamy, które adresy są w bazie.
+const LOGIN_FAILED = "E-Mail oder Passwort ist falsch.";
+// Neutralnie przy rejestracji: wskazuje drogę dalej, bez słowa „existiert”.
+const REGISTER_NOT_POSSIBLE = "Registrierung mit dieser E-Mail-Adresse nicht möglich. Wenn Sie bereits ein Konto haben, melden Sie sich an oder setzen Sie Ihr Passwort zurück.";
+
+// Wymagania hasła: spójnie z formularzem rejestracji, checkoutem i resetem hasła
+const MIN_PASSWORD_LENGTH = 6;
+const MAX_PASSWORD_LENGTH = 128;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const LANGS = ["de", "en", "uk", "pl"] as const;
+type Lang = (typeof LANGS)[number];
+const pickLang = (v: unknown): Lang | undefined => (LANGS as readonly string[]).includes(String(v)) ? (v as Lang) : undefined;
+
+/**
+ * POST /api/auth/register  { firstName, lastName, email, password, language? }
+ * Konto bez zakupu. Vorname i Nachname zawsze osobno (jak w Checkout); `name` = oba razem.
+ * Błędy mają `code`, żeby formularz pokazał komunikat w języku strony;
+ * `message` (niemiecki) zostaje dla starszych klientów.
+ */
+const MAX_NAME_PART = 50;
+const cleanNamePart = (v: unknown) => (typeof v === "string" ? v.trim().replace(/\s+/g, " ") : "");
 
 export const register = async (req: Request, res: Response) => {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-        return res.status(400).json({ message: "Alle Felder sind erforderlich." });
+    const firstName = cleanNamePart(req.body?.firstName);
+    const lastName = cleanNamePart(req.body?.lastName);
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    const email = normalizeEmail(req.body?.email);
+    const language = pickLang(req.body?.language);
+    if (!firstName || !lastName || !email || !password) {
+        return res.status(400).json({ code: "MISSING_FIELDS", message: "Alle Felder sind erforderlich." });
+    }
+    if (firstName.length > MAX_NAME_PART || lastName.length > MAX_NAME_PART) {
+        return res.status(400).json({ code: "NAME_TOO_LONG", message: `Vorname und Nachname dürfen jeweils höchstens ${MAX_NAME_PART} Zeichen lang sein.` });
+    }
+    const name = `${firstName} ${lastName}`;
+    if (email.length > 254 || !EMAIL_RE.test(email)) {
+        return res.status(400).json({ code: "INVALID_EMAIL", message: "Bitte geben Sie eine gültige E-Mail-Adresse ein." });
+    }
+    if (password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
+        return res.status(400).json({ code: "PASSWORD_LENGTH", message: `Das Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein.` });
     }
 
     try {
-        const existingUser = await User.findOne({ email });
-        if (existingUser) return res.status(400).json({ message: "Benutzer existiert bereits." });
+        // bez rozróżniania wielkości liter: INFO@x.de i info@x.de to to samo konto
+        const existingUser = await findUserByEmail(email, "_id");
+        if (existingUser) return res.status(400).json({ code: "REGISTER_NOT_POSSIBLE", message: REGISTER_NOT_POSSIBLE });
 
-        const isAdmin = ADMIN_EMAILS.includes(email.trim().toLowerCase());
-        const user = await User.create({ name, email, password, isAdmin });
+        // Nowe konto nigdy nie dostaje admina; nadaje się go tylko skryptem src/scripts/setAdmin.ts.
+        const user = await User.create({ name, firstName, lastName, email, password, isAdmin: false, language });
 
-        const token = jwt.sign({ id: user._id, isAdmin: user.isAdmin }, JWT_SECRET, { expiresIn: "7d" });
+        // Mail powitalny po odpowiedzi: błąd wysyłki nie blokuje rejestracji
+        emailService.sendWelcomeEmail(user.email, user.name, language).catch((err) =>
+            console.error("❌ Welcome email (register) failed:", err.message)
+        );
+
+        const token = signAuthToken({ id: user._id, isAdmin: user.isAdmin }, "7d");
         res.status(201).json({ user: { name: user.name, email: user.email, isAdmin: user.isAdmin }, token });
-    } catch (err) {
-        res.status(500).json({ message: "Serverfehler", error: err });
+    } catch (err: any) {
+        // wyścig dwóch rejestracji na ten sam adres: indeks unique
+        if (err?.code === 11000) return res.status(400).json({ code: "REGISTER_NOT_POSSIBLE", message: REGISTER_NOT_POSSIBLE });
+        console.error("[Auth] Register error:", err);
+        res.status(500).json({ code: "SERVER_ERROR", message: "Serverfehler" });
     }
 };
 
 export const login = async (req: Request, res: Response) => {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = normalizeEmail(req.body?.email);
     if (!email || !password) {
-        return res.status(400).json({ message: "Alle Felder sind erforderlich." });
+        return res.status(400).json({ code: "MISSING_FIELDS", message: "Alle Felder sind erforderlich." });
     }
 
     try {
-        const user = await User.findOne({ email });
-        if (!user) return res.status(400).json({ message: "Benutzer nicht gefunden." });
+        const user = await findUserByEmail(email);
+        if (!user) return res.status(400).json({ code: "LOGIN_FAILED", message: LOGIN_FAILED });
 
         const isMatch = await user.comparePassword(password);
-        if (!isMatch) return res.status(400).json({ message: "Falsches Passwort." });
+        if (!isMatch) return res.status(400).json({ code: "LOGIN_FAILED", message: LOGIN_FAILED });
 
-        // If this email is on admin list, ensure isAdmin=true in DB using updateOne (avoids pre-save hooks)
-        const shouldBeAdmin = ADMIN_EMAILS.includes(user.email.trim().toLowerCase());
-        if (shouldBeAdmin && !user.isAdmin) {
-            await User.updateOne({ _id: user._id }, { $set: { isAdmin: true } });
-            user.isAdmin = true;
-            console.log(`[Auth] Promoted ${user.email} to admin`);
-        }
-
-        const token = jwt.sign({ id: user._id, isAdmin: user.isAdmin }, JWT_SECRET, { expiresIn: "7d" });
+        const token = signAuthToken({ id: user._id, isAdmin: user.isAdmin }, "7d");
         res.status(200).json({ user: { name: user.name, email: user.email, isAdmin: user.isAdmin }, token });
     } catch (err) {
         console.error("[Auth] Login error:", err);
@@ -65,7 +101,7 @@ export const me = async (req: Request, res: Response) => {
     if (!token) return res.status(401).json({ message: "Token fehlt" });
 
     try {
-        const decoded: any = jwt.verify(token, JWT_SECRET);
+        const decoded = verifyAuthToken(token);
         const user = await User.findById(decoded.id || decoded._id).select("-password");
         if (!user) return res.status(404).json({ message: "Benutzer nicht gefunden" });
         res.status(200).json({ user });
@@ -124,11 +160,9 @@ export const getAllUsers = async (req: Request, res: Response) => {
 // ─── Reset hasła ──────────────────────────────────────────────────────────────
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 godzina
-const MIN_PASSWORD_LENGTH = 6; // spójnie z formularzem w checkoucie
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://staplero.de";
 
 const sha256 = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
-const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
  * POST /api/auth/forgot-password  { email }
@@ -137,7 +171,7 @@ const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$
  * odpowiedzi też nie zdradza istnienia konta.
  */
 export const forgotPassword = async (req: Request, res: Response) => {
-    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+    const email = normalizeEmail(req.body?.email);
     if (!email || email.length > 254) {
         return res.status(400).json({ message: "Bitte geben Sie Ihre E-Mail-Adresse ein." });
     }
@@ -147,20 +181,28 @@ export const forgotPassword = async (req: Request, res: Response) => {
     });
 
     try {
-        // Wyszukiwanie bez rozróżniania wielkości liter (konta zakładane były z różną wielkością liter)
-        const user = await User.findOne({ email: new RegExp(`^${escapeRegex(email)}$`, "i") });
-        if (!user) return;
-
-        const token = crypto.randomBytes(32).toString("hex");
-        await User.updateOne(
-            { _id: user._id },
-            { $set: { passwordResetTokenHash: sha256(token), passwordResetExpires: new Date(Date.now() + RESET_TOKEN_TTL_MS) } }
-        );
-
-        await emailService.sendPasswordResetEmail(user.email, user.name, `${FRONTEND_URL}/reset-password/${token}`);
+        await requestPasswordReset(email);
     } catch (err) {
         console.error("[Auth] forgotPassword error:", err);
     }
+};
+
+/**
+ * Link do ustawienia nowego hasła (1 h, jednorazowy). Używane przez „Passwort vergessen”
+ * i przez stronę zaproszenia (/einladung/:token), gdy konto już istnieje.
+ */
+export const requestPasswordReset = async (emailIn: string): Promise<void> => {
+    // Wyszukiwanie bez rozróżniania wielkości liter (konta zakładane były z różną wielkością liter)
+    const user = await findUserByEmail(emailIn);
+    if (!user) return;
+
+    const token = crypto.randomBytes(32).toString("hex");
+    await User.updateOne(
+        { _id: user._id },
+        { $set: { passwordResetTokenHash: sha256(token), passwordResetExpires: new Date(Date.now() + RESET_TOKEN_TTL_MS) } }
+    );
+
+    await emailService.sendPasswordResetEmail(user.email, user.name, `${FRONTEND_URL}/reset-password/${token}`);
 };
 
 /**

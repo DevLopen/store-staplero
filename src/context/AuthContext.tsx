@@ -8,7 +8,7 @@ interface AuthContextType {
     userEmail: string;
     login: (user: { name: string; email: string; isAdmin: boolean }, token: string) => void;
     logout: () => void;
-    register: (name: string, email: string, password: string) => Promise<void>;
+    register: (firstName: string, lastName: string, email: string, password: string, language?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -59,19 +59,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserEmail("");
     };
 
-    const register = async (name: string, email: string, password: string) => {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/register`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, email, password }),
-        });
-
-        if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.message || "Registration failed");
+    // Błąd z kodem z backendu (np. PASSWORD_LENGTH), żeby formularz pokazał tekst w języku strony
+    const register = async (firstName: string, lastName: string, email: string, password: string, language?: string) => {
+        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+        let res: Response;
+        try {
+            res = await fetch(`${API_URL}/auth/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ firstName, lastName, email, password, language }),
+            });
+        } catch {
+            throw Object.assign(new Error("Server not reachable"), { code: "NETWORK" });
         }
-
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw Object.assign(new Error(data.message || "Registration failed"), { code: data.code || (res.status === 429 ? "RATE_LIMITED" : "SERVER_ERROR") });
+        }
         // automatyczne logowanie po rejestracji
         login(data.user, data.token);
     };

@@ -20,6 +20,7 @@ export interface UserDoc extends Document {
     address?: string;
     city?: string;
     postalCode?: string;
+    language?: "de" | "en" | "uk" | "pl"; // język strony przy rejestracji/zakupie: język maili do konta
     purchasedCourses: PurchasedCourse[];
     // Reset hasła: w bazie tylko hash SHA-256 tokenu, nigdy sam token
     passwordResetTokenHash?: string;
@@ -41,13 +42,14 @@ const UserSchema = new Schema<UserDoc>(
         name: { type: String, required: true },
         firstName: { type: String, trim: true },
         lastName: { type: String, trim: true },
-        email: { type: String, required: true, unique: true },
+        email: { type: String, required: true, unique: true, trim: true, lowercase: true },
         password: { type: String, required: true },
         isAdmin: { type: Boolean, default: false },
         phone: String,
         address: String,
         city: String,
         postalCode: String,
+        language: { type: String, enum: ["de", "en", "uk", "pl"] },
         purchasedCourses: [PurchasedCourseSchema],
         passwordResetTokenHash: { type: String, index: true, select: false },
         passwordResetExpires: { type: Date, select: false },

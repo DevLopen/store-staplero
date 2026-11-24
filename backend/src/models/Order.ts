@@ -24,7 +24,8 @@ export interface PracticalCourseDetails {
     time: string;
     dateId: string;
     availableSpots: number;
-    // Osoby zapisane na kurs poza główną osobą kupującą (max 5, walidowane w checkoutController)
+    // Osoby zapisane na kurs poza osobą kupującą (max 5, walidowane w checkoutController).
+    // Gdy buyerParticipates === false: WSZYSCY uczestnicy (max 6), pierwszy = Teilnehmer 1 (seatIndex 0).
     additionalParticipants: AdditionalParticipant[];
 }
 
@@ -50,6 +51,13 @@ export interface BillingAddress {
     postalCode: string;
 }
 
+// Opcjonalny e-mail osoby na danym miejscu, podany w checkoucie (seatIndex jak w OrderSeat).
+// Po płatności trafia na miejsce i wychodzi zaproszenie (w języku zamówienia). Puste miejsca kupujący uzupełnia w panelu.
+export interface SeatInvite {
+    seatIndex: number;
+    email: string;
+}
+
 export interface OrderDoc extends Document {
     userId: string;
     orderNumber: string;
@@ -65,8 +73,19 @@ export interface OrderDoc extends Document {
     practicalCourseDetails?: PracticalCourseDetails;
     productId?: string; // produkt z panelu (wybór szablonu maila)
     language?: string; // język strony przy zakupie (de/en/uk/pl) — język maili
+    // „Ich nehme selbst teil” w checkoucie. false = kupujący nie dostaje dostępu, wszystkie miejsca są wolne.
+    // Brak pola (stare zamówienia) = true.
+    buyerParticipates?: boolean;
+    seatInvites?: SeatInvite[];
     confirmationEmailSentAt?: Date; // mail z informacjami o kursie (termin / dostęp online)
     confirmationEmailError?: string; // ostatni błąd wysyłki tego maila
+    paymentFailedAt?: Date; // nieudana próba płatności (Stripe pozwala spróbować ponownie w tej samej sesji)
+    // Admin „Zugang entziehen” (zwroty właściciel robi ręcznie w Stripe): status "cancelled" + accessRevokedAt
+    accessRevokedAt?: Date; // wszystkie dostępy z zamówienia odebrane
+    accessRevokedBy?: string; // e-mail admina
+    // Przypomnienia o wolnych miejscach dla kupującego (maks. dwa na zamówienie)
+    seatReminderFirstAt?: Date; // 2 dni po płatności
+    seatReminderLastAt?: Date; // 7 dni przed końcem ważności miejsc / dniem kursu
     createdAt: Date;
     paidAt?: Date;
     expiresAt?: Date; // Dla kursów online - 30 dni od paidAt
@@ -152,8 +171,21 @@ const OrderSchema = new Schema<OrderDoc>(
         expiresAt: Date,
         confirmationEmailSentAt: Date,
         confirmationEmailError: String,
+        paymentFailedAt: Date,
+        accessRevokedAt: Date,
+        accessRevokedBy: String,
+        seatReminderFirstAt: Date,
+        seatReminderLastAt: Date,
         productId: String,
         language: String,
+        buyerParticipates: { type: Boolean, default: true },
+        seatInvites: {
+            type: [new Schema<SeatInvite>({
+                seatIndex: { type: Number, required: true, min: 0 },
+                email: { type: String, required: true, trim: true, lowercase: true, maxlength: 254 },
+            }, { _id: false })],
+            default: undefined,
+        },
     },
     { timestamps: true }
 );

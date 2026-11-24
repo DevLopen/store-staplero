@@ -1,4 +1,7 @@
 import { Resend } from "resend";
+import fs from "fs";
+import os from "os";
+import path from "path";
 import {
     escapeHtml,
     renderEmail,
@@ -21,6 +24,7 @@ import {
     heroButtons,
     heroButton,
     steps,
+    seatList,
 } from "./emailTemplates";
 import { Content, MailLang, MAIL_LOCALES } from "./mailTemplateCatalog";
 import { defaultContent, fmt, fmtPlain, getTemplate, pickLanguage, resolveBookingTemplateKey, resolveContent } from "./mailTemplates.service";
@@ -39,6 +43,15 @@ type SendPayload = Parameters<typeof resend.emails.send>[0];
  * Bez sprawdzenia maile ginęły po cichu. Tu: ponawiamy przy rate limit / 5xx, inaczej rzucamy.
  */
 const sendMail = async (payload: SendPayload, attempts = 4): Promise<void> => {
+    // MAIL_DRY_RUN=1 (tylko poza produkcją): nic nie wysyłamy, HTML ląduje w pliku do obejrzenia
+    if (process.env.MAIL_DRY_RUN === "1" && process.env.NODE_ENV !== "production") {
+        const dir = process.env.MAIL_DRY_RUN_DIR || os.tmpdir();
+        const file = path.join(dir, `mail-${Date.now()}-${String(payload.to).replace(/[^a-z0-9@.+-]/gi, "_")}.html`);
+        await fs.promises.mkdir(dir, { recursive: true });
+        await fs.promises.writeFile(file, String((payload as any).html ?? ""));
+        console.log(`✉️  [MAIL_DRY_RUN] an ${payload.to} "${payload.subject}" → ${file}`);
+        return;
+    }
     for (let attempt = 1; ; attempt++) {
         let error: any;
         try {
@@ -138,28 +151,38 @@ export const sendCertificateEmail = async (opts: CertificateEmailOptions): Promi
 
 // ─── Konto: Willkommen, Passwort zurücksetzen ──────────────────────────────────
 
-export const sendWelcomeEmail = async (to: string, name: string): Promise<void> => {
+/** Mail powitalny z szablonu „account-welcome” (edytowalny w panelu) */
+export const renderWelcomeEmail = (T: Content, lang: MailLang, o: { to: string; name: string }): { subject: string; html: string } => {
+    const vars = { name: o.name, email: o.to, coursesUrl: `${FRONTEND_URL}/schulungen`, resetUrl: `${FRONTEND_URL}/forgot-password` };
+    const F = (t: unknown) => fmt(t, vars);
+    const stepsList: any[] = Array.isArray(T.steps) ? T.steps : [];
     const bodyHtml = `
-      ${p(`Hallo ${strong(escapeHtml(name))},`)}
-      ${p("vielen Dank für Ihre Registrierung bei STAPLERO, Ihrem Partner für professionelle Staplerausbildung.")}
-      ${p("Sie können sich jetzt einloggen und mit Ihrem Kurs beginnen:")}
-      ${button(`${FRONTEND_URL}/login`, "Zum Login")}
-      ${p("Bei Fragen stehen wir Ihnen jederzeit zur Verfügung.", { muted: true })}
-      ${p(strong("Ihr STAPLERO Team"))}
+      ${p(F(T.intro))}
+      ${button(`${FRONTEND_URL}/dashboard`, F(T.cta))}
+      ${stepsList.length ? `${sectionTitle(F(T.stepsTitle))}${steps(stepsList.map((s) => ({ title: F(s.title), text: F(s.text) })))}` : ""}
+      ${String(T.forgot || "").trim() ? p(F(T.forgot), { small: true, muted: true }) : ""}
+      ${p(F(T.closing))}
     `;
-
-    await sendMail({
-        from: FROM_EMAIL,
-        to,
-        subject: "Willkommen bei STAPLERO!",
+    return {
+        subject: fmtPlain(T.subject, vars),
         html: layout({
-            title: "Willkommen bei STAPLERO",
-            preheader: "Ihr Konto ist eingerichtet. Jetzt einloggen und starten.",
-            eyebrow: "Konto erstellt",
-            headline: "Willkommen bei STAPLERO!",
+            title: fmtPlain(T.headline, vars),
+            preheader: fmtPlain(T.preheader, vars),
+            eyebrow: String(T.eyebrow || "").trim() ? F(T.eyebrow) : undefined,
+            eyebrowTone: "success",
+            headline: F(T.headline),
             bodyHtml,
+            lang,
         }),
-    });
+    };
+};
+
+/** Po rejestracji (także bez zakupu) i po założeniu konta w checkoucie. Język: strona przy rejestracji. */
+export const sendWelcomeEmail = async (to: string, name: string, language?: string | null): Promise<void> => {
+    const lang = pickLanguage(language);
+    const T = await resolveContent("account-welcome", lang);
+    const { subject, html } = renderWelcomeEmail(T, lang, { to, name });
+    await sendMail({ from: FROM_EMAIL, to, subject, html });
 };
 
 export const sendPasswordResetEmail = async (to: string, name: string, resetUrl: string): Promise<void> => {
@@ -244,6 +267,8 @@ const calendarDay = (d: Date) =>
 const dateFmt = (lang: MailLang) => {
     const f = (d: Date, o: Intl.DateTimeFormatOptions) => d.toLocaleDateString(MAIL_LOCALES[lang], { timeZone: BERLIN_TZ, ...o });
     const long = (d: Date) => f(d, { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    // bez dnia tygodnia — po „bis / do / до” (np. „do 29 listopada 2026”)
+    const plain = (d: Date) => f(d, { year: "numeric", month: "long", day: "numeric" });
     const short = (d: Date) => f(d, { weekday: "short", day: "numeric", month: "short" });
     // krótka data do tematu: "12.11." (de/pl/uk) albo "12 Nov" (en)
     const tiny = (d: Date) => (lang === "en" ? f(d, { day: "numeric", month: "short" }) : berlinDate(d, { day: "2-digit", month: "2-digit" }));
@@ -254,7 +279,7 @@ const dateFmt = (lang: MailLang) => {
             ? `${berlinDate(a, { day: "2-digit" })}.–${tiny(b)}`
             : `${tiny(a)}–${tiny(b)}`;
     };
-    return { long, short, tiny, range };
+    return { long, plain, short, tiny, range };
 };
 
 const cityOf = (locationName: string) => locationName.split(/[(\-–]/)[0].trim() || locationName;
@@ -264,6 +289,55 @@ const helpBox = (title: string, whatsapp: string) => callout(
     `${smallLabel(escapeHtml(title), "#c25e00")}<br>${strong(`<a href="${PHONE_1.href}" style="color:#111111;text-decoration:none;">${PHONE_1.label}</a>`)}<br>${strong(`<a href="${PHONE_2.href}" style="color:#111111;text-decoration:none;">${PHONE_2.label}</a>`)}<br><a href="${WHATSAPP_URL}" target="_blank" style="color:#111111;font-weight:700;">${escapeHtml(whatsapp)}</a>`,
     "orange",
 );
+
+// ─── Blok „Ihre Plätze” (szablon „seat-block”) ────────────────────────────────
+
+/** Miejsce do pokazania w mailu kupującego. you = kupujący sam; invited = e-mail podany (zaproszenie wychodzi). */
+export interface SeatMailLine {
+    seatIndex: number;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    state: "you" | "claimed" | "invited" | "open";
+}
+export interface SeatBlockData {
+    kind: "online" | "practical" | "package";
+    seats: SeatMailLine[];
+    onlineUntil?: Date | string; // online i pakiet: koniec dostępu liczony od płatności
+    courseDay?: Date | string; // praktyka i pakiet: pierwszy dzień kursu
+}
+
+const SEAT_TONE: Record<SeatMailLine["state"], "green" | "orange" | "gray"> = { you: "green", claimed: "green", invited: "orange", open: "gray" };
+
+/** Lista miejsc z imieniem, e-mailem i statusem + krótki tekst o późniejszym wpisywaniu i przycisk do panelu */
+export const renderSeatBlock = (S: Content, lang: MailLang, b: SeatBlockData, opts: { first?: boolean; noButton?: boolean; noIntro?: boolean } = {}): string => {
+    const D = dateFmt(lang);
+    const vars = {
+        until: b.kind === "practical"
+            ? (b.courseDay ? D.plain(new Date(b.courseDay)) : "")
+            : (b.onlineUntil ? D.plain(new Date(b.onlineUntil)) : ""),
+        courseDay: b.courseDay ? D.plain(new Date(b.courseDay)) : "",
+    };
+    const F = (t: unknown, extra: Record<string, any> = {}) => fmt(t, { ...vars, ...extra });
+    const intro = b.kind === "online" ? S.introOnline : b.kind === "practical" ? S.introPractical : S.introPackage;
+    const rows = b.seats.map((seat) => ({
+        label: F(S.seatLabel, { n: seat.seatIndex + 1 }),
+        name: escapeHtml([seat.firstName, seat.lastName].filter(Boolean).join(" ")),
+        email: seat.email ? escapeHtml(seat.email) : F(S.noEmail),
+        status: F(S[seat.state]),
+        tone: SEAT_TONE[seat.state],
+    }));
+    const note = b.kind !== "online" && String(S.participantsNote || "").trim() ? p(F(S.participantsNote), { small: true, muted: true }) : "";
+    return `
+      ${sectionTitle(F(S.title), opts.noIntro ? undefined : F(intro), { first: opts.first })}
+      ${seatList(rows)}
+      ${note}
+      ${opts.noButton ? "" : button(`${FRONTEND_URL}/dashboard#bestellungen`, F(S.button), "outline")}`;
+};
+
+/** Blok pokazujemy przy kilku miejscach albo gdy kupujący sam nie uczestniczy */
+const showSeatBlock = (b: SeatBlockData | undefined, buyerParticipates: boolean | undefined, S?: Content): b is SeatBlockData =>
+    !!b && !!S && b.seats.length > 0 && (b.seats.length > 1 || buyerParticipates === false);
 
 // ─── Potwierdzenie rezerwacji kursu na miejscu ───────────────────────────────
 
@@ -275,7 +349,8 @@ export interface PracticalCourseBookingEmailOptions {
     locationAddress: string;
     startDate: Date | string; // pierwszy dzień
     endDate?: Date | string; // ostatni dzień
-    participants?: string[]; // pierwsza osoba to zamawiający
+    participants?: string[]; // uczestnicy wg kolejności; pierwsza osoba to zamawiający, gdy buyerParticipates !== false
+    buyerParticipates?: boolean; // false = zamawiający sam nie uczestniczy (lista bez dopisku „Besteller”)
     language?: string; // język strony przy zakupie (de/en/uk/pl)
     productId?: string; // produkt → wybrany w panelu szablon
     locationId?: string; // gdy brak productId: produkt z terminu
@@ -284,12 +359,15 @@ export interface PracticalCourseBookingEmailOptions {
     // Pakiet z teorią online: dostęp do kursu (nadany przy zapłacie) — krótki dopisek, szczegóły w osobnym mailu
     onlineAccess?: { courseName: string; expiresAt: Date | string; days?: number };
     time?: string; // godziny z terminu, np. "09:00 - 17:30"
+    seatBlock?: SeatBlockData; // miejsca z zamówienia (blok „Ihre Plätze”)
+    // Potwierdzenie dla osoby, która przyjęła zaproszenie: do niej, bez listy uczestników, bloku miejsc i storna
+    seatHolder?: boolean;
 }
 
 type BookingData = Omit<PracticalCourseBookingEmailOptions, "language" | "productId" | "locationId" | "dateId" | "templateKey">;
 
 /** Renderuje potwierdzenie rezerwacji z tekstów szablonu (C) i tekstów wspólnych (K) */
-export const renderBookingEmail = (C: Content, K: Content, lang: MailLang, o: BookingData): { subject: string; html: string } => {
+export const renderBookingEmail = (C: Content, K: Content, lang: MailLang, o: BookingData, S?: Content): { subject: string; html: string } => {
     const D = dateFmt(lang);
     const start = new Date(o.startDate);
     const end = o.endDate ? new Date(o.endDate) : start;
@@ -313,6 +391,7 @@ export const renderBookingEmail = (C: Content, K: Content, lang: MailLang, o: Bo
         dateRange: D.range(start, lastDay), startDate: D.long(start), endDate: D.long(lastDay),
         from, to, orderNumber: o.orderNumber, cancelUntil: D.long(addDays(start, -7)), count: people.length,
         days: access?.days, expires: access ? D.long(new Date(access.expiresAt)) : undefined,
+        dashboardUrl: `${FRONTEND_URL}/dashboard`,
     };
     const F = (t: unknown, extra: Record<string, any> = {}) => fmt(t, { ...vars, ...extra });
     const hours = fmtPlain(K.hours, vars);
@@ -323,39 +402,56 @@ export const renderBookingEmail = (C: Content, K: Content, lang: MailLang, o: Bo
         + `&ctz=${encodeURIComponent(BERLIN_TZ)}`
         + (courseDays > 1 ? `&recur=${encodeURIComponent(`RRULE:FREQ=DAILY;COUNT=${courseDays}`)}` : "")
         + `&location=${encodeURIComponent(o.locationAddress)}`
-        + `&details=${encodeURIComponent(`${o.orderNumber}`)}`;
+        + `&details=${encodeURIComponent(o.seatHolder ? `STAPLERO ${fmtPlain(C.courseName)}` : `${o.orderNumber}`)}`;
     const routeUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(o.locationAddress)}`;
 
+    // Kupujący sam nie uczestniczy: teksty dla zamawiającego zamiast „Ihr Platz ist reserviert … wir freuen uns auf Sie”
+    // Wariant „Buyer” mówi o uczestnikach („die Teilnehmenden …”), nie o zamawiającym („Sie … Ihr Staplerschein”).
+    const seat = !!o.seatHolder;
+    const buyerFirst = seat || o.buyerParticipates !== false;
+    const filled = (v: unknown) => (Array.isArray(v) ? v.length > 0 : String(v ?? "").trim() !== "");
+    const pick = (key: string) => (!buyerFirst && filled(C[`${key}Buyer`]) ? C[`${key}Buyer`] : !buyerFirst && filled(K[`${key}Buyer`]) ? K[`${key}Buyer`] : C[key]);
+    const pickK = (key: string) => (!buyerFirst && filled(K[`${key}Buyer`]) ? K[`${key}Buyer`] : K[key]);
+    const ticketFooter = seat && filled(K.ticketFooterSeat) ? K.ticketFooterSeat : K.ticketFooter;
+
     const heroHtml = `
-      ${heroText(F(C.intro).replace(/<strong>/g, '<strong style="color:#ffffff;">'))}
+      ${heroText(F(pick("intro")).replace(/<strong>/g, '<strong style="color:#ffffff;">'))}
       ${heroTicket(
           (ticket.length ? ticket : [{ day: 1, label: "" }]).map((t) => ({ label: F(t.label), title: D.short(dayDate(t.day)), note: escapeHtml(hours) })),
-          `<strong style="color:#ffffff;">${escapeHtml(o.locationName)}</strong> &middot; ${escapeHtml(o.locationAddress)}<br><span style="color:#b5b5b5;">${F(K.ticketFooter)}</span>`,
+          `<strong style="color:#ffffff;">${escapeHtml(o.locationName)}</strong> &middot; ${escapeHtml(o.locationAddress)}<br><span style="color:#b5b5b5;">${F(ticketFooter)}</span>`,
       )}
       ${heroButtons({ href: calendarUrl, label: escapeHtml(K.calendarButton) }, { href: routeUrl, label: escapeHtml(K.routeButton) })}
     `;
 
-    const arrivalSteps: any[] = Array.isArray(K.arrivalSteps) ? K.arrivalSteps : [];
+    const stepsK = pickK("arrivalSteps");
+    const arrivalSteps: any[] = Array.isArray(stepsK) ? stepsK : [];
     const arrivalHtml = isBerlin
         ? `
-      ${sectionTitle(F(K.findUsTitle), F(K.findUsText))}
+      ${sectionTitle(F(K.findUsTitle), F(pickK("findUsText")))}
       ${photoSteps(berlinArrivalImages.map((img, i) => ({
           imageUrl: `${EMAIL_ASSETS_URL}/${img.image}`, alt: img.alt,
           title: F(arrivalSteps[i]?.title), text: F(arrivalSteps[i]?.text),
       })), escapeHtml(K.stepLabel || "Schritt"))}`
         : `
       ${sectionTitle(F(K.arrivalTitle))}
-      ${p(F(K.arrivalText))}`;
+      ${p(F(pickK("arrivalText")))}`;
 
-    const participantsHtml = people.length > 1
+    // Kilka osób albo kupujący bez udziału: blok miejsc (imię, e-mail, status, link do panelu).
+    // Bez danych o miejscach (stare zamówienie) — sama lista nazwisk.
+    const participantsHtml = seat
+        ? ""
+        : showSeatBlock(o.seatBlock, o.buyerParticipates, S)
+        ? renderSeatBlock(S!, lang, o.seatBlock!)
+        : people.length > 1 || !buyerFirst
         ? `
       ${sectionTitle(F(K.participantsTitle))}
-      ${numberedList(people.map((n, i) => i === 0 ? `${escapeHtml(n)} <span style="font-weight:400;color:#707072;font-size:13px;">&middot; ${escapeHtml(K.buyer)}</span>` : escapeHtml(n)))}
-      ${p(F(K.forwardNote), { small: true, muted: true })}`
+      ${numberedList(people.map((n, i) => i === 0 && buyerFirst ? `${escapeHtml(n)} <span style="font-weight:400;color:#707072;font-size:13px;">&middot; ${escapeHtml(K.buyer)}</span>` : escapeHtml(n)))}`
         : "";
 
-    const onlineHtml = access && String(C.onlineNote || "").trim()
-        ? callout(`${smallLabel(escapeHtml(K.onlineTitle), "#c25e00")}<br>${F(C.onlineNote)}`, "orange")
+    // Osoba z zaproszenia nie dostaje osobnego maila z dostępem: data końca i link do konta są tutaj
+    const onlineNote = seat && filled(K.onlineNoteSeat) ? K.onlineNoteSeat : C.onlineNote;
+    const onlineHtml = access && filled(onlineNote)
+        ? callout(`${smallLabel(escapeHtml(K.onlineTitle), "#c25e00")}<br>${F(onlineNote)}`, "orange")
         : "";
 
     const seenDays = new Set<number>();
@@ -367,20 +463,21 @@ export const renderBookingEmail = (C: Content, K: Content, lang: MailLang, o: Bo
         const text = F(s.text) + (isBerlin && firstOfLaterDay && K.berlinMeetAgain ? ` ${F(K.berlinMeetAgain)}` : "");
         return timelineItem({
             title: F(s.title), meta, text,
-            extraHtml: String(s.exam || "").trim() ? labeledPill(escapeHtml(K.examLabel), F(s.exam), s.highlight ? "orange" : "gray") : undefined,
+            extraHtml: filled(s.exam) ? labeledPill(escapeHtml(K.examLabel), F(!buyerFirst && filled(s.examBuyer) ? s.examBuyer : s.exam), s.highlight ? "orange" : "gray") : undefined,
             accent: s.highlight ? "orange" : undefined,
             last: i === schedule.length - 1,
         });
     }).join("");
 
     const bring: any[] = Array.isArray(C.bring) ? C.bring : [];
-    const cancellation = String(C.cancellation || "").trim();
+    // Storno to sprawa zamawiającego (umowa, opłata), nie osoby z zaproszenia
+    const cancellation = seat ? "" : String(C.cancellation || "").trim();
     const help = helpBox(K.helpTitle, K.whatsapp);
 
     const bodyHtml = `
-      ${String(C.requirement || "").trim() ? callout(F(C.requirement).replace(/^<strong>(.+?)<\/strong>(<br>)?/, (_m, t) => `${smallLabel(t, "#c25e00")}<br>`), "orange") : ""}
+      ${filled(pick("requirement")) ? callout(F(pick("requirement")).replace(/^<strong>(.+?)<\/strong>(<br>)?/, (_m, t) => `${smallLabel(t, "#c25e00")}<br>`), "orange") : ""}
 
-      ${sectionTitle(F(K.bringTitle), undefined, { first: !String(C.requirement || "").trim() })}
+      ${sectionTitle(F(!buyerFirst && String(K.bringTitleBuyer || "").trim() ? K.bringTitleBuyer : K.bringTitle), undefined, { first: !filled(pick("requirement")) })}
       ${checklist(bring.map((b) => ({ title: F(b.title), note: String(b.note || "").trim() ? F(b.note) : undefined, tag: b.required ? escapeHtml(K.required) : undefined, strong: !!b.required })))}
 
       ${onlineHtml}
@@ -391,23 +488,23 @@ export const renderBookingEmail = (C: Content, K: Content, lang: MailLang, o: Bo
 
       ${sectionTitle(F(C.scheduleTitle), String(C.scheduleLead || "").trim() ? F(C.scheduleLead) : undefined)}
       ${timelineHtml}
-      ${String(C.afterSchedule || "").trim() ? p(F(C.afterSchedule), { small: true, muted: true }) : ""}
+      ${filled(pick("afterSchedule")) ? p(F(pick("afterSchedule")), { small: true, muted: true }) : ""}
 
       ${cancellation
           ? twoColumns(callout(`${smallLabel(escapeHtml(K.cancellationTitle), "#707072")}<br>${F(cancellation)}`, "gray"), help)
           : help}
 
-      ${p(F(C.closing))}
+      ${p(F(pick("closing")))}
     `;
 
     return {
-        subject: fmtPlain(C.subject, vars),
+        subject: fmtPlain(pick("subject"), vars),
         html: layout({
             title: fmtPlain(K.docTitle),
-            preheader: fmtPlain(C.preheader, vars),
+            preheader: fmtPlain(pick("preheader"), vars),
             eyebrow: escapeHtml(K.eyebrow),
             eyebrowTone: "success",
-            headline: escapeHtml(fmtPlain(C.headline, vars)),
+            headline: escapeHtml(fmtPlain(pick("headline"), vars)),
             heroHtml,
             bodyHtml,
             lang,
@@ -418,8 +515,8 @@ export const renderBookingEmail = (C: Content, K: Content, lang: MailLang, o: Bo
 export const sendPracticalCourseBookingEmail = async (opts: PracticalCourseBookingEmailOptions): Promise<void> => {
     const key = opts.templateKey || await resolveBookingTemplateKey(opts);
     const lang = pickLanguage(opts.language, opts.locationName);
-    const [C, K] = await Promise.all([resolveContent(key, lang), resolveContent("booking-common", lang)]);
-    const { subject, html } = renderBookingEmail(C, K, lang, opts);
+    const [C, K, S] = await Promise.all([resolveContent(key, lang), resolveContent("booking-common", lang), resolveContent("seat-block", lang)]);
+    const { subject, html } = renderBookingEmail(C, K, lang, opts, S);
     console.log(`✉️  Buchung [${key}/${lang}] → ${opts.to}`);
     await sendMail({ from: FROM_EMAIL, to: opts.to, subject, html });
 };
@@ -436,14 +533,14 @@ export interface OnlineTheoryAccessEmailOptions {
     locationName: string;
     participantsCount?: number;
     language?: string;
+    seatBlock?: SeatBlockData; // pakiet dla kilku osób: kto ma już zaproszenie, które miejsca są wolne
 }
 
-export const renderOnlineTheoryAccessEmail = (T: Content, lang: MailLang, o: Omit<OnlineTheoryAccessEmailOptions, "language">): { subject: string; html: string } => {
+export const renderOnlineTheoryAccessEmail = (T: Content, lang: MailLang, o: Omit<OnlineTheoryAccessEmailOptions, "language">, S?: Content): { subject: string; html: string } => {
     const D = dateFmt(lang);
     const expires = new Date(o.expiresAt);
     const start = new Date(o.courseStart);
     const city = cityOf(o.locationName);
-    const multi = (o.participantsCount || 1) > 1;
     const dashboardUrl = `${FRONTEND_URL}/dashboard`;
     const vars = {
         name: o.name, email: o.to, course: o.courseName, days: o.days ?? "",
@@ -486,8 +583,10 @@ export const renderOnlineTheoryAccessEmail = (T: Content, lang: MailLang, o: Omi
       <div style="height:20px;line-height:20px;font-size:0;">&nbsp;</div>
       ${button(dashboardUrl, F(T.cta))}
 
+      ${showSeatBlock(o.seatBlock, true, S) ? renderSeatBlock(S!, lang, o.seatBlock!) : ""}
+
       ${twoColumns(
-          callout(`${smallLabel(F(T.goodToKnowTitle), "#707072")}<br>${F(T.notes)}${multi && T.notesMulti ? `<br>${F(T.notesMulti)}` : ""}`, "gray"),
+          callout(`${smallLabel(F(T.goodToKnowTitle), "#707072")}<br>${F(T.notes)}`, "gray"),
           helpBox(fmtPlain(T.helpTitle), lang === "de" ? "Per WhatsApp schreiben" : lang === "en" ? "Message us on WhatsApp" : lang === "uk" ? "Написати у WhatsApp" : "Napisz na WhatsApp"),
       )}
 
@@ -515,57 +614,181 @@ export const renderOnlineTheoryAccessEmail = (T: Content, lang: MailLang, o: Omi
  */
 export const sendOnlineTheoryAccessEmail = async (opts: OnlineTheoryAccessEmailOptions): Promise<void> => {
     const lang = pickLanguage(opts.language, opts.locationName);
-    const T = await resolveContent("online-access", lang);
-    const { subject, html } = renderOnlineTheoryAccessEmail(T, lang, opts);
+    const [T, S] = await Promise.all([resolveContent("online-access", lang), resolveContent("seat-block", lang)]);
+    const { subject, html } = renderOnlineTheoryAccessEmail(T, lang, opts, S);
     await sendMail({ from: FROM_EMAIL, to: opts.to, subject, html });
 };
 
-// ─── Zakup kursu online (niemiecki + angielski w jednym mailu) ───────────────
+// ─── Zakup kursu online (szablon „online-purchase”, w języku zamówienia) ─────
 
-export const renderOnlinePurchaseEmail = (DE: Content, EN: Content, o: { name: string; courseName: string; orderNumber: string; expiresAt: Date | string }): { subject: string; html: string } => {
+export interface OnlinePurchaseMailData {
+    name: string;
+    courseName: string;
+    orderNumber: string;
+    expiresAt: Date | string;
+    buyerParticipates?: boolean; // false = kupujący kupił dostępy dla innych (inna einleitung, bez „Sie haben Zugang”)
+    count?: number; // liczba dostępów
+    seatBlock?: SeatBlockData;
+}
+
+export const renderOnlinePurchaseEmail = (T: Content, lang: MailLang, o: OnlinePurchaseMailData, S?: Content): { subject: string; html: string } => {
+    const D = dateFmt(lang);
     const exp = new Date(o.expiresAt);
-    const block = (T: Content, lang: MailLang) => {
-        const vars = { name: o.name, course: o.courseName, orderNumber: o.orderNumber, expires: dateFmt(lang).long(exp) };
-        const F = (t: unknown) => fmt(t, vars);
-        return `
-      ${sectionLabel(F(T.sectionLabel))}
-      ${p(F(T.intro))}
+    const vars = { name: o.name, course: o.courseName, orderNumber: o.orderNumber, expires: D.long(exp), count: o.count ?? 1 };
+    const F = (t: unknown) => fmt(t, vars);
+    const forOthers = o.buyerParticipates === false;
+    const pick = (key: string) => (forOthers && String(T[`${key}Buyer`] || "").trim() ? T[`${key}Buyer`] : T[key]);
+    const seatsHtml = showSeatBlock(o.seatBlock, o.buyerParticipates, S) ? renderSeatBlock(S!, lang, o.seatBlock!) : "";
+    const bodyHtml = `
+      ${p(F(pick("intro")))}
       ${infoTable([
           [F(T.courseLabel), escapeHtml(o.courseName)],
           [F(T.orderLabel), escapeHtml(o.orderNumber)],
-          [F(T.validLabel), `<span style="color:#F97706;">${escapeHtml(dateFmt(lang).long(exp))}</span>`],
+          [F(T.validLabel), `<span style="color:#F97706;">${escapeHtml(D.long(exp))}</span>`],
       ])}
-      ${button(`${FRONTEND_URL}/dashboard`, F(T.button))}
+      ${forOthers ? "" : button(`${FRONTEND_URL}/dashboard`, F(T.button))}
+      ${seatsHtml}
       ${p(F(T.closing))}`;
-    };
-    const vars = { name: o.name, course: o.courseName, orderNumber: o.orderNumber, expires: dateFmt("de").long(exp) };
     return {
-        subject: fmtPlain(DE.subject, vars),
+        subject: fmtPlain(pick("subject"), vars),
         html: layout({
-            title: fmtPlain(DE.headline, vars),
-            preheader: fmtPlain(DE.preheader, vars),
-            eyebrow: fmt(DE.eyebrow, vars),
-            headline: fmt(DE.headline, vars),
-            bodyHtml: `${block(DE, "de")}<div style="height:1px;background:#e5e5e5;margin:28px 0;"></div>${block(EN, "en")}`,
+            title: fmtPlain(pick("headline"), vars),
+            preheader: fmtPlain(pick("preheader"), vars),
+            eyebrow: fmt(T.eyebrow, vars),
+            eyebrowTone: "success",
+            headline: fmt(pick("headline"), vars),
+            bodyHtml,
+            lang,
         }),
     };
 };
 
-export const sendOnlineCoursePurchaseEmail = async (
-    to: string,
-    name: string,
-    courseName: string,
-    orderNumber: string,
-    expiresAt: Date
-): Promise<void> => {
-    const [DE, EN] = await Promise.all([resolveContent("online-purchase", "de"), resolveContent("online-purchase", "en")]);
-    const { subject, html } = renderOnlinePurchaseEmail(DE, EN, { name, courseName, orderNumber, expiresAt });
+export const sendOnlineCoursePurchaseEmail = async (to: string, data: OnlinePurchaseMailData, language?: string | null): Promise<void> => {
+    const lang = pickLanguage(language);
+    const [T, S] = await Promise.all([resolveContent("online-purchase", lang), resolveContent("seat-block", lang)]);
+    const { subject, html } = renderOnlinePurchaseEmail(T, lang, data, S);
     await sendMail({ from: FROM_EMAIL, to, subject, html });
+};
+
+// ─── Erinnerung an den Käufer: freie Plätze (Szablon „seats-reminder”) ──────
+
+export interface SeatsReminderMailData {
+    name: string;
+    course: string;
+    orderNumber: string;
+    last: boolean; // drugie przypomnienie: 7 dni przed końcem ważności / dniem kursu
+    until: Date | string; // do kiedy można przydzielić miejsca
+    seatBlock: SeatBlockData;
+}
+
+export const renderSeatsReminderEmail = (T: Content, S: Content, lang: MailLang, d: SeatsReminderMailData): { subject: string; html: string } => {
+    const D = dateFmt(lang);
+    const open = d.seatBlock.seats.filter((x) => x.state === "open").length;
+    const vars = { name: d.name, course: d.course, orderNumber: d.orderNumber, open, total: d.seatBlock.seats.length, until: D.plain(new Date(d.until)) };
+    const F = (t: unknown) => fmt(t, vars);
+    const k = (key: string) => (d.last && String(T[`${key}Last`] || "").trim() ? T[`${key}Last`] : T[key]);
+    const bodyHtml = `
+      ${p(F(k("intro")))}
+      ${button(`${FRONTEND_URL}/dashboard#bestellungen`, F(T.cta))}
+      ${renderSeatBlock(S, lang, d.seatBlock, { noButton: true, noIntro: true })}
+      ${p(F(T.closing))}
+    `;
+    return {
+        subject: fmtPlain(k("subject"), vars),
+        html: layout({ title: fmtPlain(k("headline"), vars), preheader: fmtPlain(T.preheader, vars), headline: F(k("headline")), bodyHtml, lang }),
+    };
+};
+
+export const sendSeatsReminderEmail = async (to: string, data: SeatsReminderMailData, language?: string | null): Promise<void> => {
+    const lang = pickLanguage(language);
+    const [T, S] = await Promise.all([resolveContent("seats-reminder", lang), resolveContent("seat-block", lang)]);
+    const { subject, html } = renderSeatsReminderEmail(T, S, lang, data);
+    await sendMail({ from: FROM_EMAIL, to, subject, html });
+};
+
+// ─── Einladung für einen Platz (Szablon „seat-invite”) ───────────────────────
+
+export interface SeatInviteMailData {
+    to: string;
+    buyer: string; // imię i nazwisko kupującego, przy firmie z nazwą firmy
+    course: string;
+    practical?: { startDate: string; endDate: string; location: string; address: string };
+    onlineExpiresAt?: Date; // koniec dostępu online liczony od płatności (online i pakiet)
+    linkExpiresAt: Date;
+    url: string;
+}
+
+/** Zaproszenie dla osoby, której kupujący przypisał miejsce. Wartości od kupującego są escapowane (fmt / escapeHtml). */
+export const renderSeatInviteEmail = (T: Content, lang: MailLang, d: SeatInviteMailData): { subject: string; html: string } => {
+    const locale = MAIL_LOCALES[lang];
+    const longDate = (x: Date | string) => new Date(x).toLocaleDateString(locale, { timeZone: BERLIN_TZ, day: "numeric", month: "long", year: "numeric" });
+    const date = d.practical
+        ? d.practical.startDate === d.practical.endDate || !d.practical.endDate
+            ? longDate(d.practical.startDate)
+            : `${longDate(d.practical.startDate)} – ${longDate(d.practical.endDate)}`
+        : undefined;
+    const vars = {
+        buyer: d.buyer, email: d.to, course: d.course, date, place: d.practical?.location,
+        expires: d.onlineExpiresAt ? longDate(d.onlineExpiresAt) : undefined, validUntil: longDate(d.linkExpiresAt),
+    };
+    const F = (t: unknown) => fmt(t, vars);
+    const rows: Array<[string, string]> = [[F(T.courseLabel), escapeHtml(d.course)]];
+    if (d.practical) {
+        rows.push([F(T.dateLabel), escapeHtml(date || "")]);
+        rows.push([F(T.placeLabel), `${escapeHtml(d.practical.location)}${d.practical.address ? `<br><span style="font-size:14px;font-weight:400;color:#707072;">${escapeHtml(d.practical.address)}</span>` : ""}`]);
+    }
+    if (d.onlineExpiresAt) rows.push([F(T.accessLabel), F(T.accessValue)]);
+    const safeUrl = escapeHtml(d.url);
+    const bodyHtml = `
+      ${p(F(T.intro))}
+      ${String(T.renewed || "").trim() ? p(F(T.renewed), { small: true, muted: true }) : ""}
+      ${infoTable(rows, 170)}
+      ${d.onlineExpiresAt && String(T.accessNote || "").trim() ? p(F(T.accessNote)) : ""}
+      ${button(safeUrl, F(T.cta))}
+      ${p(F(T.validity), { small: true, muted: true })}
+      ${p(`${F(T.fallback)}<br><a href="${safeUrl}" style="color:#111111;word-break:break-all;">${safeUrl}</a>`, { small: true, muted: true })}
+      ${String(T.ignore || "").trim() ? p(F(T.ignore), { small: true, muted: true }) : ""}
+      ${p(F(T.closing))}
+    `;
+    return {
+        subject: fmtPlain(T.subject, vars),
+        html: layout({
+            title: fmtPlain(T.headline, vars),
+            preheader: fmtPlain(T.preheader, vars),
+            headline: F(T.headline),
+            bodyHtml,
+            lang,
+        }),
+    };
+};
+
+/** Zaproszenie; `reminder` = przypomnienie po 5 dniach (szablon „seat-invite-reminder”, zawsze z nowym linkiem) */
+export const sendSeatInviteEmail = async (data: SeatInviteMailData, language?: string | null, opts: { reminder?: boolean } = {}): Promise<void> => {
+    const lang = pickLanguage(language);
+    const T = await resolveContent(opts.reminder ? "seat-invite-reminder" : "seat-invite", lang);
+    const { subject, html } = renderSeatInviteEmail(T, lang, data);
+    await sendMail({ from: FROM_EMAIL, to: data.to, subject, html });
 };
 
 // ─── Podgląd i test z panelu ─────────────────────────────────────────────────
 
-/** Przykładowe dane do podglądu szablonu; `content` = niezapisane teksty z edytora */
+/** Przykładowe miejsca do podglądu: kupujący + zaproszona osoba + wolne miejsce (albo bez kupującego) */
+const sampleSeatBlock = (kind: SeatBlockData["kind"], buyerIn: boolean, start: Date): SeatBlockData => ({
+    kind,
+    onlineUntil: kind === "practical" ? undefined : addDays(new Date(), kind === "package" ? 14 : 30),
+    courseDay: kind === "online" ? undefined : start,
+    seats: [
+        ...(buyerIn ? [{ seatIndex: 0, firstName: "Max", lastName: "Muster", email: "max.muster@example.com", state: "you" as const }] : []),
+        { seatIndex: buyerIn ? 1 : 0, firstName: kind === "online" ? undefined : "Erika", lastName: kind === "online" ? undefined : "Beispiel", email: "erika.beispiel@example.com", state: "invited" as const },
+        { seatIndex: buyerIn ? 2 : 1, firstName: kind === "online" ? undefined : "Jan", lastName: kind === "online" ? undefined : "Kowalski", state: "open" as const },
+        ...(buyerIn ? [] : [{ seatIndex: 2, firstName: kind === "online" ? undefined : "Olena", lastName: kind === "online" ? undefined : "Koval", state: "open" as const }]),
+    ],
+});
+
+/**
+ * Przykładowe dane do podglądu szablonu; `content` = niezapisane teksty z edytora.
+ * Buchung: kupujący + 2 osoby (blok miejsc). Gemeinsame Texte i „Plätze”: wariant „Käufer nimmt nicht teil”.
+ */
 export const renderTemplatePreview = async (key: string, lang: MailLang, content?: Content, to = "max.muster@example.com"): Promise<{ subject: string; html: string }> => {
     const t = await getTemplate(key);
     if (!t) throw new Error("Vorlage nicht gefunden");
@@ -573,29 +796,54 @@ export const renderTemplatePreview = async (key: string, lang: MailLang, content
     const merged = async (k: string, ll: MailLang) => (k === key && ll === l && content ? { ...defaultContent(t, ll), ...content } : resolveContent(k, ll));
     const start = addDays(new Date(), 14);
     start.setHours(12, 0, 0, 0);
+    const S = await merged("seat-block", l);
     const sample = {
         to, name: "Max Muster", orderNumber: "ORD-VORSCHAU-1", locationName: "Berlin", locationAddress: "Neuköllnische Allee 80",
-        participants: ["Max Muster"], time: "09:00 - 17:00",
+        time: "09:00 - 17:00",
     };
-    if (t.kind === "booking" || t.kind === "common") {
-        const bookingKey = t.kind === "common" ? "booking-stufe1" : key;
+    if (t.kind === "booking" || t.kind === "common" || t.kind === "seat-block") {
+        const bookingKey = t.kind === "booking" ? key : "booking-stufe1";
+        const buyerIn = t.kind === "booking";
         const C = await merged(bookingKey, l);
         const K = await merged("booking-common", l);
         const days = Math.max(1, ...((C.ticket || []) as any[]).map((x) => Number(x.day) || 1), ...((C.schedule || []) as any[]).map((x) => Number(x.day) || 1));
+        const withOnline = String(C.onlineNote || "").trim() !== "";
+        const block = sampleSeatBlock(withOnline ? "package" : "practical", buyerIn, start);
         return renderBookingEmail(C, K, l, {
             ...sample, startDate: start, endDate: addDays(start, days - 1),
-            onlineAccess: String(C.onlineNote || "").trim() ? { courseName: "Staplerschein Theorie", expiresAt: addDays(new Date(), 14), days: 14 } : undefined,
-        });
+            participants: block.seats.map((x) => [x.firstName, x.lastName].filter(Boolean).join(" ")),
+            buyerParticipates: buyerIn,
+            onlineAccess: buyerIn && withOnline ? { courseName: "Staplerschein Theorie", expiresAt: addDays(new Date(), 14), days: 14 } : undefined,
+            seatBlock: block,
+        }, S);
     }
     if (t.kind === "online-access") {
         return renderOnlineTheoryAccessEmail(await merged(key, l), l, {
             to, name: sample.name, courseName: "Staplerschein Theorie", expiresAt: addDays(new Date(), 14), days: 14,
-            courseStart: start, locationName: "Berlin", participantsCount: 1,
+            courseStart: start, locationName: "Berlin", participantsCount: 3, seatBlock: sampleSeatBlock("package", true, start),
+        }, S);
+    }
+    if (t.kind === "account-welcome") {
+        return renderWelcomeEmail(await merged(key, l), l, { to, name: sample.name });
+    }
+    if (t.kind === "seat-invite" || t.kind === "seat-invite-reminder") {
+        return renderSeatInviteEmail(await merged(key, l), l, {
+            to, buyer: "Erika Beispiel (Beispiel Logistik GmbH)", course: "Staplerschein Stufe 1 mit Online-Theorie",
+            practical: { startDate: start.toISOString().slice(0, 10), endDate: addDays(start, 1).toISOString().slice(0, 10), location: "Berlin", address: "Neuköllnische Allee 80, 12057 Berlin" },
+            onlineExpiresAt: addDays(new Date(), 30), linkExpiresAt: addDays(new Date(), 30),
+            url: `${FRONTEND_URL}/einladung/VORSCHAU`,
         });
     }
-    return renderOnlinePurchaseEmail(await merged(key, "de"), await merged(key, "en"), {
+    if (t.kind === "seats-reminder") {
+        return renderSeatsReminderEmail(await merged(key, l), S, l, {
+            name: sample.name, course: "Staplerschein Theorie", orderNumber: sample.orderNumber, last: false,
+            until: addDays(new Date(), 28), seatBlock: sampleSeatBlock("online", true, start),
+        });
+    }
+    return renderOnlinePurchaseEmail(await merged(key, l), l, {
         name: sample.name, courseName: "Staplerschein Theorie", orderNumber: sample.orderNumber, expiresAt: addDays(new Date(), 30),
-    });
+        buyerParticipates: true, count: 3, seatBlock: sampleSeatBlock("online", true, start),
+    }, S);
 };
 
 export const sendTemplateTest = async (key: string, lang: MailLang, to: string, content?: Content): Promise<string> => {
@@ -789,6 +1037,8 @@ export const sendContactConfirmationEmail = async (
 export default {
     sendCertificateEmail,
     sendWelcomeEmail,
+    sendSeatInviteEmail,
+    sendSeatsReminderEmail,
     sendPasswordResetEmail,
     sendPasswordChangedEmail,
     sendOnlineCoursePurchaseEmail,

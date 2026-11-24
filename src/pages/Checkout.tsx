@@ -12,6 +12,7 @@ import { getToken } from "@/utils/auth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { formatCourseDate, formatEuro } from "@/types/product.types";
+import { Language } from "@/i18n/translations";
 import {
     CreditCard, Lock, ArrowRight, CheckCircle, Users, User, Building2, LogIn, UserCheck, FileText,
 } from "lucide-react";
@@ -24,7 +25,9 @@ interface CheckoutData {
     // Produkt z panelu — backend na jego podstawie weryfikuje cenę
     productId?: string;
     courseName: string;
-    price: number;
+    price: number;          // brutto łącznie (online: cena × liczba dostępów)
+    unitPrice?: number;     // online: cena brutto za jeden dostęp
+    quantity?: number;      // online: liczba dostępów (1–6), backend liczy cenę sam
     // Opcjonalna cena netto kursu online (np. z konfiguracji Produktu, z uwzględnieniem promocji).
     // Jeśli pominięta, backend zastosuje domyślną cenę globalną.
     netPrice?: number;
@@ -41,9 +44,46 @@ interface CheckoutData {
         price: number;
         participantCount?: number;
     };
+    includesOnlineAccess?: boolean; // pakiet: kurs praktyczny z dostępem online
 }
 
+// Opcjonalny e-mail osoby na miejscu. Zaproszenie zawsze w języku kupującego (języku zamówienia).
+type SeatEmail = { email: string };
+
+const SEAT_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** E-mail (opcjonalny) dla jednego miejsca */
+const SeatEmailFields = ({
+    id, label, value, error, onChange, onBlur, t,
+}: {
+    id: string; label: string; value: SeatEmail; error?: string;
+    onChange: (v: SeatEmail) => void; onBlur: () => void; t: (k: string) => string;
+}) => (
+    <div className="space-y-1.5">
+        <Label htmlFor={`${id}-email`} className="text-xs font-medium text-muted-foreground">{t("checkout.seatEmail")}</Label>
+        <Input
+            id={`${id}-email`}
+            type="email"
+            inputMode="email"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder={t("checkout.seatEmailPh")}
+            aria-label={`${t("checkout.seatEmail")} – ${label}`}
+            value={value.email}
+            onChange={(e) => onChange({ email: e.target.value })}
+            onBlur={onBlur}
+            aria-invalid={!!error || undefined}
+            aria-describedby={error ? `${id}-error` : undefined}
+            className={error ? "border-destructive focus-visible:ring-destructive" : undefined}
+        />
+        {error && <p id={`${id}-error`} className="text-xs text-destructive">{error}</p>}
+    </div>
+);
+
 type BuyerType = "private" | "company";
+
+const MAX_ONLINE_QUANTITY = 6; // jak w backendzie (checkoutController)
 
 /** Numerowany nagłówek kroku — kupujący od razu widzi, ile kroków go czeka */
 const StepTitle = ({ n, children }: { n: number; children: React.ReactNode }) => (
@@ -68,6 +108,13 @@ const Checkout = () => {
     // Wcześniej opcja "Firma" była schowana za checkboxem "abweichende Rechnungsadresse".
     const [buyerType, setBuyerType] = useState<BuyerType>("private");
     const isCompany = buyerType === "company";
+    // „Ich nehme selbst teil”: domyślnie zaznaczone dla osoby prywatnej, odznaczone dla firmy.
+    // Odznaczone = kupujący nie dostaje dostępu, wszystkie miejsca są dla innych osób.
+    const [buyerParticipates, setBuyerParticipates] = useState(true);
+    const chooseBuyerType = (value: BuyerType) => {
+        if (value !== buyerType) setBuyerParticipates(value === "private");
+        setBuyerType(value);
+    };
 
     const [formData, setFormData] = useState({
         firstName: "",
@@ -101,16 +148,32 @@ const Checkout = () => {
     // Dane dodatkowych uczestników — liczba osób została ustalona na poprzednim kroku
     // (ProductDetail). Dla każdej osoby zbieramy osobno imię i nazwisko,
     // tak samo jak dla głównego kupującego.
-    const additionalCount = Math.max(0, (checkoutData?.practicalCourse?.participantCount || 1) - 1);
-    const [additionalParticipants, setAdditionalParticipants] = useState<{ firstName: string; lastName: string }[]>(
-        Array.from({ length: additionalCount }, () => ({ firstName: "", lastName: "" }))
+    // Gdy kupujący sam uczestniczy, jest Teilnehmer 1 i podaje się tylko pozostałe osoby;
+    // gdy nie — trzeba podać imiona wszystkich (lista uczestników i certyfikat).
+    const participantCount = checkoutData?.practicalCourse?.participantCount || 1;
+    const [participantNames, setParticipantNames] = useState<({ firstName: string; lastName: string } & SeatEmail)[]>(
+        Array.from({ length: participantCount }, () => ({ firstName: "", lastName: "", email: "" }))
     );
+    const additionalParticipants = buyerParticipates ? participantNames.slice(0, participantCount - 1) : participantNames;
+    // numer osoby na liście: przy udziale kupującego pierwsza wpisywana osoba to Teilnehmer 2
+    const participantNo = (i: number) => i + (buyerParticipates ? 2 : 1);
 
     const updateParticipant = (index: number, field: "firstName" | "lastName", value: string) => {
-        setAdditionalParticipants((prev) =>
+        setParticipantNames((prev) =>
             prev.map((p, i) => (i === index ? { ...p, [field]: value } : p))
         );
     };
+    const updateParticipantSeat = (index: number, value: SeatEmail) => {
+        setParticipantNames((prev) => prev.map((p, i) => (i === index ? { ...p, ...value } : p)));
+    };
+
+    // Kurs online: e-maile dla miejsc (indeks = seatIndex); miejsce 0 to kupujący, gdy sam uczestniczy
+    const [onlineSeats, setOnlineSeats] = useState<SeatEmail[]>(
+        Array.from({ length: MAX_ONLINE_QUANTITY }, () => ({ email: "" }))
+    );
+    // błędy e-maili miejsc po seatIndex; pokazywane po opuszczeniu pola albo po „Jetzt bezahlen”
+    const [seatErrors, setSeatErrors] = useState<Record<number, string>>({});
+    const [seatTouched, setSeatTouched] = useState<Record<number, boolean>>({});
 
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -129,13 +192,49 @@ const Checkout = () => {
         setBillingAddress({ ...billingAddress, [e.target.name]: e.target.value });
     };
 
-    const participantCount = checkoutData?.practicalCourse?.participantCount || 1;
+    // Kurs online: liczba dostępów z karty produktu (1–6). Kwotę i tak liczy backend.
+    const onlineQuantity = Math.min(MAX_ONLINE_QUANTITY, Math.max(1, Math.floor(Number(checkoutData?.quantity) || 1)));
+    const quantity = checkoutData?.type === "online" ? onlineQuantity : participantCount;
+
+    // Wszystkie miejsca z polem e-mail (bez miejsca kupującego): seatIndex + wartość
+    const seatEntries: { seatIndex: number; value: SeatEmail }[] = checkoutData?.type === "online"
+        ? onlineSeats.slice(buyerParticipates ? 1 : 0, onlineQuantity).map((value, i) => ({ seatIndex: i + (buyerParticipates ? 1 : 0), value }))
+        : additionalParticipants.map((p, i) => ({ seatIndex: participantNo(i) - 1, value: { email: p.email } }));
+    const buyerEmail = (auth.isLoggedIn ? auth.userEmail : formData.email).trim().toLowerCase();
+
+    /** Format i duplikaty w zamówieniu; puste pole jest w porządku */
+    const validateSeats = (): Record<number, string> => {
+        const errors: Record<number, string> = {};
+        const seen = new Set<string>(buyerParticipates && buyerEmail ? [buyerEmail] : []);
+        for (const { seatIndex, value } of seatEntries) {
+            const email = value.email.trim().toLowerCase();
+            if (!email) continue;
+            if (!SEAT_EMAIL_RE.test(email) || email.length > 254) errors[seatIndex] = t("checkout.errSeatEmail");
+            else if (seen.has(email)) errors[seatIndex] = t("checkout.errSeatDuplicate");
+            seen.add(email);
+        }
+        return errors;
+    };
+    const touchSeat = (seatIndex: number) => {
+        setSeatTouched((prev) => ({ ...prev, [seatIndex]: true }));
+        setSeatErrors(validateSeats());
+    };
+    const clearSeatError = (seatIndex: number) =>
+        setSeatErrors((prev) => { const n = { ...prev }; delete n[seatIndex]; return n; });
+    const seatError = (seatIndex: number) => (seatTouched[seatIndex] ? seatErrors[seatIndex] : undefined);
+    const setOnlineSeat = (seatIndex: number, value: SeatEmail) => {
+        // błąd znika dopiero przy zmianie adresu (zmiana języka go nie kasuje)
+        if (seatErrors[seatIndex] && value.email !== onlineSeats[seatIndex]?.email) clearSeatError(seatIndex);
+        setOnlineSeats((prev) => prev.map((s, i) => (i === seatIndex ? value : s)));
+    };
+    const seatsHint = checkoutData?.type === "practical" && !checkoutData.includesOnlineAccess ? t("checkout.seatsHintPractical") : t("checkout.seatsHint");
 
     const calculateTotal = () => {
         if (checkoutData.type === "practical" && checkoutData.practicalCourse) {
             return checkoutData.practicalCourse.price;
         }
-        return checkoutData.price;
+        const unit = checkoutData.unitPrice ?? checkoutData.price;
+        return Math.round(unit * onlineQuantity * 100) / 100;
     };
 
     const openLogin = (email = formData.email, error = "") => {
@@ -192,8 +291,16 @@ const Checkout = () => {
             }
         }
 
-        if (additionalParticipants.some((p) => !p.firstName.trim() || !p.lastName.trim())) {
+        if (checkoutData.type === "practical" && additionalParticipants.some((p) => !p.firstName.trim() || !p.lastName.trim())) {
             return fail(t("checkout.errParticipants"));
+        }
+
+        const seatErrs = validateSeats();
+        if (Object.keys(seatErrs).length) {
+            setSeatErrors(seatErrs);
+            setSeatTouched(Object.fromEntries(Object.keys(seatErrs).map((k) => [k, true])));
+            document.getElementById(`seat-${Object.keys(seatErrs)[0]}-email`)?.focus();
+            return fail(t("checkout.errSeatsFix"));
         }
 
         setIsProcessing(true);
@@ -251,6 +358,11 @@ const Checkout = () => {
                     productId: checkoutData.productId,
                     language,
                     price: checkoutData.netPrice,
+                    quantity: checkoutData.type === "online" ? onlineQuantity : undefined,
+                    buyerParticipates,
+                    seatInvites: seatEntries
+                        .filter((s) => s.value.email.trim())
+                        .map((s) => ({ seatIndex: s.seatIndex, email: s.value.email.trim() })),
                     practicalCourse: checkoutData.practicalCourse
                         ? {
                             ...checkoutData.practicalCourse,
@@ -270,6 +382,12 @@ const Checkout = () => {
                 if (response.status === 401 && data.existingAccount) {
                     openLogin(formData.email, t("checkout.existingAccount"));
                     window.scrollTo({ top: 0, behavior: "smooth" });
+                } else if ((data.code === "INVALID_SEAT_EMAIL" || data.code === "DUPLICATE_SEAT_EMAIL") && Number.isInteger(data.seatIndex)) {
+                    // błąd z backendu przy konkretnym miejscu — pokazujemy go przy polu
+                    setSeatErrors({ [data.seatIndex]: t(data.code === "DUPLICATE_SEAT_EMAIL" ? "checkout.errSeatDuplicate" : "checkout.errSeatEmail") });
+                    setSeatTouched({ [data.seatIndex]: true });
+                    document.getElementById(`seat-${data.seatIndex}-email`)?.focus();
+                    fail(t("checkout.errSeatsFix"));
                 } else {
                     fail(data.message || t("checkout.errCheckout"));
                 }
@@ -349,7 +467,13 @@ const Checkout = () => {
                                     <li>{t("checkout.participantsN").replace("{n}", String(participantCount))}</li>
                                 </ul>
                             ) : (
-                                <p className="mt-3 text-sm text-muted-foreground">{t("checkout.onlineAccess")}</p>
+                                <ul className="mt-3 space-y-1 text-sm text-muted-foreground">
+                                    <li>{t("checkout.onlineAccess")}</li>
+                                    <li>
+                                        {t("checkout.participantsN").replace("{n}", String(onlineQuantity))}
+                                        {onlineQuantity > 1 && ` · ${onlineQuantity} × ${formatEuro(checkoutData.unitPrice ?? checkoutData.price)}`}
+                                    </li>
+                                </ul>
                             )}
                             <dl className="mt-3 space-y-1 border-t border-border pt-3 text-sm">
                                 <div className="flex justify-between"><dt className="text-muted-foreground">{t("checkout.net")}</dt><dd>{formatEuro(net)}</dd></div>
@@ -446,7 +570,7 @@ const Checkout = () => {
                                                         type="button"
                                                         role="radio"
                                                         aria-checked={selected}
-                                                        onClick={() => setBuyerType(value)}
+                                                        onClick={() => chooseBuyerType(value)}
                                                         className={`flex items-start gap-3 rounded-lg border-2 p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                                                             selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
                                                         }`}
@@ -526,27 +650,51 @@ const Checkout = () => {
                                             </>
                                         )}
 
-                                        {/* ── Zusätzliche Teilnehmer ─────────────────────────── */}
-                                        {additionalParticipants.length > 0 && (
+                                        {/* ── Ich nehme selbst teil ─────────────────────────── */}
+                                        <div className="flex items-start gap-3 rounded-lg border border-border p-4">
+                                            <Checkbox
+                                                id="buyerParticipates"
+                                                checked={buyerParticipates}
+                                                onCheckedChange={(checked) => setBuyerParticipates(checked === true)}
+                                                aria-describedby="buyerParticipates-hint"
+                                                className="mt-0.5"
+                                            />
+                                            <div className="min-w-0">
+                                                <Label htmlFor="buyerParticipates" className="cursor-pointer font-semibold">
+                                                    {t("checkout.buyerParticipates")}
+                                                </Label>
+                                                <p id="buyerParticipates-hint" className="mt-0.5 text-sm text-muted-foreground">
+                                                    {checkoutData.type === "online"
+                                                        ? t(buyerParticipates ? "checkout.buyerYesOnline" : "checkout.buyerNoOnline")
+                                                        : t(buyerParticipates ? "checkout.buyerYesPractical" : "checkout.buyerNoPractical")}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* ── Teilnehmer (Namen für Teilnehmerliste / Zertifikat) ─── */}
+                                        {checkoutData.type === "practical" && additionalParticipants.length > 0 && (
                                             <div className="p-4 bg-muted/50 rounded-lg border border-border space-y-3">
                                                 <div>
                                                     <Label className="text-sm font-semibold flex items-center gap-2">
                                                         <Users className="w-4 h-4 text-primary" />
-                                                        {t("checkout.additional")} ({additionalParticipants.length})
+                                                        {buyerParticipates ? t("checkout.additional") : t("checkout.participantsAll")} ({additionalParticipants.length})
                                                     </Label>
                                                     <p className="text-xs text-muted-foreground mt-0.5">
-                                                        {isCompany
-                                                            ? t("checkout.additionalCompany")
-                                                            : t("checkout.additionalPrivate")}
+                                                        {!buyerParticipates
+                                                            ? t("checkout.participantsAllDesc")
+                                                            : isCompany
+                                                                ? t("checkout.additionalCompany")
+                                                                : t("checkout.additionalPrivate")}
                                                     </p>
+                                                    <p className="text-sm text-muted-foreground mt-2">{seatsHint}</p>
                                                 </div>
                                                 {additionalParticipants.map((p, i) => (
-                                                    <div key={i} className="space-y-1.5">
-                                                        <p className="text-xs text-muted-foreground">{t("checkout.participantN").replace("{n}", String(i + 2))}</p>
+                                                    <div key={i} className="space-y-2 border-t border-border pt-3">
+                                                        <p className="text-sm font-semibold text-foreground">{t("checkout.participantN").replace("{n}", String(participantNo(i)))}</p>
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             <Input
                                                                 id={`participant-${i}-firstName`}
-                                                                aria-label={`${t("checkout.firstName")} – ${t("checkout.participantN").replace("{n}", String(i + 2))}`}
+                                                                aria-label={`${t("checkout.firstName")} – ${t("checkout.participantN").replace("{n}", String(participantNo(i)))}`}
                                                                 placeholder={t("checkout.firstName")}
                                                                 value={p.firstName}
                                                                 onChange={(e) => updateParticipant(i, "firstName", e.target.value)}
@@ -554,13 +702,53 @@ const Checkout = () => {
                                                             />
                                                             <Input
                                                                 id={`participant-${i}-lastName`}
-                                                                aria-label={`${t("checkout.lastName")} – ${t("checkout.participantN").replace("{n}", String(i + 2))}`}
+                                                                aria-label={`${t("checkout.lastName")} – ${t("checkout.participantN").replace("{n}", String(participantNo(i)))}`}
                                                                 placeholder={t("checkout.lastName")}
                                                                 value={p.lastName}
                                                                 onChange={(e) => updateParticipant(i, "lastName", e.target.value)}
                                                                 required
                                                             />
                                                         </div>
+                                                        <SeatEmailFields
+                                                            id={`seat-${participantNo(i) - 1}`}
+                                                            label={t("checkout.participantN").replace("{n}", String(participantNo(i)))}
+                                                            value={{ email: p.email }}
+                                                            error={seatError(participantNo(i) - 1)}
+                                                            onChange={(v) => {
+                                                                const k = participantNo(i) - 1;
+                                                                if (seatErrors[k] && v.email !== p.email) clearSeatError(k);
+                                                                updateParticipantSeat(i, v);
+                                                            }}
+                                                            onBlur={() => touchSeat(participantNo(i) - 1)}
+                                                            t={t}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* ── Kurs online: e-maile osób na pozostałych miejscach ─── */}
+                                        {checkoutData.type === "online" && seatEntries.length > 0 && (
+                                            <div className="p-4 bg-muted/50 rounded-lg border border-border space-y-3">
+                                                <div>
+                                                    <Label className="text-sm font-semibold flex items-center gap-2">
+                                                        <Users className="w-4 h-4 text-primary" />
+                                                        {t("checkout.seatsTitle")} ({seatEntries.length})
+                                                    </Label>
+                                                    <p className="text-sm text-muted-foreground mt-1">{seatsHint}</p>
+                                                </div>
+                                                {seatEntries.map(({ seatIndex, value }) => (
+                                                    <div key={seatIndex} className="space-y-2 border-t border-border pt-3">
+                                                        <p className="text-sm font-semibold text-foreground">{t("checkout.seatN").replace("{n}", String(seatIndex + 1))}</p>
+                                                        <SeatEmailFields
+                                                            id={`seat-${seatIndex}`}
+                                                            label={t("checkout.seatN").replace("{n}", String(seatIndex + 1))}
+                                                            value={value}
+                                                            error={seatError(seatIndex)}
+                                                            onChange={(v) => setOnlineSeat(seatIndex, v)}
+                                                            onBlur={() => touchSeat(seatIndex)}
+                                                            t={t}
+                                                        />
                                                     </div>
                                                 ))}
                                             </div>
@@ -637,7 +825,7 @@ const Checkout = () => {
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
                                                             {t("checkout.invoiceCompanyQ")}{" "}
-                                                            <button type="button" onClick={() => { setBuyerType("company"); setBillingAddressDifferent(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="text-primary underline">
+                                                            <button type="button" onClick={() => { chooseBuyerType("company"); setBillingAddressDifferent(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="text-primary underline">
                                                                 {t("checkout.orderAsCompany")}
                                                             </button>
                                                         </p>
@@ -688,9 +876,15 @@ const Checkout = () => {
                                                 {checkoutData.courseName}
                                             </h3>
                                             {checkoutData.type === "online" && (
-                                                <p className="text-sm text-muted-foreground">
-                                                    {t("checkout.onlineAccess")}
-                                                </p>
+                                                <>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {t("checkout.onlineAccess")}
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground mt-1">
+                                                        {t("checkout.participantsN").replace("{n}", String(onlineQuantity))}
+                                                        {onlineQuantity > 1 && ` · ${onlineQuantity} × ${formatEuro(checkoutData.unitPrice ?? checkoutData.price)}`}
+                                                    </p>
+                                                </>
                                             )}
                                             {checkoutData.type === "practical" && checkoutData.practicalCourse && (
                                                 <>
@@ -706,9 +900,11 @@ const Checkout = () => {
                                                     </p>
                                                     {additionalParticipants.length > 0 && (
                                                         <ul className="text-xs text-muted-foreground mt-1 space-y-0.5">
-                                                            <li>• {(auth.isLoggedIn ? auth.userName : `${formData.firstName} ${formData.lastName}`.trim()) || t("checkout.you")} ({t("checkout.participantN").replace("{n}", "1")})</li>
+                                                            {buyerParticipates && (
+                                                                <li>• {(auth.isLoggedIn ? auth.userName : `${formData.firstName} ${formData.lastName}`.trim()) || t("checkout.you")} ({t("checkout.participantN").replace("{n}", "1")})</li>
+                                                            )}
                                                             {additionalParticipants.map((p, i) => (
-                                                                <li key={i}>• {`${p.firstName} ${p.lastName}`.trim() || t("checkout.participantN").replace("{n}", String(i + 2))}</li>
+                                                                <li key={i}>• {`${p.firstName} ${p.lastName}`.trim() || t("checkout.participantN").replace("{n}", String(participantNo(i)))}</li>
                                                             ))}
                                                         </ul>
                                                     )}
@@ -729,7 +925,7 @@ const Checkout = () => {
                                         <div className="space-y-2 pt-4 border-t">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-muted-foreground">
-                                                    {t("checkout.courseNet")}{participantCount > 1 && ` (${t("checkout.participantsN").replace("{n}", String(participantCount))})`}
+                                                    {t("checkout.courseNet")}{quantity > 1 && ` (${t("checkout.participantsN").replace("{n}", String(quantity))})`}
                                                 </span>
                                                 <span className="font-medium">{formatEuro(net)}</span>
                                             </div>

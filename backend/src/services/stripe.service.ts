@@ -13,6 +13,7 @@ console.log('💳 Stripe initialized successfully');
 
 export interface CheckoutSessionData {
     orderNumber: string;
+    orderId?: string;
     userId: string;
     userEmail: string;
     type: "online" | "practical";
@@ -73,6 +74,13 @@ export const createCheckoutSession = async (
             userId: data.userId,
             type: data.type,
             ...data.metadata,
+        },
+        // Metadane także na PaymentIntent: payment_intent.payment_failed znajduje po nich zamówienie (paymentFailedAt).
+        payment_intent_data: {
+            metadata: {
+                orderNumber: data.orderNumber,
+                ...(data.orderId ? { orderId: data.orderId } : {}),
+            },
         },
     });
 

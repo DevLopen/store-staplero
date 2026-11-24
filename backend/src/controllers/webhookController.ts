@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import stripeService from "../services/stripe.service";
 import orderService from "../services/order.service";
 import Stripe from "stripe";
+import Order from "../models/Order";
 
 /**
  * Handle Stripe webhooks
@@ -88,35 +89,31 @@ const handlePaymentIntentSucceeded = async (paymentIntent: Stripe.PaymentIntent)
 };
 
 /**
- * Handle payment intent failed
+ * Handle payment intent failed.
+ * W Checkout klient może po nieudanej próbie zapłacić jeszcze raz w tej samej sesji — dlatego
+ * nie anulujemy zamówienia, tylko zapisujemy próbę (paymentFailedAt). Tylko zamówienia „pending”;
+ * opłaconych, anulowanych ani miejsc to zdarzenie nie dotyka.
+ * Zamówienie po metadanych PaymentIntent (payment_intent_data.metadata w createCheckoutSession).
  */
 const handlePaymentIntentFailed = async (paymentIntent: Stripe.PaymentIntent) => {
     console.log("Payment intent failed:", paymentIntent.id);
-
-    // Find order by payment intent ID
-    const order = await orderService.findOrderById(paymentIntent.metadata?.orderId);
-
-    if (order) {
-        order.status = "cancelled";
-        await order.save();
-        console.log(`Order ${order.orderNumber} cancelled due to payment failure`);
+    const { orderId, orderNumber } = paymentIntent.metadata || {};
+    const filter = orderId && /^[a-f\d]{24}$/i.test(orderId) ? { _id: orderId } : orderNumber ? { orderNumber: String(orderNumber) } : null;
+    if (!filter) {
+        console.log(`ℹ️ Payment intent ${paymentIntent.id}: keine Bestellung in den Metadaten`);
+        return;
     }
+    const r = await Order.updateOne({ ...filter, status: "pending" }, { $set: { paymentFailedAt: new Date() } });
+    if (r.modifiedCount) console.log(`ℹ️ Order ${orderNumber || orderId}: Zahlungsversuch fehlgeschlagen (bleibt offen)`);
 };
 
 /**
- * Handle charge refunded
+ * Handle charge refunded: nur protokollieren. Erstattungen bearbeitet der Inhaber selbst
+ * (Stripe-Dashboard, Zugänge bei Bedarf im Admin über „Zugang entziehen”).
  */
 const handleChargeRefunded = async (charge: Stripe.Charge) => {
-    console.log("Charge refunded:", charge.id);
-
-    // Find order by payment intent
-    const order = await orderService.findOrderById(charge.metadata?.orderId);
-
-    if (order) {
-        order.status = "cancelled";
-        await order.save();
-        console.log(`Order ${order.orderNumber} cancelled due to refund`);
-    }
+    const pi = typeof charge.payment_intent === "string" ? charge.payment_intent : charge.payment_intent?.id;
+    console.log(`Charge refunded: ${charge.id} (payment_intent ${pi}, ${(charge.amount_refunded || 0) / 100} € erstattet) — keine automatische Änderung`);
 };
 
 export default {

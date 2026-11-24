@@ -11,9 +11,8 @@ import { tutorLeft } from "./tutorController";
 import { TUTOR_DAILY_LIMIT } from "../services/courseTutor.service";
 import { emptyContent, findLesson, newId, outline, translationStatus, validateContent } from "../utils/learningContent";
 
-const ADMIN_EMAILS = ["info@staplero.com", "info@staplero.de", "k.lopuch@satisfly.co"];
-export const isAdmin = (req: AuthRequest) =>
-    req.user?.isAdmin === true || ADMIN_EMAILS.includes(String(req.user?.email || "").trim().toLowerCase());
+// Admin wyłącznie z flagi isAdmin w bazie (req.user pochodzi z `protect`).
+export const isAdmin = (req: AuthRequest) => req.user?.isAdmin === true;
 export const validId = (id: string) => mongoose.Types.ObjectId.isValid(id);
 
 /** Active, not expired purchase of this course. Admins always have access. */
